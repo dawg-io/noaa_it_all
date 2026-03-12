@@ -6,7 +6,7 @@
 
 
 <p align="center">
-  <img src="/brand/dark_icon.png" width="120"><br>
+  <img src="/custom_components/noaa_it_all/brand/icon.png" width="120"><br>
 </p>
 
 This Home Assistant integration provides comprehensive NOAA data through sensors and images, with the latest addition of location-specific rip current and surf zone forecasts.
