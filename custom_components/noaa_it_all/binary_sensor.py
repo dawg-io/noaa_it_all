@@ -1,6 +1,8 @@
 """Binary sensor platform for NOAA Integration."""
 import logging
-import requests
+import aiohttp
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
+import asyncio
 import re
 from datetime import timedelta
 
@@ -93,15 +95,19 @@ class UnsafeToSwimBinarySensor(BinarySensorEntity):
             manufacturer="NOAA"
         )
 
-    def update(self):
+    async def async_update(self):
         """Update the binary sensor."""
         try:
             # Fetch surf zone forecast for the specific NWS office
             url = NWS_SRF_URL.format(office=self._office_code)
-            response = requests.get(url, timeout=REQUEST_TIMEOUT)
-            response.raise_for_status()
-
-            forecast_text = response.text.lower()
+            session = async_get_clientsession(self.hass)
+            async with session.get(
+                url,
+                timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+            ) as response:
+                response.raise_for_status()
+                forecast_text = (await response.text()).lower()
+            self._attr_available = True
 
             # Look for rip current risk indicators in the forecast text
             high_risk_patterns = [
@@ -139,13 +145,16 @@ class UnsafeToSwimBinarySensor(BinarySensorEntity):
             _LOGGER.debug("Updated unsafe to swim sensor for %s: %s (risk: %s)",
                           self._office_code, self._state, risk_level)
 
-        except requests.exceptions.Timeout:
+        except asyncio.TimeoutError:
+            self._attr_available = False
             _LOGGER.error("Timeout when fetching surf zone forecast for %s", self._office_code)
             self._attributes = {'error': 'Timeout fetching forecast'}
-        except requests.exceptions.RequestException as e:
+        except aiohttp.ClientError as e:
+            self._attr_available = False
             _LOGGER.error("Error fetching surf zone forecast for %s: %s", self._office_code, e)
             self._attributes = {'error': f'Request error: {e}'}
         except Exception as e:
+            self._attr_available = False
             _LOGGER.error("Unexpected error updating unsafe to swim sensor for %s: %s", self._office_code, e)
             self._attributes = {'error': f'Unexpected error: {e}'}
 
@@ -194,14 +203,19 @@ class SevereWeatherAlertBinarySensor(BinarySensorEntity):
             manufacturer="NOAA"
         )
 
-    def update(self):
+    async def async_update(self):
         """Update the binary sensor."""
         try:
             url = NWS_ALERTS_URL.format(lat=self._latitude, lon=self._longitude)
-            response = requests.get(url, timeout=REQUEST_TIMEOUT, headers={'User-Agent': USER_AGENT})
-            response.raise_for_status()
-
-            data = response.json()
+            session = async_get_clientsession(self.hass)
+            async with session.get(
+                url,
+                headers={'User-Agent': USER_AGENT},
+                timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+            ) as response:
+                response.raise_for_status()
+                data = await response.json()
+            self._attr_available = True
             features = data.get('features', [])
 
             # Filter for severe weather events
@@ -252,13 +266,16 @@ class SevereWeatherAlertBinarySensor(BinarySensorEntity):
             _LOGGER.debug("Updated severe weather alert sensor for %s: %s (%d alerts)",
                           self._office_code, self._state, len(active_alerts))
 
-        except requests.exceptions.Timeout:
+        except asyncio.TimeoutError:
+            self._attr_available = False
             _LOGGER.error("Timeout when fetching NWS alerts for %s", self._office_code)
             self._attributes = {'error': 'Timeout fetching alerts'}
-        except requests.exceptions.RequestException as e:
+        except aiohttp.ClientError as e:
+            self._attr_available = False
             _LOGGER.error("Error fetching NWS alerts for %s: %s", self._office_code, e)
             self._attributes = {'error': f'Request error: {e}'}
         except Exception as e:
+            self._attr_available = False
             _LOGGER.error("Unexpected error updating severe weather alert sensor for %s: %s", self._office_code, e)
             self._attributes = {'error': f'Unexpected error: {e}'}
 
@@ -307,14 +324,19 @@ class FloodWinterAlertBinarySensor(BinarySensorEntity):
             manufacturer="NOAA"
         )
 
-    def update(self):
+    async def async_update(self):
         """Update the binary sensor."""
         try:
             url = NWS_ALERTS_URL.format(lat=self._latitude, lon=self._longitude)
-            response = requests.get(url, timeout=REQUEST_TIMEOUT, headers={'User-Agent': USER_AGENT})
-            response.raise_for_status()
-
-            data = response.json()
+            session = async_get_clientsession(self.hass)
+            async with session.get(
+                url,
+                headers={'User-Agent': USER_AGENT},
+                timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+            ) as response:
+                response.raise_for_status()
+                data = await response.json()
+            self._attr_available = True
             features = data.get('features', [])
 
             # Filter for flood and winter weather events
@@ -363,13 +385,16 @@ class FloodWinterAlertBinarySensor(BinarySensorEntity):
             _LOGGER.debug("Updated flood/winter alert sensor for %s: %s (%d alerts)",
                           self._office_code, self._state, len(active_alerts))
 
-        except requests.exceptions.Timeout:
+        except asyncio.TimeoutError:
+            self._attr_available = False
             _LOGGER.error("Timeout when fetching NWS alerts for %s", self._office_code)
             self._attributes = {'error': 'Timeout fetching alerts'}
-        except requests.exceptions.RequestException as e:
+        except aiohttp.ClientError as e:
+            self._attr_available = False
             _LOGGER.error("Error fetching NWS alerts for %s: %s", self._office_code, e)
             self._attributes = {'error': f'Request error: {e}'}
         except Exception as e:
+            self._attr_available = False
             _LOGGER.error("Unexpected error updating flood/winter alert sensor for %s: %s", self._office_code, e)
             self._attributes = {'error': f'Unexpected error: {e}'}
 
@@ -418,14 +443,19 @@ class HeatAirQualityAlertBinarySensor(BinarySensorEntity):
             manufacturer="NOAA"
         )
 
-    def update(self):
+    async def async_update(self):
         """Update the binary sensor."""
         try:
             url = NWS_ALERTS_URL.format(lat=self._latitude, lon=self._longitude)
-            response = requests.get(url, timeout=REQUEST_TIMEOUT, headers={'User-Agent': USER_AGENT})
-            response.raise_for_status()
-
-            data = response.json()
+            session = async_get_clientsession(self.hass)
+            async with session.get(
+                url,
+                headers={'User-Agent': USER_AGENT},
+                timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+            ) as response:
+                response.raise_for_status()
+                data = await response.json()
+            self._attr_available = True
             features = data.get('features', [])
 
             # Filter for heat, air quality, and environmental alerts
@@ -473,13 +503,16 @@ class HeatAirQualityAlertBinarySensor(BinarySensorEntity):
             _LOGGER.debug("Updated heat/air quality alert sensor for %s: %s (%d alerts)",
                           self._office_code, self._state, len(active_alerts))
 
-        except requests.exceptions.Timeout:
+        except asyncio.TimeoutError:
+            self._attr_available = False
             _LOGGER.error("Timeout when fetching NWS alerts for %s", self._office_code)
             self._attributes = {'error': 'Timeout fetching alerts'}
-        except requests.exceptions.RequestException as e:
+        except aiohttp.ClientError as e:
+            self._attr_available = False
             _LOGGER.error("Error fetching NWS alerts for %s: %s", self._office_code, e)
             self._attributes = {'error': f'Request error: {e}'}
         except Exception as e:
+            self._attr_available = False
             _LOGGER.error("Unexpected error updating heat/air quality alert sensor for %s: %s",
                           self._office_code, e)
             self._attributes = {'error': f'Unexpected error: {e}'}
@@ -529,14 +562,19 @@ class ActiveAlertsGeneralBinarySensor(BinarySensorEntity):
             manufacturer="NOAA"
         )
 
-    def update(self):
+    async def async_update(self):
         """Update the binary sensor."""
         try:
             url = NWS_ALERTS_URL.format(lat=self._latitude, lon=self._longitude)
-            response = requests.get(url, timeout=REQUEST_TIMEOUT, headers={'User-Agent': USER_AGENT})
-            response.raise_for_status()
-
-            data = response.json()
+            session = async_get_clientsession(self.hass)
+            async with session.get(
+                url,
+                headers={'User-Agent': USER_AGENT},
+                timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+            ) as response:
+                response.raise_for_status()
+                data = await response.json()
+            self._attr_available = True
             features = data.get('features', [])
 
             # Filter all actual alerts (excluding tests and other non-actual alerts)
@@ -578,12 +616,15 @@ class ActiveAlertsGeneralBinarySensor(BinarySensorEntity):
             _LOGGER.debug("Updated active alerts sensor for %s: %s (%d alerts)",
                           self._office_code, self._state, len(active_alerts))
 
-        except requests.exceptions.Timeout:
+        except asyncio.TimeoutError:
+            self._attr_available = False
             _LOGGER.error("Timeout when fetching NWS alerts for %s", self._office_code)
             self._attributes = {'error': 'Timeout fetching alerts'}
-        except requests.exceptions.RequestException as e:
+        except aiohttp.ClientError as e:
+            self._attr_available = False
             _LOGGER.error("Error fetching NWS alerts for %s: %s", self._office_code, e)
             self._attributes = {'error': f'Request error: {e}'}
         except Exception as e:
+            self._attr_available = False
             _LOGGER.error("Unexpected error updating active alerts sensor for %s: %s", self._office_code, e)
             self._attributes = {'error': f'Unexpected error: {e}'}
