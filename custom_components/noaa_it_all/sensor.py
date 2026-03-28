@@ -1,4 +1,5 @@
 import aiohttp
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import asyncio
 import logging
 import re
@@ -9,7 +10,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from datetime import timedelta, datetime, timezone
 
 from .const import (CONF_OFFICE_CODE, CONF_LATITUDE, CONF_LONGITUDE, NWS_SRF_URL, NWS_POINTS_URL,
-                    NWS_ALERTS_URL, REQUEST_TIMEOUT, USER_AGENT, OFFICE_MAGNETIC_LATITUDES,
+                    NWS_ALERTS_URL, USER_AGENT, OFFICE_MAGNETIC_LATITUDES,
                     AURORA_KP_THRESHOLDS, SOLAR_RADIATION_STORM_SCALES, SOLAR_RADIATION_KEYWORDS,
                     OFFICE_STATION_IDS, NWS_OBSERVATIONS_URL, NWS_AFD_URL,
                     OFFICE_RADAR_SITES, DOMAIN)
@@ -179,14 +180,14 @@ class GeomagneticSensor(Entity):
 
     async def async_update(self):
         """Fetch new state data for the sensor."""
+        self._attr_available = True
         try:
-            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(
-                    'https://services.swpc.noaa.gov/json/geospace/geospace_dst_1_hour.json'
-                ) as response:
-                    response.raise_for_status()
-                    data = await response.json()
+            session = async_get_clientsession(self.hass)
+            async with session.get(
+                'https://services.swpc.noaa.gov/json/geospace/geospace_dst_1_hour.json'
+            ) as response:
+                response.raise_for_status()
+                data = await response.json()
             if data and len(data) > 0:
                 self._state = data[0].get('dst', 'Error')
                 self.interpreter.process_geomagnetic_data(self._state)
@@ -288,14 +289,14 @@ class PlanetaryKIndexSensor(Entity):
 
     async def async_update(self):
         """Fetch new state data for the K-index."""
+        self._attr_available = True
         try:
-            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(
-                    'https://services.swpc.noaa.gov/json/planetary_k_index_1m.json'
-                ) as response:
-                    response.raise_for_status()
-                    data = await response.json()
+            session = async_get_clientsession(self.hass)
+            async with session.get(
+                'https://services.swpc.noaa.gov/json/planetary_k_index_1m.json'
+            ) as response:
+                response.raise_for_status()
+                data = await response.json()
             if data and len(data) > 0:
                 self._state = data[-1].get('kp_index', 'unknown')
                 # Call the processor to handle the K-index value
@@ -404,14 +405,14 @@ class HurricaneAlertsSensor(Entity):
 
     async def async_update(self):
         """Fetch new hurricane alert data."""
+        self._attr_available = True
         try:
-            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(
-                    HURRICANE_ALERTS_URL
-                ) as response:
-                    response.raise_for_status()
-                    data = await response.json()
+            session = async_get_clientsession(self.hass)
+            async with session.get(
+                HURRICANE_ALERTS_URL
+            ) as response:
+                response.raise_for_status()
+                data = await response.json()
             features = data.get('features', [])
 
             if features:
@@ -490,22 +491,22 @@ class HurricaneActivitySensor(Entity):
 
     async def async_update(self):
         """Fetch hurricane activity status."""
+        self._attr_available = True
         try:
-            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                # First check for active storms from National Hurricane Center
-                async with session.get(
-                    CURRENT_STORMS_URL
-                ) as storms_response:
-                    storms_response.raise_for_status()
-                    storms_data = await storms_response.json()
+            session = async_get_clientsession(self.hass)
+            # First check for active storms from National Hurricane Center
+            async with session.get(
+                CURRENT_STORMS_URL
+            ) as storms_response:
+                storms_response.raise_for_status()
+                storms_data = await storms_response.json()
 
-                # Also check for active alerts
-                async with session.get(
-                    HURRICANE_ALERTS_URL
-                ) as alerts_response:
-                    alerts_response.raise_for_status()
-                    alerts_data = await alerts_response.json()
+            # Also check for active alerts
+            async with session.get(
+                HURRICANE_ALERTS_URL
+            ) as alerts_response:
+                alerts_response.raise_for_status()
+                alerts_data = await alerts_response.json()
 
             active_storms = storms_data.get('activeStorms', [])
             features = alerts_data.get('features', [])
@@ -645,16 +646,16 @@ class RipCurrentRiskSensor(Entity):
 
     async def async_update(self):
         """Fetch new rip current risk data for the specific location."""
+        self._attr_available = True
         try:
             # Fetch surf zone forecast for the specific NWS office
             url = NWS_SRF_URL.format(office=self._office_code)
-            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(
-                    url
-                ) as response:
-                    response.raise_for_status()
-                    forecast_text = (await response.text()).lower()
+            session = async_get_clientsession(self.hass)
+            async with session.get(
+                url
+            ) as response:
+                response.raise_for_status()
+                forecast_text = (await response.text()).lower()
 
             # Look for rip current risk indicators in the forecast text
             if re.search(r"high\s+rip\s+current\s+risk|dangerous\s+rip\s+currents|"
@@ -732,16 +733,16 @@ class SurfHeightSensor(Entity):
 
     async def async_update(self):
         """Fetch new surf height data for the specific location."""
+        self._attr_available = True
         try:
             # Fetch surf zone forecast for the specific NWS office
             url = NWS_SRF_URL.format(office=self._office_code)
-            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(
-                    url
-                ) as response:
-                    response.raise_for_status()
-                    forecast_text = (await response.text()).lower()
+            session = async_get_clientsession(self.hass)
+            async with session.get(
+                url
+            ) as response:
+                response.raise_for_status()
+                forecast_text = (await response.text()).lower()
 
             # Look for surf height patterns from actual NWS format
             # Examples: "surf height.................2 to 4 feet." or "surf height 6 to 9 feet."
@@ -832,16 +833,16 @@ class WaterTemperatureSensor(Entity):
 
     async def async_update(self):
         """Fetch new water temperature data for the specific location."""
+        self._attr_available = True
         try:
             # Fetch surf zone forecast for the specific NWS office
             url = NWS_SRF_URL.format(office=self._office_code)
-            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(
-                    url
-                ) as response:
-                    response.raise_for_status()
-                    forecast_text = (await response.text()).lower()
+            session = async_get_clientsession(self.hass)
+            async with session.get(
+                url
+            ) as response:
+                response.raise_for_status()
+                forecast_text = (await response.text()).lower()
 
             # Look for water temperature patterns from actual NWS format
             # Examples: "water temperature...........in the mid 80s." or "water temperature in the upper 70s"
@@ -941,15 +942,15 @@ class AuroraNextTimeSensor(Entity):
 
     async def async_update(self):
         """Calculate next aurora timing based on current geomagnetic conditions."""
+        self._attr_available = True
         try:
             # Get current Kp index data
-            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(
-                    'https://services.swpc.noaa.gov/json/planetary_k_index_1m.json'
-                ) as response:
-                    response.raise_for_status()
-                    data = await response.json()
+            session = async_get_clientsession(self.hass)
+            async with session.get(
+                'https://services.swpc.noaa.gov/json/planetary_k_index_1m.json'
+            ) as response:
+                response.raise_for_status()
+                data = await response.json()
             if not data or len(data) == 0:
                 self._state = 'No Data'
                 self._attributes = {'error': 'No Kp index data available'}
@@ -1058,15 +1059,15 @@ class AuroraDurationSensor(Entity):
 
     async def async_update(self):
         """Calculate aurora duration based on geomagnetic conditions."""
+        self._attr_available = True
         try:
             # Get current Kp index and geomagnetic data
-            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(
-                    'https://services.swpc.noaa.gov/json/planetary_k_index_1m.json'
-                ) as response:
-                    response.raise_for_status()
-                    data = await response.json()
+            session = async_get_clientsession(self.hass)
+            async with session.get(
+                'https://services.swpc.noaa.gov/json/planetary_k_index_1m.json'
+            ) as response:
+                response.raise_for_status()
+                data = await response.json()
             if not data or len(data) == 0:
                 self._state = 0
                 self._attributes = {'error': 'No Kp index data available'}
@@ -1162,15 +1163,15 @@ class AuroraVisibilityProbabilitySensor(Entity):
 
     async def async_update(self):
         """Calculate aurora visibility probability based on conditions and location."""
+        self._attr_available = True
         try:
             # Get current Kp index and geomagnetic data
-            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(
-                    'https://services.swpc.noaa.gov/json/planetary_k_index_1m.json'
-                ) as response:
-                    response.raise_for_status()
-                    data = await response.json()
+            session = async_get_clientsession(self.hass)
+            async with session.get(
+                'https://services.swpc.noaa.gov/json/planetary_k_index_1m.json'
+            ) as response:
+                response.raise_for_status()
+                data = await response.json()
             if not data or len(data) == 0:
                 self._state = 0
                 self._attributes = {'error': 'No Kp index data available'}
@@ -1305,14 +1306,14 @@ class SolarRadiationStormAlertsSensor(Entity):
 
     async def async_update(self):
         """Fetch solar radiation storm alerts from NOAA."""
+        self._attr_available = True
         try:
-            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(
-                    NOAA_SPACE_WEATHER_ALERTS_URL
-                ) as response:
-                    response.raise_for_status()
-                    alerts_data = await response.json()
+            session = async_get_clientsession(self.hass)
+            async with session.get(
+                NOAA_SPACE_WEATHER_ALERTS_URL
+            ) as response:
+                response.raise_for_status()
+                alerts_data = await response.json()
             if not alerts_data:
                 self._state = 0
                 self._attributes = {'alerts': [], 'last_updated': datetime.now(timezone.utc).isoformat()}
@@ -1593,6 +1594,7 @@ class WeatherObservationSensor(Entity):
 
     async def async_update(self):
         """Fetch new weather observation data."""
+        self._attr_available = True
         # Fetch station ID from lat/lon if not already fetched
         if not self._station_fetched and self._latitude is not None and self._longitude is not None:
             await self._async_fetch_station_from_location()
@@ -1606,14 +1608,13 @@ class WeatherObservationSensor(Entity):
 
         try:
             url = NWS_OBSERVATIONS_URL.format(station=self._station_id)
-            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(
-                    url,
-                    headers={'User-Agent': USER_AGENT}
-                ) as response:
-                    response.raise_for_status()
-                    data = await response.json()
+            session = async_get_clientsession(self.hass)
+            async with session.get(
+                url,
+                headers={'User-Agent': USER_AGENT}
+            ) as response:
+                response.raise_for_status()
+                data = await response.json()
             properties = data.get('properties', {})
 
             # Extract the value based on the observation field
@@ -1653,32 +1654,31 @@ class WeatherObservationSensor(Entity):
             _LOGGER.debug("Fetching station for lat=%s, lon=%s from %s",
                           self._latitude, self._longitude, points_url)
 
-            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(
-                    points_url,
-                    headers={'User-Agent': USER_AGENT}
-                ) as response:
-                    response.raise_for_status()
-                    data = await response.json()
+            session = async_get_clientsession(self.hass)
+            async with session.get(
+                points_url,
+                headers={'User-Agent': USER_AGENT}
+            ) as response:
+                response.raise_for_status()
+                data = await response.json()
 
-                properties = data.get('properties', {})
-                stations_url = properties.get('observationStations')
+            properties = data.get('properties', {})
+            stations_url = properties.get('observationStations')
 
-                if not stations_url:
-                    _LOGGER.error("No observation stations URL found for lat=%s, lon=%s",
-                                  self._latitude, self._longitude)
-                    self._station_fetched = True
-                    return
+            if not stations_url:
+                _LOGGER.error("No observation stations URL found for lat=%s, lon=%s",
+                              self._latitude, self._longitude)
+                self._station_fetched = True
+                return
 
-                # Fetch list of nearby stations
-                _LOGGER.debug("Fetching stations list from %s", stations_url)
-                async with session.get(
-                    stations_url,
-                    headers={'User-Agent': USER_AGENT}
-                ) as response:
-                    response.raise_for_status()
-                    stations_data = await response.json()
+            # Fetch list of nearby stations
+            _LOGGER.debug("Fetching stations list from %s", stations_url)
+            async with session.get(
+                stations_url,
+                headers={'User-Agent': USER_AGENT}
+            ) as response:
+                response.raise_for_status()
+                stations_data = await response.json()
             stations_list = stations_data.get('features', [])
 
             if stations_list:
@@ -1837,6 +1837,7 @@ class WindDirectionSensor(WeatherObservationSensor):
 
     async def async_update(self):
         """Fetch new weather observation data and add cardinal direction."""
+        self._attr_available = True
         await super().async_update()
         # Add cardinal direction to attributes after base update
         if self._state is not None and self._state != 'Error':
@@ -2024,14 +2025,13 @@ class ForecastBaseSensor(Entity):
             _LOGGER.debug("Fetching forecast URL for lat=%s, lon=%s from %s",
                           self._latitude, self._longitude, points_url)
 
-            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(
-                    points_url,
-                    headers={'User-Agent': USER_AGENT}
-                ) as response:
-                    response.raise_for_status()
-                    data = await response.json()
+            session = async_get_clientsession(self.hass)
+            async with session.get(
+                points_url,
+                headers={'User-Agent': USER_AGENT}
+            ) as response:
+                response.raise_for_status()
+                data = await response.json()
             properties = data.get('properties', {})
 
             # Get the forecast URL directly from the points API
@@ -2103,6 +2103,7 @@ class ExtendedForecastSensor(ForecastBaseSensor):
 
     async def async_update(self):
         """Fetch new extended forecast data."""
+        self._attr_available = True
         # Fetch forecast URL from lat/lon if not already fetched
         if not self._grid_fetched and self._latitude is not None and self._longitude is not None:
             await self._async_fetch_forecast_url()
@@ -2115,14 +2116,13 @@ class ExtendedForecastSensor(ForecastBaseSensor):
             return
 
         try:
-            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(
-                    self._forecast_url,
-                    headers={'User-Agent': USER_AGENT}
-                ) as response:
-                    response.raise_for_status()
-                    data = await response.json()
+            session = async_get_clientsession(self.hass)
+            async with session.get(
+                self._forecast_url,
+                headers={'User-Agent': USER_AGENT}
+            ) as response:
+                response.raise_for_status()
+                data = await response.json()
             properties = data.get('properties', {})
             periods = properties.get('periods', [])
 
@@ -2229,6 +2229,7 @@ class HourlyForecastSensor(ForecastBaseSensor):
 
     async def async_update(self):
         """Fetch new hourly forecast data."""
+        self._attr_available = True
         # Fetch forecast URL from lat/lon if not already fetched
         if not self._grid_fetched and self._latitude is not None and self._longitude is not None:
             await self._async_fetch_forecast_url()
@@ -2244,14 +2245,13 @@ class HourlyForecastSensor(ForecastBaseSensor):
             return
 
         try:
-            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(
-                    self._forecast_url,
-                    headers={'User-Agent': USER_AGENT}
-                ) as response:
-                    response.raise_for_status()
-                    data = await response.json()
+            session = async_get_clientsession(self.hass)
+            async with session.get(
+                self._forecast_url,
+                headers={'User-Agent': USER_AGENT}
+            ) as response:
+                response.raise_for_status()
+                data = await response.json()
             properties = data.get('properties', {})
             periods = properties.get('periods', [])
 
@@ -2376,16 +2376,16 @@ class NWSAlertsSensor(Entity):
 
     async def async_update(self):
         """Fetch new NWS alerts data for the specific location."""
+        self._attr_available = True
         try:
             url = NWS_ALERTS_URL.format(lat=self._latitude, lon=self._longitude)
-            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(
-                    url,
-                    headers={'User-Agent': USER_AGENT}
-                ) as response:
-                    response.raise_for_status()
-                    data = await response.json()
+            session = async_get_clientsession(self.hass)
+            async with session.get(
+                url,
+                headers={'User-Agent': USER_AGENT}
+            ) as response:
+                response.raise_for_status()
+                data = await response.json()
             features = data.get('features', [])
 
             # Parse all actual alerts
@@ -2536,6 +2536,7 @@ class CloudCoverSensor(Entity):
 
     async def async_update(self):
         """Fetch new cloud cover data."""
+        self._attr_available = True
         # Fetch gridpoint URL from lat/lon if not already fetched
         if not self._grid_fetched and self._latitude is not None and self._longitude is not None:
             await self._async_fetch_gridpoint_url()
@@ -2549,14 +2550,13 @@ class CloudCoverSensor(Entity):
             return
 
         try:
-            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(
-                    self._gridpoint_url,
-                    headers={'User-Agent': USER_AGENT}
-                ) as response:
-                    response.raise_for_status()
-                    data = await response.json()
+            session = async_get_clientsession(self.hass)
+            async with session.get(
+                self._gridpoint_url,
+                headers={'User-Agent': USER_AGENT}
+            ) as response:
+                response.raise_for_status()
+                data = await response.json()
             properties = data.get('properties', {})
             sky_cover = properties.get('skyCover', {})
 
@@ -2611,14 +2611,13 @@ class CloudCoverSensor(Entity):
             _LOGGER.debug("Fetching gridpoint URL for lat=%s, lon=%s from %s",
                           self._latitude, self._longitude, points_url)
 
-            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(
-                    points_url,
-                    headers={'User-Agent': USER_AGENT}
-                ) as response:
-                    response.raise_for_status()
-                    data = await response.json()
+            session = async_get_clientsession(self.hass)
+            async with session.get(
+                points_url,
+                headers={'User-Agent': USER_AGENT}
+            ) as response:
+                response.raise_for_status()
+                data = await response.json()
             properties = data.get('properties', {})
 
             # Get the gridpoint URL
@@ -2697,6 +2696,7 @@ class RadarTimestampSensor(Entity):
 
     async def async_update(self):
         """Fetch radar timestamp from HTTP headers."""
+        self._attr_available = True
         if not self._radar_site:
             _LOGGER.error("No radar site mapping found for office code: %s", self._office_code)
             self._state = None
@@ -2711,14 +2711,13 @@ class RadarTimestampSensor(Entity):
             from .const import NWS_RADAR_BASE_URL
             radar_url = NWS_RADAR_BASE_URL.format(radar=self._radar_site)
 
-            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.head(
-                    radar_url,
-                    headers={'User-Agent': USER_AGENT}
-                ) as response:
-                    response.raise_for_status()
-                    last_modified = response.headers.get('Last-Modified')
+            session = async_get_clientsession(self.hass)
+            async with session.head(
+                radar_url,
+                headers={'User-Agent': USER_AGENT}
+            ) as response:
+                response.raise_for_status()
+                last_modified = response.headers.get('Last-Modified')
 
             if last_modified:
                 # Parse the timestamp
@@ -2804,16 +2803,16 @@ class ForecastDiscussionSensor(Entity):
 
     async def async_update(self):
         """Fetch forecast discussion from NWS."""
+        self._attr_available = True
         try:
             url = NWS_AFD_URL.format(office=self._office_code)
-            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(
-                    url,
-                    headers={'User-Agent': USER_AGENT}
-                ) as response:
-                    response.raise_for_status()
-                    html_content = await response.text()
+            session = async_get_clientsession(self.hass)
+            async with session.get(
+                url,
+                headers={'User-Agent': USER_AGENT}
+            ) as response:
+                response.raise_for_status()
+                html_content = await response.text()
 
             # Extract text from <pre> tag which contains the forecast discussion
             pre_match = re.search(r'<pre[^>]*>(.*?)</pre>', html_content, re.DOTALL | re.IGNORECASE)

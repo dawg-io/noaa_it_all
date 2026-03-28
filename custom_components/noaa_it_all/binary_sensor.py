@@ -1,6 +1,7 @@
 """Binary sensor platform for NOAA Integration."""
 import logging
 import aiohttp
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 import asyncio
 import re
 from datetime import timedelta
@@ -12,7 +13,7 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import (CONF_OFFICE_CODE, CONF_LATITUDE, CONF_LONGITUDE,
-                    NWS_SRF_URL, NWS_ALERTS_URL, REQUEST_TIMEOUT, USER_AGENT, DOMAIN)
+                    NWS_SRF_URL, NWS_ALERTS_URL, USER_AGENT, DOMAIN)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -96,16 +97,16 @@ class UnsafeToSwimBinarySensor(BinarySensorEntity):
 
     async def async_update(self):
         """Update the binary sensor."""
+        self._attr_available = True
         try:
             # Fetch surf zone forecast for the specific NWS office
             url = NWS_SRF_URL.format(office=self._office_code)
-            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(
-                    url
-                ) as response:
-                    response.raise_for_status()
-                    forecast_text = (await response.text()).lower()
+            session = async_get_clientsession(self.hass)
+            async with session.get(
+                url
+            ) as response:
+                response.raise_for_status()
+                forecast_text = (await response.text()).lower()
 
             # Look for rip current risk indicators in the forecast text
             high_risk_patterns = [
@@ -203,16 +204,16 @@ class SevereWeatherAlertBinarySensor(BinarySensorEntity):
 
     async def async_update(self):
         """Update the binary sensor."""
+        self._attr_available = True
         try:
             url = NWS_ALERTS_URL.format(lat=self._latitude, lon=self._longitude)
-            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(
-                    url,
-                    headers={'User-Agent': USER_AGENT}
-                ) as response:
-                    response.raise_for_status()
-                    data = await response.json()
+            session = async_get_clientsession(self.hass)
+            async with session.get(
+                url,
+                headers={'User-Agent': USER_AGENT}
+            ) as response:
+                response.raise_for_status()
+                data = await response.json()
             features = data.get('features', [])
 
             # Filter for severe weather events
@@ -323,16 +324,16 @@ class FloodWinterAlertBinarySensor(BinarySensorEntity):
 
     async def async_update(self):
         """Update the binary sensor."""
+        self._attr_available = True
         try:
             url = NWS_ALERTS_URL.format(lat=self._latitude, lon=self._longitude)
-            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(
-                    url,
-                    headers={'User-Agent': USER_AGENT}
-                ) as response:
-                    response.raise_for_status()
-                    data = await response.json()
+            session = async_get_clientsession(self.hass)
+            async with session.get(
+                url,
+                headers={'User-Agent': USER_AGENT}
+            ) as response:
+                response.raise_for_status()
+                data = await response.json()
             features = data.get('features', [])
 
             # Filter for flood and winter weather events
@@ -441,16 +442,16 @@ class HeatAirQualityAlertBinarySensor(BinarySensorEntity):
 
     async def async_update(self):
         """Update the binary sensor."""
+        self._attr_available = True
         try:
             url = NWS_ALERTS_URL.format(lat=self._latitude, lon=self._longitude)
-            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(
-                    url,
-                    headers={'User-Agent': USER_AGENT}
-                ) as response:
-                    response.raise_for_status()
-                    data = await response.json()
+            session = async_get_clientsession(self.hass)
+            async with session.get(
+                url,
+                headers={'User-Agent': USER_AGENT}
+            ) as response:
+                response.raise_for_status()
+                data = await response.json()
             features = data.get('features', [])
 
             # Filter for heat, air quality, and environmental alerts
@@ -559,16 +560,16 @@ class ActiveAlertsGeneralBinarySensor(BinarySensorEntity):
 
     async def async_update(self):
         """Update the binary sensor."""
+        self._attr_available = True
         try:
             url = NWS_ALERTS_URL.format(lat=self._latitude, lon=self._longitude)
-            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(
-                    url,
-                    headers={'User-Agent': USER_AGENT}
-                ) as response:
-                    response.raise_for_status()
-                    data = await response.json()
+            session = async_get_clientsession(self.hass)
+            async with session.get(
+                url,
+                headers={'User-Agent': USER_AGENT}
+            ) as response:
+                response.raise_for_status()
+                data = await response.json()
             features = data.get('features', [])
 
             # Filter all actual alerts (excluding tests and other non-actual alerts)
