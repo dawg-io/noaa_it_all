@@ -1,4 +1,5 @@
-import requests
+import aiohttp
+import asyncio
 import logging
 import re
 from homeassistant.helpers.entity import Entity, DeviceInfo
@@ -176,16 +177,16 @@ class GeomagneticSensor(Entity):
             manufacturer="NOAA"
         )
 
-    def update(self):
+    async def async_update(self):
         """Fetch new state data for the sensor."""
         try:
-            response = requests.get(
-                'https://services.swpc.noaa.gov/json/geospace/geospace_dst_1_hour.json',
-                timeout=REQUEST_TIMEOUT
-            )
-            response.raise_for_status()  # Raise an exception for bad status codes
-
-            data = response.json()
+            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(
+                    'https://services.swpc.noaa.gov/json/geospace/geospace_dst_1_hour.json'
+                ) as response:
+                    response.raise_for_status()
+                    data = await response.json()
             if data and len(data) > 0:
                 self._state = data[0].get('dst', 'Error')
                 self.interpreter.process_geomagnetic_data(self._state)
@@ -194,13 +195,16 @@ class GeomagneticSensor(Entity):
                 _LOGGER.warning("Empty response from NOAA geomagnetic API")
                 self._state = 'Error'
 
-        except requests.exceptions.Timeout:
+        except asyncio.TimeoutError:
+            self._attr_available = False
             _LOGGER.error("Timeout when fetching geomagnetic data from NOAA API")
             self._state = 'Error'
-        except requests.exceptions.RequestException as e:
+        except aiohttp.ClientError as e:
+            self._attr_available = False
             _LOGGER.error("Error fetching geomagnetic data from NOAA API: %s", e)
             self._state = 'Error'
         except (ValueError, KeyError) as e:
+            self._attr_available = False
             _LOGGER.error("Error parsing geomagnetic data from NOAA API: %s", e)
             self._state = 'Error'
 
@@ -282,16 +286,16 @@ class PlanetaryKIndexSensor(Entity):
             manufacturer="NOAA"
         )
 
-    def update(self):
+    async def async_update(self):
         """Fetch new state data for the K-index."""
         try:
-            response = requests.get(
-                'https://services.swpc.noaa.gov/json/planetary_k_index_1m.json',
-                timeout=REQUEST_TIMEOUT
-            )
-            response.raise_for_status()  # Raise an exception for bad status codes
-
-            data = response.json()
+            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(
+                    'https://services.swpc.noaa.gov/json/planetary_k_index_1m.json'
+                ) as response:
+                    response.raise_for_status()
+                    data = await response.json()
             if data and len(data) > 0:
                 self._state = data[-1].get('kp_index', 'unknown')
                 # Call the processor to handle the K-index value
@@ -301,13 +305,16 @@ class PlanetaryKIndexSensor(Entity):
                 _LOGGER.warning("Empty response from NOAA K-index API")
                 self._state = 'unknown'
 
-        except requests.exceptions.Timeout:
+        except asyncio.TimeoutError:
+            self._attr_available = False
             _LOGGER.error("Timeout when fetching K-index data from NOAA API")
             self._state = 'unknown'
-        except requests.exceptions.RequestException as e:
+        except aiohttp.ClientError as e:
+            self._attr_available = False
             _LOGGER.error("Error fetching K-index data from NOAA API: %s", e)
             self._state = 'unknown'
         except (ValueError, KeyError) as e:
+            self._attr_available = False
             _LOGGER.error("Error parsing K-index data from NOAA API: %s", e)
             self._state = 'unknown'
 
@@ -395,16 +402,16 @@ class HurricaneAlertsSensor(Entity):
             manufacturer="NOAA"
         )
 
-    def update(self):
+    async def async_update(self):
         """Fetch new hurricane alert data."""
         try:
-            response = requests.get(
-                HURRICANE_ALERTS_URL,
-                timeout=REQUEST_TIMEOUT
-            )
-            response.raise_for_status()
-
-            data = response.json()
+            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(
+                    HURRICANE_ALERTS_URL
+                ) as response:
+                    response.raise_for_status()
+                    data = await response.json()
             features = data.get('features', [])
 
             if features:
@@ -427,15 +434,18 @@ class HurricaneAlertsSensor(Entity):
                 self._attributes = {'alerts': []}
                 _LOGGER.debug("No active hurricane alerts found")
 
-        except requests.exceptions.Timeout:
+        except asyncio.TimeoutError:
+            self._attr_available = False
             _LOGGER.error("Timeout when fetching hurricane alerts from NWS API")
             self._state = 'Error'
             self._attributes = {}
-        except requests.exceptions.RequestException as e:
+        except aiohttp.ClientError as e:
+            self._attr_available = False
             _LOGGER.error("Error fetching hurricane alerts from NWS API: %s", e)
             self._state = 'Error'
             self._attributes = {}
         except (ValueError, KeyError) as e:
+            self._attr_available = False
             _LOGGER.error("Error parsing hurricane alerts from NWS API: %s", e)
             self._state = 'Error'
             self._attributes = {}
@@ -478,25 +488,27 @@ class HurricaneActivitySensor(Entity):
             manufacturer="NOAA"
         )
 
-    def update(self):
+    async def async_update(self):
         """Fetch hurricane activity status."""
         try:
             # First check for active storms from National Hurricane Center
-            storms_response = requests.get(
-                CURRENT_STORMS_URL,
-                timeout=REQUEST_TIMEOUT
-            )
-            storms_response.raise_for_status()
-            storms_data = storms_response.json()
+            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(
+                    CURRENT_STORMS_URL
+                ) as storms_response:
+                    storms_response.raise_for_status()
+                    storms_data = await storms_response.json()
             active_storms = storms_data.get('activeStorms', [])
 
             # Also check for active alerts
-            alerts_response = requests.get(
-                HURRICANE_ALERTS_URL,
-                timeout=REQUEST_TIMEOUT
-            )
-            alerts_response.raise_for_status()
-            alerts_data = alerts_response.json()
+            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(
+                    HURRICANE_ALERTS_URL
+                ) as alerts_response:
+                    alerts_response.raise_for_status()
+                    alerts_data = await alerts_response.json()
             features = alerts_data.get('features', [])
 
             # Count alert types
@@ -580,15 +592,18 @@ class HurricaneActivitySensor(Entity):
             _LOGGER.debug("Successfully updated hurricane activity sensor: %s (storms: %d, alerts: %d)",
                           self._state, total_storms, len(features))
 
-        except requests.exceptions.Timeout:
+        except asyncio.TimeoutError:
+            self._attr_available = False
             _LOGGER.error("Timeout when fetching hurricane activity data")
             self._state = 'Error'
             self._attributes = {}
-        except requests.exceptions.RequestException as e:
+        except aiohttp.ClientError as e:
+            self._attr_available = False
             _LOGGER.error("Error fetching hurricane activity data: %s", e)
             self._state = 'Error'
             self._attributes = {}
         except (ValueError, KeyError) as e:
+            self._attr_available = False
             _LOGGER.error("Error parsing hurricane activity data: %s", e)
             self._state = 'Error'
             self._attributes = {}
@@ -629,15 +644,18 @@ class RipCurrentRiskSensor(Entity):
             manufacturer="NOAA"
         )
 
-    def update(self):
+    async def async_update(self):
         """Fetch new rip current risk data for the specific location."""
         try:
             # Fetch surf zone forecast for the specific NWS office
             url = NWS_SRF_URL.format(office=self._office_code)
-            response = requests.get(url, timeout=REQUEST_TIMEOUT)
-            response.raise_for_status()
-
-            forecast_text = response.text.lower()
+            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(
+                    url
+                ) as response:
+                    response.raise_for_status()
+                    forecast_text = (await response.text()).lower()
 
             # Look for rip current risk indicators in the forecast text
             if re.search(r"high\s+rip\s+current\s+risk|dangerous\s+rip\s+currents|"
@@ -661,11 +679,13 @@ class RipCurrentRiskSensor(Entity):
 
             _LOGGER.debug("Updated rip current risk for %s: %s", self._office_code, risk_level)
 
-        except requests.exceptions.Timeout:
+        except asyncio.TimeoutError:
+            self._attr_available = False
             _LOGGER.error("Timeout when fetching surf zone forecast for %s", self._office_code)
             self._state = 'Error'
             self._attributes = {'error': 'Timeout fetching forecast'}
-        except requests.exceptions.RequestException as e:
+        except aiohttp.ClientError as e:
+            self._attr_available = False
             _LOGGER.error("Error fetching surf zone forecast for %s: %s", self._office_code, e)
             self._state = 'Error'
             self._attributes = {'error': f'Request error: {e}'}
@@ -711,15 +731,18 @@ class SurfHeightSensor(Entity):
             manufacturer="NOAA"
         )
 
-    def update(self):
+    async def async_update(self):
         """Fetch new surf height data for the specific location."""
         try:
             # Fetch surf zone forecast for the specific NWS office
             url = NWS_SRF_URL.format(office=self._office_code)
-            response = requests.get(url, timeout=REQUEST_TIMEOUT)
-            response.raise_for_status()
-
-            forecast_text = response.text.lower()
+            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(
+                    url
+                ) as response:
+                    response.raise_for_status()
+                    forecast_text = (await response.text()).lower()
 
             # Look for surf height patterns from actual NWS format
             # Examples: "surf height.................2 to 4 feet." or "surf height 6 to 9 feet."
@@ -756,11 +779,13 @@ class SurfHeightSensor(Entity):
 
             _LOGGER.debug("Updated surf height for %s: %s", self._office_code, self._state)
 
-        except requests.exceptions.Timeout:
+        except asyncio.TimeoutError:
+            self._attr_available = False
             _LOGGER.error("Timeout when fetching surf zone forecast for %s", self._office_code)
             self._state = 'Error'
             self._attributes = {'error': 'Timeout fetching forecast'}
-        except requests.exceptions.RequestException as e:
+        except aiohttp.ClientError as e:
+            self._attr_available = False
             _LOGGER.error("Error fetching surf zone forecast for %s: %s", self._office_code, e)
             self._state = 'Error'
             self._attributes = {'error': f'Request error: {e}'}
@@ -806,15 +831,18 @@ class WaterTemperatureSensor(Entity):
             manufacturer="NOAA"
         )
 
-    def update(self):
+    async def async_update(self):
         """Fetch new water temperature data for the specific location."""
         try:
             # Fetch surf zone forecast for the specific NWS office
             url = NWS_SRF_URL.format(office=self._office_code)
-            response = requests.get(url, timeout=REQUEST_TIMEOUT)
-            response.raise_for_status()
-
-            forecast_text = response.text.lower()
+            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(
+                    url
+                ) as response:
+                    response.raise_for_status()
+                    forecast_text = (await response.text()).lower()
 
             # Look for water temperature patterns from actual NWS format
             # Examples: "water temperature...........in the mid 80s." or "water temperature in the upper 70s"
@@ -857,11 +885,13 @@ class WaterTemperatureSensor(Entity):
 
             _LOGGER.debug("Updated water temperature for %s: %s", self._office_code, self._state)
 
-        except requests.exceptions.Timeout:
+        except asyncio.TimeoutError:
+            self._attr_available = False
             _LOGGER.error("Timeout when fetching surf zone forecast for %s", self._office_code)
             self._state = 'Error'
             self._attributes = {'error': 'Timeout fetching forecast'}
-        except requests.exceptions.RequestException as e:
+        except aiohttp.ClientError as e:
+            self._attr_available = False
             _LOGGER.error("Error fetching surf zone forecast for %s: %s", self._office_code, e)
             self._state = 'Error'
             self._attributes = {'error': f'Request error: {e}'}
@@ -910,17 +940,17 @@ class AuroraNextTimeSensor(Entity):
             manufacturer="NOAA"
         )
 
-    def update(self):
+    async def async_update(self):
         """Calculate next aurora timing based on current geomagnetic conditions."""
         try:
             # Get current Kp index data
-            response = requests.get(
-                'https://services.swpc.noaa.gov/json/planetary_k_index_1m.json',
-                timeout=REQUEST_TIMEOUT
-            )
-            response.raise_for_status()
-
-            data = response.json()
+            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(
+                    'https://services.swpc.noaa.gov/json/planetary_k_index_1m.json'
+                ) as response:
+                    response.raise_for_status()
+                    data = await response.json()
             if not data or len(data) == 0:
                 self._state = 'No Data'
                 self._attributes = {'error': 'No Kp index data available'}
@@ -960,11 +990,13 @@ class AuroraNextTimeSensor(Entity):
 
             _LOGGER.debug("Updated aurora next time for %s: %s", self._office_code, self._state)
 
-        except requests.exceptions.Timeout:
+        except asyncio.TimeoutError:
+            self._attr_available = False
             _LOGGER.error("Timeout when fetching Kp index data for aurora prediction")
             self._state = 'Error'
             self._attributes = {'error': 'Timeout fetching data'}
-        except requests.exceptions.RequestException as e:
+        except aiohttp.ClientError as e:
+            self._attr_available = False
             _LOGGER.error("Error fetching Kp index data for aurora prediction: %s", e)
             self._state = 'Error'
             self._attributes = {'error': f'Request error: {e}'}
@@ -1025,17 +1057,17 @@ class AuroraDurationSensor(Entity):
             manufacturer="NOAA"
         )
 
-    def update(self):
+    async def async_update(self):
         """Calculate aurora duration based on geomagnetic conditions."""
         try:
             # Get current Kp index and geomagnetic data
-            response = requests.get(
-                'https://services.swpc.noaa.gov/json/planetary_k_index_1m.json',
-                timeout=REQUEST_TIMEOUT
-            )
-            response.raise_for_status()
-
-            data = response.json()
+            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(
+                    'https://services.swpc.noaa.gov/json/planetary_k_index_1m.json'
+                ) as response:
+                    response.raise_for_status()
+                    data = await response.json()
             if not data or len(data) == 0:
                 self._state = 0
                 self._attributes = {'error': 'No Kp index data available'}
@@ -1069,11 +1101,13 @@ class AuroraDurationSensor(Entity):
 
             _LOGGER.debug("Updated aurora duration for %s: %s hours", self._office_code, self._state)
 
-        except requests.exceptions.Timeout:
+        except asyncio.TimeoutError:
+            self._attr_available = False
             _LOGGER.error("Timeout when fetching Kp index data for aurora duration")
             self._state = 0
             self._attributes = {'error': 'Timeout fetching data'}
-        except requests.exceptions.RequestException as e:
+        except aiohttp.ClientError as e:
+            self._attr_available = False
             _LOGGER.error("Error fetching Kp index data for aurora duration: %s", e)
             self._state = 0
             self._attributes = {'error': f'Request error: {e}'}
@@ -1127,17 +1161,17 @@ class AuroraVisibilityProbabilitySensor(Entity):
             manufacturer="NOAA"
         )
 
-    def update(self):
+    async def async_update(self):
         """Calculate aurora visibility probability based on conditions and location."""
         try:
             # Get current Kp index and geomagnetic data
-            response = requests.get(
-                'https://services.swpc.noaa.gov/json/planetary_k_index_1m.json',
-                timeout=REQUEST_TIMEOUT
-            )
-            response.raise_for_status()
-
-            data = response.json()
+            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(
+                    'https://services.swpc.noaa.gov/json/planetary_k_index_1m.json'
+                ) as response:
+                    response.raise_for_status()
+                    data = await response.json()
             if not data or len(data) == 0:
                 self._state = 0
                 self._attributes = {'error': 'No Kp index data available'}
@@ -1159,11 +1193,13 @@ class AuroraVisibilityProbabilitySensor(Entity):
 
             _LOGGER.debug("Updated aurora visibility probability for %s: %s%%", self._office_code, self._state)
 
-        except requests.exceptions.Timeout:
+        except asyncio.TimeoutError:
+            self._attr_available = False
             _LOGGER.error("Timeout when fetching Kp index data for aurora probability")
             self._state = 0
             self._attributes = {'error': 'Timeout fetching data'}
-        except requests.exceptions.RequestException as e:
+        except aiohttp.ClientError as e:
+            self._attr_available = False
             _LOGGER.error("Error fetching Kp index data for aurora probability: %s", e)
             self._state = 0
             self._attributes = {'error': f'Request error: {e}'}
@@ -1268,16 +1304,16 @@ class SolarRadiationStormAlertsSensor(Entity):
             manufacturer="NOAA"
         )
 
-    def update(self):
+    async def async_update(self):
         """Fetch solar radiation storm alerts from NOAA."""
         try:
-            response = requests.get(
-                NOAA_SPACE_WEATHER_ALERTS_URL,
-                timeout=REQUEST_TIMEOUT
-            )
-            response.raise_for_status()
-
-            alerts_data = response.json()
+            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(
+                    NOAA_SPACE_WEATHER_ALERTS_URL
+                ) as response:
+                    response.raise_for_status()
+                    alerts_data = await response.json()
             if not alerts_data:
                 self._state = 0
                 self._attributes = {'alerts': [], 'last_updated': datetime.now(timezone.utc).isoformat()}
@@ -1316,15 +1352,18 @@ class SolarRadiationStormAlertsSensor(Entity):
             _LOGGER.debug("Successfully updated solar radiation storm alerts for %s: %d alerts",
                           self._office_code, self._state)
 
-        except requests.exceptions.Timeout:
+        except asyncio.TimeoutError:
+            self._attr_available = False
             _LOGGER.error("Timeout when fetching solar radiation alerts from NOAA API")
             self._state = 'Error'
             self._attributes = {'error': 'Request timeout'}
-        except requests.exceptions.RequestException as e:
+        except aiohttp.ClientError as e:
+            self._attr_available = False
             _LOGGER.error("Error fetching solar radiation alerts from NOAA API: %s", e)
             self._state = 'Error'
             self._attributes = {'error': f'Request error: {e}'}
         except (ValueError, KeyError) as e:
+            self._attr_available = False
             _LOGGER.error("Error parsing solar radiation alerts from NOAA API: %s", e)
             self._state = 'Error'
             self._attributes = {'error': f'Parse error: {e}'}
@@ -1363,6 +1402,7 @@ class SolarRadiationStormAlertsSensor(Entity):
             return alert_info
 
         except Exception as e:
+            self._attr_available = False
             _LOGGER.warning("Failed to parse solar radiation alert: %s", e)
             return None
 
@@ -1400,6 +1440,7 @@ class SolarRadiationStormAlertsSensor(Entity):
             if match:
                 return match.group(1)
         except Exception:
+            self._attr_available = False
             pass
         return None
 
@@ -1412,6 +1453,7 @@ class SolarRadiationStormAlertsSensor(Entity):
             # This is a simplified implementation
             return "TBD"  # Would need proper datetime parsing
         except Exception:
+            self._attr_available = False
             return None
 
     def _extract_impacts(self, message):
@@ -1553,11 +1595,11 @@ class WeatherObservationSensor(Entity):
             manufacturer="NOAA"
         )
 
-    def update(self):
+    async def async_update(self):
         """Fetch new weather observation data."""
         # Fetch station ID from lat/lon if not already fetched
         if not self._station_fetched and self._latitude is not None and self._longitude is not None:
-            self._fetch_station_from_location()
+            await self._async_fetch_station_from_location()
 
         if not self._station_id:
             _LOGGER.error("Unable to find weather station for coordinates (lat: %s, lon: %s) or office %s",
@@ -1568,11 +1610,14 @@ class WeatherObservationSensor(Entity):
 
         try:
             url = NWS_OBSERVATIONS_URL.format(station=self._station_id)
-            response = requests.get(url, timeout=REQUEST_TIMEOUT,
-                                    headers={'User-Agent': USER_AGENT})
-            response.raise_for_status()
-
-            data = response.json()
+            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(
+                    url,
+                    headers={'User-Agent': USER_AGENT}
+                ) as response:
+                    response.raise_for_status()
+                    data = await response.json()
             properties = data.get('properties', {})
 
             # Extract the value based on the observation field
@@ -1588,20 +1633,23 @@ class WeatherObservationSensor(Entity):
 
             _LOGGER.debug("Updated %s for %s: %s", self._sensor_name, self._office_code, self._state)
 
-        except requests.exceptions.Timeout:
+        except asyncio.TimeoutError:
+            self._attr_available = False
             _LOGGER.error("Timeout when fetching weather observation for %s", self._office_code)
             self._state = 'Error'
             self._attributes = {'error': 'Timeout fetching data'}
-        except requests.exceptions.RequestException as e:
+        except aiohttp.ClientError as e:
+            self._attr_available = False
             _LOGGER.error("Error fetching weather observation for %s: %s", self._office_code, e)
             self._state = 'Error'
             self._attributes = {'error': f'Request error: {e}'}
         except (ValueError, KeyError) as e:
+            self._attr_available = False
             _LOGGER.error("Error parsing weather observation for %s: %s", self._office_code, e)
             self._state = 'Error'
             self._attributes = {'error': f'Parse error: {e}'}
 
-    def _fetch_station_from_location(self):
+    async def _async_fetch_station_from_location(self):
         """Fetch the nearest observation station from latitude and longitude."""
         try:
             # Get point metadata from weather.gov API
@@ -1609,11 +1657,14 @@ class WeatherObservationSensor(Entity):
             _LOGGER.debug("Fetching station for lat=%s, lon=%s from %s",
                           self._latitude, self._longitude, points_url)
 
-            response = requests.get(points_url, timeout=REQUEST_TIMEOUT,
-                                    headers={'User-Agent': USER_AGENT})
-            response.raise_for_status()
-
-            data = response.json()
+            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(
+                    points_url,
+                    headers={'User-Agent': USER_AGENT}
+                ) as response:
+                    response.raise_for_status()
+                    data = await response.json()
             properties = data.get('properties', {})
             stations_url = properties.get('observationStations')
 
@@ -1625,11 +1676,14 @@ class WeatherObservationSensor(Entity):
 
             # Fetch list of nearby stations
             _LOGGER.debug("Fetching stations list from %s", stations_url)
-            response = requests.get(stations_url, timeout=REQUEST_TIMEOUT,
-                                    headers={'User-Agent': USER_AGENT})
-            response.raise_for_status()
-
-            stations_data = response.json()
+            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(
+                    stations_url,
+                    headers={'User-Agent': USER_AGENT}
+                ) as response:
+                    response.raise_for_status()
+                    stations_data = await response.json()
             stations_list = stations_data.get('features', [])
 
             if stations_list:
@@ -1649,15 +1703,18 @@ class WeatherObservationSensor(Entity):
 
             self._station_fetched = True
 
-        except requests.exceptions.Timeout:
+        except asyncio.TimeoutError:
+            self._attr_available = False
             _LOGGER.error("Timeout fetching station for lat=%s, lon=%s",
                           self._latitude, self._longitude)
             self._station_fetched = True
-        except requests.exceptions.RequestException as e:
+        except aiohttp.ClientError as e:
+            self._attr_available = False
             _LOGGER.error("Error fetching station for lat=%s, lon=%s: %s",
                           self._latitude, self._longitude, e)
             self._station_fetched = True
         except (ValueError, KeyError) as e:
+            self._attr_available = False
             _LOGGER.error("Error parsing station data for lat=%s, lon=%s: %s",
                           self._latitude, self._longitude, e)
             self._station_fetched = True
@@ -1783,9 +1840,9 @@ class WindDirectionSensor(WeatherObservationSensor):
             return None
         return round(value)
 
-    def update(self):
+    async def async_update(self):
         """Fetch new weather observation data and add cardinal direction."""
-        super().update()
+        await super().async_update()
         # Add cardinal direction to attributes after base update
         if self._state is not None and self._state != 'Error':
             cardinal = self._degrees_to_cardinal(self._state)
@@ -1965,18 +2022,21 @@ class ForecastBaseSensor(Entity):
             manufacturer="NOAA"
         )
 
-    def _fetch_forecast_url(self):
+    async def _async_fetch_forecast_url(self):
         """Fetch forecast URL from latitude and longitude."""
         try:
             points_url = NWS_POINTS_URL.format(lat=self._latitude, lon=self._longitude)
             _LOGGER.debug("Fetching forecast URL for lat=%s, lon=%s from %s",
                           self._latitude, self._longitude, points_url)
 
-            response = requests.get(points_url, timeout=REQUEST_TIMEOUT,
-                                    headers={'User-Agent': USER_AGENT})
-            response.raise_for_status()
-
-            data = response.json()
+            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(
+                    points_url,
+                    headers={'User-Agent': USER_AGENT}
+                ) as response:
+                    response.raise_for_status()
+                    data = await response.json()
             properties = data.get('properties', {})
 
             # Get the forecast URL directly from the points API
@@ -1992,15 +2052,18 @@ class ForecastBaseSensor(Entity):
 
             self._grid_fetched = True
 
-        except requests.exceptions.Timeout:
+        except asyncio.TimeoutError:
+            self._attr_available = False
             _LOGGER.error("Timeout fetching forecast URL for lat=%s, lon=%s",
                           self._latitude, self._longitude)
             self._grid_fetched = True
-        except requests.exceptions.RequestException as e:
+        except aiohttp.ClientError as e:
+            self._attr_available = False
             _LOGGER.error("Error fetching forecast URL for lat=%s, lon=%s: %s",
                           self._latitude, self._longitude, e)
             self._grid_fetched = True
         except (ValueError, KeyError) as e:
+            self._attr_available = False
             _LOGGER.error("Error parsing forecast URL for lat=%s, lon=%s: %s",
                           self._latitude, self._longitude, e)
             self._grid_fetched = True
@@ -2043,11 +2106,11 @@ class ExtendedForecastSensor(ForecastBaseSensor):
         """Return the icon."""
         return 'mdi:weather-partly-cloudy'
 
-    def update(self):
+    async def async_update(self):
         """Fetch new extended forecast data."""
         # Fetch forecast URL from lat/lon if not already fetched
         if not self._grid_fetched and self._latitude is not None and self._longitude is not None:
-            self._fetch_forecast_url()
+            await self._async_fetch_forecast_url()
 
         if not self._forecast_url:
             _LOGGER.error("Unable to get forecast URL for coordinates (lat: %s, lon: %s)",
@@ -2057,11 +2120,14 @@ class ExtendedForecastSensor(ForecastBaseSensor):
             return
 
         try:
-            response = requests.get(self._forecast_url, timeout=REQUEST_TIMEOUT,
-                                    headers={'User-Agent': USER_AGENT})
-            response.raise_for_status()
-
-            data = response.json()
+            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(
+                    self._forecast_url,
+                    headers={'User-Agent': USER_AGENT}
+                ) as response:
+                    response.raise_for_status()
+                    data = await response.json()
             properties = data.get('properties', {})
             periods = properties.get('periods', [])
 
@@ -2085,15 +2151,18 @@ class ExtendedForecastSensor(ForecastBaseSensor):
 
             _LOGGER.debug("Updated extended forecast for %s: %d periods", self._office_code, len(periods))
 
-        except requests.exceptions.Timeout:
+        except asyncio.TimeoutError:
+            self._attr_available = False
             _LOGGER.error("Timeout when fetching extended forecast for %s", self._office_code)
             self._state = 'Error'
             self._attributes = {'error': 'Timeout fetching forecast', 'periods': []}
-        except requests.exceptions.RequestException as e:
+        except aiohttp.ClientError as e:
+            self._attr_available = False
             _LOGGER.error("Error fetching extended forecast for %s: %s", self._office_code, e)
             self._state = 'Error'
             self._attributes = {'error': f'Request error: {e}', 'periods': []}
         except (ValueError, KeyError) as e:
+            self._attr_available = False
             _LOGGER.error("Error parsing extended forecast for %s: %s", self._office_code, e)
             self._state = 'Error'
             self._attributes = {'error': f'Parse error: {e}', 'periods': []}
@@ -2163,11 +2232,11 @@ class HourlyForecastSensor(ForecastBaseSensor):
         """Return the icon."""
         return 'mdi:clock-outline'
 
-    def update(self):
+    async def async_update(self):
         """Fetch new hourly forecast data."""
         # Fetch forecast URL from lat/lon if not already fetched
         if not self._grid_fetched and self._latitude is not None and self._longitude is not None:
-            self._fetch_forecast_url()
+            await self._async_fetch_forecast_url()
 
         if not self._forecast_url:
             _LOGGER.error("Unable to get hourly forecast URL for coordinates (lat: %s, lon: %s)",
@@ -2180,11 +2249,14 @@ class HourlyForecastSensor(ForecastBaseSensor):
             return
 
         try:
-            response = requests.get(self._forecast_url, timeout=REQUEST_TIMEOUT,
-                                    headers={'User-Agent': USER_AGENT})
-            response.raise_for_status()
-
-            data = response.json()
+            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(
+                    self._forecast_url,
+                    headers={'User-Agent': USER_AGENT}
+                ) as response:
+                    response.raise_for_status()
+                    data = await response.json()
             properties = data.get('properties', {})
             periods = properties.get('periods', [])
 
@@ -2216,15 +2288,18 @@ class HourlyForecastSensor(ForecastBaseSensor):
 
             _LOGGER.debug("Updated hourly forecast for %s: %d periods", self._office_code, len(periods))
 
-        except requests.exceptions.Timeout:
+        except asyncio.TimeoutError:
+            self._attr_available = False
             _LOGGER.error("Timeout when fetching hourly forecast for %s", self._office_code)
             self._state = 'Error'
             self._attributes = {'error': 'Timeout fetching forecast', 'hourly_periods': []}
-        except requests.exceptions.RequestException as e:
+        except aiohttp.ClientError as e:
+            self._attr_available = False
             _LOGGER.error("Error fetching hourly forecast for %s: %s", self._office_code, e)
             self._state = 'Error'
             self._attributes = {'error': f'Request error: {e}', 'hourly_periods': []}
         except (ValueError, KeyError) as e:
+            self._attr_available = False
             _LOGGER.error("Error parsing hourly forecast for %s: %s", self._office_code, e)
             self._state = 'Error'
             self._attributes = {'error': f'Parse error: {e}', 'hourly_periods': []}
@@ -2304,14 +2379,18 @@ class NWSAlertsSensor(Entity):
             manufacturer="NOAA"
         )
 
-    def update(self):
+    async def async_update(self):
         """Fetch new NWS alerts data for the specific location."""
         try:
             url = NWS_ALERTS_URL.format(lat=self._latitude, lon=self._longitude)
-            response = requests.get(url, timeout=REQUEST_TIMEOUT, headers={'User-Agent': USER_AGENT})
-            response.raise_for_status()
-
-            data = response.json()
+            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(
+                    url,
+                    headers={'User-Agent': USER_AGENT}
+                ) as response:
+                    response.raise_for_status()
+                    data = await response.json()
             features = data.get('features', [])
 
             # Parse all actual alerts
@@ -2389,15 +2468,18 @@ class NWSAlertsSensor(Entity):
 
             _LOGGER.debug("Updated NWS alerts sensor for %s: %d alerts", self._office_code, self._state)
 
-        except requests.exceptions.Timeout:
+        except asyncio.TimeoutError:
+            self._attr_available = False
             _LOGGER.error("Timeout when fetching NWS alerts for %s", self._office_code)
             self._state = 'Error'
             self._attributes = {'error': 'Timeout fetching alerts'}
-        except requests.exceptions.RequestException as e:
+        except aiohttp.ClientError as e:
+            self._attr_available = False
             _LOGGER.error("Error fetching NWS alerts for %s: %s", self._office_code, e)
             self._state = 'Error'
             self._attributes = {'error': f'Request error: {e}'}
         except (ValueError, KeyError) as e:
+            self._attr_available = False
             _LOGGER.error("Error parsing NWS alerts for %s: %s", self._office_code, e)
             self._state = 'Error'
             self._attributes = {'error': f'Parse error: {e}'}
@@ -2457,11 +2539,11 @@ class CloudCoverSensor(Entity):
             manufacturer="NOAA"
         )
 
-    def update(self):
+    async def async_update(self):
         """Fetch new cloud cover data."""
         # Fetch gridpoint URL from lat/lon if not already fetched
         if not self._grid_fetched and self._latitude is not None and self._longitude is not None:
-            self._fetch_gridpoint_url()
+            await self._async_fetch_gridpoint_url()
 
         if not self._gridpoint_url:
             _LOGGER.error("Unable to get gridpoint URL for coordinates (lat: %s, lon: %s)",
@@ -2472,11 +2554,14 @@ class CloudCoverSensor(Entity):
             return
 
         try:
-            response = requests.get(self._gridpoint_url, timeout=REQUEST_TIMEOUT,
-                                    headers={'User-Agent': USER_AGENT})
-            response.raise_for_status()
-
-            data = response.json()
+            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(
+                    self._gridpoint_url,
+                    headers={'User-Agent': USER_AGENT}
+                ) as response:
+                    response.raise_for_status()
+                    data = await response.json()
             properties = data.get('properties', {})
             sky_cover = properties.get('skyCover', {})
 
@@ -2508,31 +2593,37 @@ class CloudCoverSensor(Entity):
             }
             _LOGGER.debug("No cloud cover data available for %s", self._office_code)
 
-        except requests.exceptions.Timeout:
+        except asyncio.TimeoutError:
+            self._attr_available = False
             _LOGGER.error("Timeout when fetching cloud cover for %s", self._office_code)
             self._state = None
             self._attributes = {'error': 'Timeout fetching data'}
-        except requests.exceptions.RequestException as e:
+        except aiohttp.ClientError as e:
+            self._attr_available = False
             _LOGGER.error("Error fetching cloud cover for %s: %s", self._office_code, e)
             self._state = None
             self._attributes = {'error': f'Request error: {e}'}
         except (ValueError, KeyError) as e:
+            self._attr_available = False
             _LOGGER.error("Error parsing cloud cover for %s: %s", self._office_code, e)
             self._state = None
             self._attributes = {'error': f'Parse error: {e}'}
 
-    def _fetch_gridpoint_url(self):
+    async def _async_fetch_gridpoint_url(self):
         """Fetch gridpoint URL from latitude and longitude."""
         try:
             points_url = NWS_POINTS_URL.format(lat=self._latitude, lon=self._longitude)
             _LOGGER.debug("Fetching gridpoint URL for lat=%s, lon=%s from %s",
                           self._latitude, self._longitude, points_url)
 
-            response = requests.get(points_url, timeout=REQUEST_TIMEOUT,
-                                    headers={'User-Agent': USER_AGENT})
-            response.raise_for_status()
-
-            data = response.json()
+            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(
+                    points_url,
+                    headers={'User-Agent': USER_AGENT}
+                ) as response:
+                    response.raise_for_status()
+                    data = await response.json()
             properties = data.get('properties', {})
 
             # Get the gridpoint URL
@@ -2548,15 +2639,18 @@ class CloudCoverSensor(Entity):
 
             self._grid_fetched = True
 
-        except requests.exceptions.Timeout:
+        except asyncio.TimeoutError:
+            self._attr_available = False
             _LOGGER.error("Timeout fetching gridpoint URL for lat=%s, lon=%s",
                           self._latitude, self._longitude)
             self._grid_fetched = True
-        except requests.exceptions.RequestException as e:
+        except aiohttp.ClientError as e:
+            self._attr_available = False
             _LOGGER.error("Error fetching gridpoint URL for lat=%s, lon=%s: %s",
                           self._latitude, self._longitude, e)
             self._grid_fetched = True
         except (ValueError, KeyError) as e:
+            self._attr_available = False
             _LOGGER.error("Error parsing gridpoint URL for lat=%s, lon=%s: %s",
                           self._latitude, self._longitude, e)
             self._grid_fetched = True
@@ -2606,7 +2700,7 @@ class RadarTimestampSensor(Entity):
             manufacturer="NOAA"
         )
 
-    def update(self):
+    async def async_update(self):
         """Fetch radar timestamp from HTTP headers."""
         if not self._radar_site:
             _LOGGER.error("No radar site mapping found for office code: %s", self._office_code)
@@ -2622,12 +2716,14 @@ class RadarTimestampSensor(Entity):
             from .const import NWS_RADAR_BASE_URL
             radar_url = NWS_RADAR_BASE_URL.format(radar=self._radar_site)
 
-            response = requests.head(radar_url, timeout=REQUEST_TIMEOUT,
-                                     headers={'User-Agent': USER_AGENT})
-            response.raise_for_status()
-
-            # Get Last-Modified header
-            last_modified = response.headers.get('Last-Modified')
+            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.head(
+                    radar_url,
+                    headers={'User-Agent': USER_AGENT}
+                ) as response:
+                    response.raise_for_status()
+                    last_modified = response.headers.get('Last-Modified')
 
             if last_modified:
                 # Parse the timestamp
@@ -2651,15 +2747,18 @@ class RadarTimestampSensor(Entity):
                     'availability': 'Timestamp not available'
                 }
 
-        except requests.exceptions.Timeout:
+        except asyncio.TimeoutError:
+            self._attr_available = False
             _LOGGER.error("Timeout when fetching radar timestamp for %s", self._office_code)
             self._state = None
             self._attributes = {'error': 'Timeout fetching radar data'}
-        except requests.exceptions.RequestException as e:
+        except aiohttp.ClientError as e:
+            self._attr_available = False
             _LOGGER.error("Error fetching radar timestamp for %s: %s", self._office_code, e)
             self._state = None
             self._attributes = {'error': f'Request error: {e}'}
         except Exception as e:
+            self._attr_available = False
             _LOGGER.error("Error parsing radar timestamp for %s: %s", self._office_code, e)
             self._state = None
             self._attributes = {'error': f'Parse error: {e}'}
@@ -2708,16 +2807,18 @@ class ForecastDiscussionSensor(Entity):
             manufacturer="NOAA"
         )
 
-    def update(self):
+    async def async_update(self):
         """Fetch forecast discussion from NWS."""
         try:
             url = NWS_AFD_URL.format(office=self._office_code)
-            response = requests.get(url, timeout=REQUEST_TIMEOUT,
-                                    headers={'User-Agent': USER_AGENT})
-            response.raise_for_status()
-
-            # Parse HTML to extract the text content
-            html_content = response.text
+            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(
+                    url,
+                    headers={'User-Agent': USER_AGENT}
+                ) as response:
+                    response.raise_for_status()
+                    html_content = await response.text()
 
             # Extract text from <pre> tag which contains the forecast discussion
             pre_match = re.search(r'<pre[^>]*>(.*?)</pre>', html_content, re.DOTALL | re.IGNORECASE)
@@ -2758,15 +2859,18 @@ class ForecastDiscussionSensor(Entity):
                     'availability': 'Unable to parse forecast discussion'
                 }
 
-        except requests.exceptions.Timeout:
+        except asyncio.TimeoutError:
+            self._attr_available = False
             _LOGGER.error("Timeout when fetching forecast discussion for %s", self._office_code)
             self._state = None
             self._attributes = {'error': 'Timeout fetching data'}
-        except requests.exceptions.RequestException as e:
+        except aiohttp.ClientError as e:
+            self._attr_available = False
             _LOGGER.error("Error fetching forecast discussion for %s: %s", self._office_code, e)
             self._state = None
             self._attributes = {'error': f'Request error: {e}'}
         except Exception as e:
+            self._attr_available = False
             _LOGGER.error("Error parsing forecast discussion for %s: %s", self._office_code, e)
             self._state = None
             self._attributes = {'error': f'Parse error: {e}'}
