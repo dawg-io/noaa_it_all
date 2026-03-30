@@ -344,27 +344,31 @@ class AuroraVisibilityProbabilitySensor(CoordinatorEntity):
         office_lat = OFFICE_MAGNETIC_LATITUDES.get(self._office_code, 0)
         return current_kp, office_lat
 
-    @property
-    def state(self):
-        """Return the state of the sensor."""
+    def _compute_probability(self):
+        """Compute aurora probability and related attributes from coordinator data."""
         current_kp, office_lat = self._get_kp_and_lat()
         if current_kp is None:
-            return None
-        return calculate_aurora_probability(current_kp, office_lat)
-
-    @property
-    def extra_state_attributes(self):
-        """Return the state attributes."""
-        current_kp, office_lat = self._get_kp_and_lat()
-        if current_kp is None:
-            return {}
+            return None, {}
         probability = calculate_aurora_probability(current_kp, office_lat)
-        return {
+        attributes = {
             'current_kp': current_kp,
             'magnetic_latitude': office_lat,
             'visibility_class': get_visibility_class(probability),
             'required_kp': get_required_kp(office_lat, AURORA_KP_THRESHOLDS)
         }
+        return probability, attributes
+
+    @property
+    def state(self):
+        """Return the state of the sensor."""
+        probability, _ = self._compute_probability()
+        return probability
+
+    @property
+    def extra_state_attributes(self):
+        """Return the state attributes."""
+        _, attributes = self._compute_probability()
+        return attributes
 
     @property
     def unique_id(self):
