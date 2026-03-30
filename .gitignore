@@ -23,3 +23,6 @@ Thumbs.db
 
 # Home Assistant specific
 *.log
+
+# Testing artifacts
+.pytest_cache/
