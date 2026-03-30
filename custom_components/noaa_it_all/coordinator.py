@@ -11,7 +11,6 @@ See https://developers.home-assistant.io/docs/integration_fetching_data/
 import logging
 import re
 import aiohttp
-import asyncio
 from datetime import timedelta
 from email.utils import parsedate_to_datetime
 
@@ -23,7 +22,7 @@ from .const import (
     REQUEST_TIMEOUT, USER_AGENT,
     NWS_POINTS_URL, NWS_OBSERVATIONS_URL, NWS_ALERTS_URL,
     NWS_SRF_URL, NWS_AFD_URL, NWS_RADAR_BASE_URL,
-    OFFICE_STATION_IDS, OFFICE_RADAR_SITES,
+    OFFICE_STATION_IDS,
 )
 
 _LOGGER = logging.getLogger(__name__)
