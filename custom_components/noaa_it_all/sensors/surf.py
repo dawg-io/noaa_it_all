@@ -4,23 +4,22 @@ Covers rip current risk, surf height and water temperature from NWS
 Surf Zone Forecasts (SRF product).
 """
 
-import aiohttp
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
-import asyncio
 import logging
-from homeassistant.helpers.entity import Entity, DeviceInfo
+from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from ..const import NWS_SRF_URL, REQUEST_TIMEOUT, USER_AGENT, DOMAIN
+from ..const import DOMAIN
 from ..parsers import parse_rip_current_risk, parse_surf_height, parse_water_temperature
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class RipCurrentRiskSensor(Entity):
+class RipCurrentRiskSensor(CoordinatorEntity):
     """Representation of Rip Current Risk sensor for specific NWS office location."""
 
-    def __init__(self, office_code):
+    def __init__(self, coordinator, office_code):
         """Initialize the sensor."""
+        super().__init__(coordinator)
         self._office_code = office_code
         self._state = None
         self._attributes = {}
@@ -30,7 +29,10 @@ class RipCurrentRiskSensor(Entity):
     @property
     def state(self):
         """Return the state of the sensor."""
-        return self._state
+        if not self.coordinator.data:
+            return self._state
+        text = self.coordinator.data.get("forecast_text", "")
+        return parse_rip_current_risk(text)
 
     @property
     def icon(self):
@@ -40,7 +42,13 @@ class RipCurrentRiskSensor(Entity):
     @property
     def extra_state_attributes(self):
         """Return the state attributes."""
-        return self._attributes
+        if not self.coordinator.data:
+            return self._attributes
+        return {
+            'office_code': self._office_code,
+            'forecast_source': self.coordinator.data.get("source_url", ""),
+            'last_updated': 'Check forecast for timestamp',
+        }
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -51,48 +59,13 @@ class RipCurrentRiskSensor(Entity):
             manufacturer="NOAA"
         )
 
-    async def async_update(self):
-        """Fetch new rip current risk data for the specific location."""
-        try:
-            url = NWS_SRF_URL.format(office=self._office_code)
-            session = async_get_clientsession(self.hass)
-            async with session.get(
-                url,
-                headers={'User-Agent': USER_AGENT},
-                timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            ) as response:
-                response.raise_for_status()
-                forecast_text = (await response.text()).lower()
-            self._attr_available = True
 
-            risk_level = parse_rip_current_risk(forecast_text)
-
-            self._state = risk_level
-            self._attributes = {
-                'office_code': self._office_code,
-                'forecast_source': url,
-                'last_updated': 'Check forecast for timestamp',
-            }
-
-            _LOGGER.debug("Updated rip current risk for %s: %s", self._office_code, risk_level)
-
-        except asyncio.TimeoutError:
-            self._attr_available = False
-            _LOGGER.error("Timeout when fetching surf zone forecast for %s", self._office_code)
-            self._state = 'Error'
-            self._attributes = {'error': 'Timeout fetching forecast'}
-        except aiohttp.ClientError as e:
-            self._attr_available = False
-            _LOGGER.error("Error fetching surf zone forecast for %s: %s", self._office_code, e)
-            self._state = 'Error'
-            self._attributes = {'error': f'Request error: {e}'}
-
-
-class SurfHeightSensor(Entity):
+class SurfHeightSensor(CoordinatorEntity):
     """Representation of Surf Height sensor for specific NWS office location."""
 
-    def __init__(self, office_code):
+    def __init__(self, coordinator, office_code):
         """Initialize the sensor."""
+        super().__init__(coordinator)
         self._office_code = office_code
         self._state = None
         self._attributes = {}
@@ -102,7 +75,11 @@ class SurfHeightSensor(Entity):
     @property
     def state(self):
         """Return the state of the sensor."""
-        return self._state
+        if not self.coordinator.data:
+            return self._state
+        text = self.coordinator.data.get("forecast_text", "")
+        surf_height = parse_surf_height(text)
+        return surf_height if surf_height else "Unknown"
 
     @property
     def unit_of_measurement(self):
@@ -117,7 +94,13 @@ class SurfHeightSensor(Entity):
     @property
     def extra_state_attributes(self):
         """Return the state attributes."""
-        return self._attributes
+        if not self.coordinator.data:
+            return self._attributes
+        return {
+            'office_code': self._office_code,
+            'forecast_source': self.coordinator.data.get("source_url", ""),
+            'last_updated': 'Check forecast for timestamp',
+        }
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -128,48 +111,13 @@ class SurfHeightSensor(Entity):
             manufacturer="NOAA"
         )
 
-    async def async_update(self):
-        """Fetch new surf height data for the specific location."""
-        try:
-            url = NWS_SRF_URL.format(office=self._office_code)
-            session = async_get_clientsession(self.hass)
-            async with session.get(
-                url,
-                headers={'User-Agent': USER_AGENT},
-                timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            ) as response:
-                response.raise_for_status()
-                forecast_text = (await response.text()).lower()
-            self._attr_available = True
 
-            surf_height = parse_surf_height(forecast_text)
-
-            self._state = surf_height if surf_height else "Unknown"
-            self._attributes = {
-                'office_code': self._office_code,
-                'forecast_source': url,
-                'last_updated': 'Check forecast for timestamp',
-            }
-
-            _LOGGER.debug("Updated surf height for %s: %s", self._office_code, self._state)
-
-        except asyncio.TimeoutError:
-            self._attr_available = False
-            _LOGGER.error("Timeout when fetching surf zone forecast for %s", self._office_code)
-            self._state = 'Error'
-            self._attributes = {'error': 'Timeout fetching forecast'}
-        except aiohttp.ClientError as e:
-            self._attr_available = False
-            _LOGGER.error("Error fetching surf zone forecast for %s: %s", self._office_code, e)
-            self._state = 'Error'
-            self._attributes = {'error': f'Request error: {e}'}
-
-
-class WaterTemperatureSensor(Entity):
+class WaterTemperatureSensor(CoordinatorEntity):
     """Representation of Water Temperature sensor for specific NWS office location."""
 
-    def __init__(self, office_code):
+    def __init__(self, coordinator, office_code):
         """Initialize the sensor."""
+        super().__init__(coordinator)
         self._office_code = office_code
         self._state = None
         self._attributes = {}
@@ -179,7 +127,11 @@ class WaterTemperatureSensor(Entity):
     @property
     def state(self):
         """Return the state of the sensor."""
-        return self._state
+        if not self.coordinator.data:
+            return self._state
+        text = self.coordinator.data.get("forecast_text", "")
+        water_temp = parse_water_temperature(text)
+        return water_temp if water_temp else "Unknown"
 
     @property
     def unit_of_measurement(self):
@@ -194,7 +146,13 @@ class WaterTemperatureSensor(Entity):
     @property
     def extra_state_attributes(self):
         """Return the state attributes."""
-        return self._attributes
+        if not self.coordinator.data:
+            return self._attributes
+        return {
+            'office_code': self._office_code,
+            'forecast_source': self.coordinator.data.get("source_url", ""),
+            'last_updated': 'Check forecast for timestamp',
+        }
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -204,39 +162,3 @@ class WaterTemperatureSensor(Entity):
             name="NOAA Surf",
             manufacturer="NOAA"
         )
-
-    async def async_update(self):
-        """Fetch new water temperature data for the specific location."""
-        try:
-            url = NWS_SRF_URL.format(office=self._office_code)
-            session = async_get_clientsession(self.hass)
-            async with session.get(
-                url,
-                headers={'User-Agent': USER_AGENT},
-                timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            ) as response:
-                response.raise_for_status()
-                forecast_text = (await response.text()).lower()
-            self._attr_available = True
-
-            water_temp = parse_water_temperature(forecast_text)
-
-            self._state = water_temp if water_temp else "Unknown"
-            self._attributes = {
-                'office_code': self._office_code,
-                'forecast_source': url,
-                'last_updated': 'Check forecast for timestamp',
-            }
-
-            _LOGGER.debug("Updated water temperature for %s: %s", self._office_code, self._state)
-
-        except asyncio.TimeoutError:
-            self._attr_available = False
-            _LOGGER.error("Timeout when fetching surf zone forecast for %s", self._office_code)
-            self._state = 'Error'
-            self._attributes = {'error': 'Timeout fetching forecast'}
-        except aiohttp.ClientError as e:
-            self._attr_available = False
-            _LOGGER.error("Error fetching surf zone forecast for %s: %s", self._office_code, e)
-            self._state = 'Error'
-            self._attributes = {'error': f'Request error: {e}'}

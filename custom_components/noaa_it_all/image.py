@@ -3,17 +3,19 @@ import logging
 from homeassistant.components.image import ImageEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from datetime import timedelta, datetime
 
-from .const import CONF_OFFICE_CODE, OFFICE_RADAR_SITES, NWS_RADAR_BASE_URL, NWS_RADAR_LOOP_URL
+from .const import (
+    CONF_OFFICE_CODE, DOMAIN, NWS_RADAR_BASE_URL, NWS_RADAR_LOOP_URL,
+    OFFICE_RADAR_SITES, REQUEST_TIMEOUT,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
-DOMAIN = 'noaa_it_all'
 SCAN_INTERVAL = timedelta(minutes=5)  # Update every 5 minutes
-REQUEST_TIMEOUT = 30  # 30 second timeout for HTTP requests
 
 BASE_IMAGE_URL = ('https://services.swpc.noaa.gov/images/animations/geoelectric/'
                   'InterMagEarthScope/EmapGraphics_1m/latest.png')
@@ -132,21 +134,19 @@ class GeoelectricFieldImageEntity(ImageEntity):
     async def async_image(self) -> bytes:
         """Return the bytes of the latest image."""
         try:
+            session = async_get_clientsession(self.hass)
             timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(self._image_url) as response:
-                    if response.status == 200:
-                        # Validate content type
-                        content_type = response.headers.get('content-type', '').lower()
-                        if 'image' not in content_type:
-                            _LOGGER.warning("Expected image content but got: %s", content_type)
-                            return b""
-
-                        content = await response.read()
-                        _LOGGER.debug("Successfully fetched geoelectric field image (%d bytes)", len(content))
-                        return content
-                    else:
-                        _LOGGER.warning("Failed to fetch geoelectric field image: HTTP %d", response.status)
+            async with session.get(self._image_url, timeout=timeout) as response:
+                if response.status == 200:
+                    content_type = response.headers.get('content-type', '').lower()
+                    if 'image' not in content_type:
+                        _LOGGER.warning("Expected image content but got: %s", content_type)
+                        return b""
+                    content = await response.read()
+                    _LOGGER.debug("Successfully fetched geoelectric field image (%d bytes)", len(content))
+                    return content
+                else:
+                    _LOGGER.warning("Failed to fetch geoelectric field image: HTTP %d", response.status)
         except aiohttp.ClientError as e:
             _LOGGER.error("Error fetching geoelectric field image: %s", e)
         except Exception as e:
@@ -207,21 +207,19 @@ class AuroraForecastImageEntity(ImageEntity):
     async def async_image(self) -> bytes:
         """Return the bytes of the latest image."""
         try:
+            session = async_get_clientsession(self.hass)
             timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(self._image_url) as response:
-                    if response.status == 200:
-                        # Validate content type
-                        content_type = response.headers.get('content-type', '').lower()
-                        if 'image' not in content_type:
-                            _LOGGER.warning("Expected image content but got: %s", content_type)
-                            return b""
-
-                        content = await response.read()
-                        _LOGGER.debug("Successfully fetched aurora forecast image (%d bytes)", len(content))
-                        return content
-                    else:
-                        _LOGGER.warning("Failed to fetch aurora forecast image: HTTP %d", response.status)
+            async with session.get(self._image_url, timeout=timeout) as response:
+                if response.status == 200:
+                    content_type = response.headers.get('content-type', '').lower()
+                    if 'image' not in content_type:
+                        _LOGGER.warning("Expected image content but got: %s", content_type)
+                        return b""
+                    content = await response.read()
+                    _LOGGER.debug("Successfully fetched aurora forecast image (%d bytes)", len(content))
+                    return content
+                else:
+                    _LOGGER.warning("Failed to fetch aurora forecast image: HTTP %d", response.status)
         except aiohttp.ClientError as e:
             _LOGGER.error("Error fetching aurora forecast image: %s", e)
         except Exception as e:
@@ -280,20 +278,19 @@ class HurricaneOutlookImageEntity(ImageEntity):
     async def async_image(self) -> bytes:
         """Return the bytes of the latest image."""
         try:
+            session = async_get_clientsession(self.hass)
             timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(self._image_url) as response:
-                    if response.status == 200:
-                        content_type = response.headers.get('content-type', '').lower()
-                        if 'image' not in content_type:
-                            _LOGGER.warning("Expected image content but got: %s", content_type)
-                            return b""
-
-                        content = await response.read()
-                        _LOGGER.debug("Successfully fetched hurricane outlook image (%d bytes)", len(content))
-                        return content
-                    else:
-                        _LOGGER.warning("Failed to fetch hurricane outlook image: HTTP %d", response.status)
+            async with session.get(self._image_url, timeout=timeout) as response:
+                if response.status == 200:
+                    content_type = response.headers.get('content-type', '').lower()
+                    if 'image' not in content_type:
+                        _LOGGER.warning("Expected image content but got: %s", content_type)
+                        return b""
+                    content = await response.read()
+                    _LOGGER.debug("Successfully fetched hurricane outlook image (%d bytes)", len(content))
+                    return content
+                else:
+                    _LOGGER.warning("Failed to fetch hurricane outlook image: HTTP %d", response.status)
         except aiohttp.ClientError as e:
             _LOGGER.error("Error fetching hurricane outlook image: %s", e)
         except Exception as e:
@@ -357,24 +354,22 @@ class RadarBaseReflectivityImageEntity(ImageEntity):
     async def async_image(self) -> bytes:
         """Return the bytes of the latest image."""
         try:
+            session = async_get_clientsession(self.hass)
             timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(self._image_url) as response:
-                    if response.status == 200:
-                        # Validate content type
-                        content_type = response.headers.get('content-type', '').lower()
-                        if 'image' not in content_type:
-                            _LOGGER.warning("Expected image content but got: %s for radar %s",
-                                            content_type, self._radar_site)
-                            return b""
-
-                        content = await response.read()
-                        _LOGGER.debug("Successfully fetched radar base reflectivity image for %s (%d bytes)",
-                                      self._office_code, len(content))
-                        return content
-                    else:
-                        _LOGGER.warning("Failed to fetch radar base reflectivity image for %s: HTTP %d",
-                                        self._office_code, response.status)
+            async with session.get(self._image_url, timeout=timeout) as response:
+                if response.status == 200:
+                    content_type = response.headers.get('content-type', '').lower()
+                    if 'image' not in content_type:
+                        _LOGGER.warning("Expected image content but got: %s for radar %s",
+                                        content_type, self._radar_site)
+                        return b""
+                    content = await response.read()
+                    _LOGGER.debug("Successfully fetched radar base reflectivity image for %s (%d bytes)",
+                                  self._office_code, len(content))
+                    return content
+                else:
+                    _LOGGER.warning("Failed to fetch radar base reflectivity image for %s: HTTP %d",
+                                    self._office_code, response.status)
         except aiohttp.ClientError as e:
             _LOGGER.error("Error fetching radar base reflectivity image for %s: %s", self._office_code, e)
         except Exception as e:
@@ -440,24 +435,22 @@ class RadarLoopImageEntity(ImageEntity):
     async def async_image(self) -> bytes:
         """Return the bytes of the latest image."""
         try:
+            session = async_get_clientsession(self.hass)
             timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(self._image_url) as response:
-                    if response.status == 200:
-                        # Validate content type
-                        content_type = response.headers.get('content-type', '').lower()
-                        if 'image' not in content_type:
-                            _LOGGER.warning("Expected image content but got: %s for radar %s",
-                                            content_type, self._radar_site)
-                            return b""
-
-                        content = await response.read()
-                        _LOGGER.debug("Successfully fetched radar loop image for %s (%d bytes)",
-                                      self._office_code, len(content))
-                        return content
-                    else:
-                        _LOGGER.warning("Failed to fetch radar loop image for %s: HTTP %d",
-                                        self._office_code, response.status)
+            async with session.get(self._image_url, timeout=timeout) as response:
+                if response.status == 200:
+                    content_type = response.headers.get('content-type', '').lower()
+                    if 'image' not in content_type:
+                        _LOGGER.warning("Expected image content but got: %s for radar %s",
+                                        content_type, self._radar_site)
+                        return b""
+                    content = await response.read()
+                    _LOGGER.debug("Successfully fetched radar loop image for %s (%d bytes)",
+                                  self._office_code, len(content))
+                    return content
+                else:
+                    _LOGGER.warning("Failed to fetch radar loop image for %s: HTTP %d",
+                                    self._office_code, response.status)
         except aiohttp.ClientError as e:
             _LOGGER.error("Error fetching radar loop image for %s: %s", self._office_code, e)
         except Exception as e:
@@ -519,21 +512,19 @@ class GOESAirMassImageEntity(ImageEntity):
     async def async_image(self) -> bytes:
         """Return the bytes of the latest image."""
         try:
+            session = async_get_clientsession(self.hass)
             timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(self._image_url) as response:
-                    if response.status == 200:
-                        # Validate content type
-                        content_type = response.headers.get('content-type', '').lower()
-                        if 'image' not in content_type:
-                            _LOGGER.warning("Expected image content but got: %s", content_type)
-                            return b""
-
-                        content = await response.read()
-                        _LOGGER.debug("Successfully fetched GOES Air Mass image (%d bytes)", len(content))
-                        return content
-                    else:
-                        _LOGGER.warning("Failed to fetch GOES Air Mass image: HTTP %d", response.status)
+            async with session.get(self._image_url, timeout=timeout) as response:
+                if response.status == 200:
+                    content_type = response.headers.get('content-type', '').lower()
+                    if 'image' not in content_type:
+                        _LOGGER.warning("Expected image content but got: %s", content_type)
+                        return b""
+                    content = await response.read()
+                    _LOGGER.debug("Successfully fetched GOES Air Mass image (%d bytes)", len(content))
+                    return content
+                else:
+                    _LOGGER.warning("Failed to fetch GOES Air Mass image: HTTP %d", response.status)
         except aiohttp.ClientError as e:
             _LOGGER.error("Error fetching GOES Air Mass image: %s", e)
         except Exception as e:
@@ -594,21 +585,19 @@ class GOESGeoColorImageEntity(ImageEntity):
     async def async_image(self) -> bytes:
         """Return the bytes of the latest image."""
         try:
+            session = async_get_clientsession(self.hass)
             timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(self._image_url) as response:
-                    if response.status == 200:
-                        # Validate content type
-                        content_type = response.headers.get('content-type', '').lower()
-                        if 'image' not in content_type:
-                            _LOGGER.warning("Expected image content but got: %s", content_type)
-                            return b""
-
-                        content = await response.read()
-                        _LOGGER.debug("Successfully fetched GOES GeoColor image (%d bytes)", len(content))
-                        return content
-                    else:
-                        _LOGGER.warning("Failed to fetch GOES GeoColor image: HTTP %d", response.status)
+            async with session.get(self._image_url, timeout=timeout) as response:
+                if response.status == 200:
+                    content_type = response.headers.get('content-type', '').lower()
+                    if 'image' not in content_type:
+                        _LOGGER.warning("Expected image content but got: %s", content_type)
+                        return b""
+                    content = await response.read()
+                    _LOGGER.debug("Successfully fetched GOES GeoColor image (%d bytes)", len(content))
+                    return content
+                else:
+                    _LOGGER.warning("Failed to fetch GOES GeoColor image: HTTP %d", response.status)
         except aiohttp.ClientError as e:
             _LOGGER.error("Error fetching GOES GeoColor image: %s", e)
         except Exception as e:
