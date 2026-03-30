@@ -4,15 +4,13 @@ Covers geomagnetic storms, planetary K-index, aurora forecasts, and
 solar radiation storm alerts.
 """
 
-import aiohttp
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
-import asyncio
 import logging
-from homeassistant.helpers.entity import Entity, DeviceInfo
+from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from datetime import timedelta, datetime, timezone
 
 from ..const import (
-    REQUEST_TIMEOUT, OFFICE_MAGNETIC_LATITUDES,
+    OFFICE_MAGNETIC_LATITUDES,
     AURORA_KP_THRESHOLDS, SOLAR_RADIATION_STORM_SCALES,
     SOLAR_RADIATION_KEYWORDS, DOMAIN,
 )
@@ -34,17 +32,13 @@ from ..parsers import (
 
 _LOGGER = logging.getLogger(__name__)
 
-# NOAA Space Weather Alerts
-NOAA_SPACE_WEATHER_ALERTS_URL = 'https://services.swpc.noaa.gov/products/alerts.json'
 
-
-class GeomagneticSensor(Entity):
+class GeomagneticSensor(CoordinatorEntity):
     """Representation of the Geomagnetic Storm sensor."""
 
-    def __init__(self, interpreter):
+    def __init__(self, coordinator):
         """Initialize the sensor."""
-        self._state = None
-        self.interpreter = interpreter  # Store the interpreter
+        super().__init__(coordinator)
 
     @property
     def name(self):
@@ -54,7 +48,12 @@ class GeomagneticSensor(Entity):
     @property
     def state(self):
         """Return the state of the sensor."""
-        return self._state
+        if self.coordinator.data is None:
+            return None
+        dst_data = self.coordinator.data.get("dst", [])
+        if dst_data and len(dst_data) > 0:
+            return dst_data[0].get('dst')
+        return None
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -65,51 +64,25 @@ class GeomagneticSensor(Entity):
             manufacturer="NOAA"
         )
 
-    async def async_update(self):
-        """Fetch new state data for the sensor."""
-        try:
-            session = async_get_clientsession(self.hass)
-            async with session.get(
-                'https://services.swpc.noaa.gov/json/geospace/geospace_dst_1_hour.json',
-                timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            ) as response:
-                response.raise_for_status()
-                data = await response.json()
-            self._attr_available = True
-            if data and len(data) > 0:
-                self._state = data[0].get('dst', 'Error')
-                self.interpreter.process_geomagnetic_data(self._state)
-                _LOGGER.debug("Successfully updated geomagnetic sensor with value: %s", self._state)
-            else:
-                _LOGGER.warning("Empty response from NOAA geomagnetic API")
-                self._state = 'Error'
 
-        except asyncio.TimeoutError:
-            self._attr_available = False
-            _LOGGER.error("Timeout when fetching geomagnetic data from NOAA API")
-            self._state = 'Error'
-        except aiohttp.ClientError as e:
-            self._attr_available = False
-            _LOGGER.error("Error fetching geomagnetic data from NOAA API: %s", e)
-            self._state = 'Error'
-        except (ValueError, KeyError) as e:
-            self._attr_available = False
-            _LOGGER.error("Error parsing geomagnetic data from NOAA API: %s", e)
-            self._state = 'Error'
-
-
-class GeomagneticSensorInterpretation(Entity):
+class GeomagneticSensorInterpretation(CoordinatorEntity):
     """Representation of the Geomagnetic Storm Interpretation sensor."""
 
-    def __init__(self):
+    def __init__(self, coordinator):
         """Initialize the interpretation sensor."""
-        self._state = None
-        self._interpretation = None
+        super().__init__(coordinator)
 
     @property
     def state(self):
         """Return the interpretation of the geomagnetic storm."""
-        return self._interpretation
+        if self.coordinator.data is None:
+            return None
+        dst_data = self.coordinator.data.get("dst", [])
+        if dst_data and len(dst_data) > 0:
+            dst_value = dst_data[0].get('dst')
+            if dst_value is not None:
+                return interpret_dst_value(dst_value)
+        return None
 
     @property
     def name(self):
@@ -125,24 +98,13 @@ class GeomagneticSensorInterpretation(Entity):
             manufacturer="NOAA"
         )
 
-    def process_geomagnetic_data(self, dst_value):
-        """Process the Dst value and determine the interpretation."""
-        self._state = dst_value
-        _LOGGER.debug("Processing Dst value: %s", self._state)
-        self._interpretation = interpret_dst_value(dst_value)
-        if self._interpretation.startswith('Error'):
-            _LOGGER.warning("Invalid Dst value received: %s", self._state)
-        else:
-            _LOGGER.debug("Geomagnetic interpretation: %s", self._interpretation)
 
-
-class PlanetaryKIndexSensor(Entity):
+class PlanetaryKIndexSensor(CoordinatorEntity):
     """Representation of the Planetary K-index sensor."""
 
-    def __init__(self, processor):
-        """Initialize the Planetary K-index sensor and pass in the processor."""
-        self._state = None
-        self.processor = processor  # Store the processor
+    def __init__(self, coordinator):
+        """Initialize the Planetary K-index sensor."""
+        super().__init__(coordinator)
 
     @property
     def name(self):
@@ -152,7 +114,12 @@ class PlanetaryKIndexSensor(Entity):
     @property
     def state(self):
         """Return the state of the sensor."""
-        return self._state
+        if self.coordinator.data is None:
+            return None
+        kp_data = self.coordinator.data.get("kp_index", [])
+        if kp_data and len(kp_data) > 0:
+            return kp_data[-1].get('kp_index')
+        return None
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -163,52 +130,25 @@ class PlanetaryKIndexSensor(Entity):
             manufacturer="NOAA"
         )
 
-    async def async_update(self):
-        """Fetch new state data for the K-index."""
-        try:
-            session = async_get_clientsession(self.hass)
-            async with session.get(
-                'https://services.swpc.noaa.gov/json/planetary_k_index_1m.json',
-                timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            ) as response:
-                response.raise_for_status()
-                data = await response.json()
-            self._attr_available = True
-            if data and len(data) > 0:
-                self._state = data[-1].get('kp_index', 'unknown')
-                # Call the processor to handle the K-index value
-                self.processor.process_solar_flux(self._state)
-                _LOGGER.debug("Successfully updated K-index sensor with value: %s", self._state)
-            else:
-                _LOGGER.warning("Empty response from NOAA K-index API")
-                self._state = 'unknown'
 
-        except asyncio.TimeoutError:
-            self._attr_available = False
-            _LOGGER.error("Timeout when fetching K-index data from NOAA API")
-            self._state = 'unknown'
-        except aiohttp.ClientError as e:
-            self._attr_available = False
-            _LOGGER.error("Error fetching K-index data from NOAA API: %s", e)
-            self._state = 'unknown'
-        except (ValueError, KeyError) as e:
-            self._attr_available = False
-            _LOGGER.error("Error parsing K-index data from NOAA API: %s", e)
-            self._state = 'unknown'
-
-
-class PlanetaryKIndexSensorRating(Entity):
+class PlanetaryKIndexSensorRating(CoordinatorEntity):
     """Representation of the Planetary K-index Rating sensor."""
 
-    def __init__(self):
+    def __init__(self, coordinator):
         """Initialize the Planetary K-index Rating."""
-        self._state = None
-        self._rating = None
+        super().__init__(coordinator)
 
     @property
     def state(self):
         """Return the state of the sensor rating."""
-        return self._rating
+        if self.coordinator.data is None:
+            return None
+        kp_data = self.coordinator.data.get("kp_index", [])
+        if kp_data and len(kp_data) > 0:
+            kp_value = kp_data[-1].get('kp_index')
+            if kp_value is not None:
+                return rate_kp_index(kp_value)
+        return None
 
     @property
     def name(self):
@@ -224,40 +164,72 @@ class PlanetaryKIndexSensorRating(Entity):
             manufacturer="NOAA"
         )
 
-    def process_solar_flux(self, solar_flux_value):
-        """Process the Solar Flux value."""
-        self._state = solar_flux_value
-        _LOGGER.debug("Processing K-index value: %s", self._state)
-        self._rating = rate_kp_index(solar_flux_value)
-        if self._rating == 'unknown':
-            _LOGGER.warning("Unknown K-index value received")
-        else:
-            _LOGGER.debug("K-index rating: %s", self._rating)
 
-
-class AuroraNextTimeSensor(Entity):
+class AuroraNextTimeSensor(CoordinatorEntity):
     """Representation of Aurora Next Time sensor for specific location."""
 
-    def __init__(self, office_code):
+    def __init__(self, coordinator, office_code):
         """Initialize the sensor."""
+        super().__init__(coordinator)
         self._office_code = office_code
-        self._state = None
-        self._attributes = {}
 
     @property
     def name(self):
         """Return the name of the sensor."""
         return 'NOAA Space - Aurora Next Time'
 
+    def _compute_aurora_timing(self):
+        """Compute aurora timing state and attributes from coordinator data."""
+        if self.coordinator.data is None:
+            return None, {}
+        kp_data = self.coordinator.data.get("kp_index", [])
+        if not kp_data or len(kp_data) == 0:
+            return 'No Data', {'error': 'No Kp index data available'}
+
+        current_kp = kp_data[-1].get('kp_index', 0)
+        office_lat = OFFICE_MAGNETIC_LATITUDES.get(self._office_code, 0)
+
+        aurora_possible = calculate_aurora_visibility(
+            current_kp, office_lat, AURORA_KP_THRESHOLDS
+        )
+
+        if aurora_possible:
+            next_time = datetime.now(timezone.utc) + timedelta(minutes=30)
+            state = next_time.strftime('%Y-%m-%d %H:%M UTC')
+            attributes = {
+                'current_kp': current_kp,
+                'magnetic_latitude': office_lat,
+                'conditions': 'Favorable',
+                'confidence': 'High' if current_kp >= 5 else 'Moderate'
+            }
+        else:
+            if current_kp < 3:
+                estimated_hours = 12 + (3 - current_kp) * 6
+            else:
+                estimated_hours = 6
+
+            next_time = datetime.now(timezone.utc) + timedelta(hours=estimated_hours)
+            state = next_time.strftime('%Y-%m-%d %H:%M UTC')
+            attributes = {
+                'current_kp': current_kp,
+                'magnetic_latitude': office_lat,
+                'conditions': 'Waiting for activity',
+                'confidence': 'Low'
+            }
+
+        return state, attributes
+
     @property
     def state(self):
         """Return the state of the sensor."""
-        return self._state
+        state, _ = self._compute_aurora_timing()
+        return state
 
     @property
     def extra_state_attributes(self):
         """Return the state attributes."""
-        return self._attributes
+        _, attributes = self._compute_aurora_timing()
+        return attributes
 
     @property
     def unique_id(self):
@@ -278,94 +250,50 @@ class AuroraNextTimeSensor(Entity):
             manufacturer="NOAA"
         )
 
-    async def async_update(self):
-        """Calculate next aurora timing based on current geomagnetic conditions."""
-        try:
-            # Get current Kp index data
-            session = async_get_clientsession(self.hass)
-            async with session.get(
-                'https://services.swpc.noaa.gov/json/planetary_k_index_1m.json',
-                timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            ) as response:
-                response.raise_for_status()
-                data = await response.json()
-            self._attr_available = True
-            if not data or len(data) == 0:
-                self._state = 'No Data'
-                self._attributes = {'error': 'No Kp index data available'}
-                return
 
-            current_kp = data[-1].get('kp_index', 0)
-            office_lat = OFFICE_MAGNETIC_LATITUDES.get(self._office_code, 0)
-
-            # Determine if aurora is likely based on location and Kp
-            aurora_possible = calculate_aurora_visibility(
-                current_kp, office_lat, AURORA_KP_THRESHOLDS
-            )
-
-            if aurora_possible:
-                # If conditions are good now, aurora could be visible soon
-                next_time = datetime.now(timezone.utc) + timedelta(minutes=30)
-                self._state = next_time.strftime('%Y-%m-%d %H:%M UTC')
-                self._attributes = {
-                    'current_kp': current_kp,
-                    'magnetic_latitude': office_lat,
-                    'conditions': 'Favorable',
-                    'confidence': 'High' if current_kp >= 5 else 'Moderate'
-                }
-            else:
-                # Estimate when conditions might improve
-                if current_kp < 3:
-                    estimated_hours = 12 + (3 - current_kp) * 6
-                else:
-                    estimated_hours = 6
-
-                next_time = datetime.now(timezone.utc) + timedelta(hours=estimated_hours)
-                self._state = next_time.strftime('%Y-%m-%d %H:%M UTC')
-                self._attributes = {
-                    'current_kp': current_kp,
-                    'magnetic_latitude': office_lat,
-                    'conditions': 'Waiting for activity',
-                    'confidence': 'Low'
-                }
-
-            _LOGGER.debug("Updated aurora next time for %s: %s", self._office_code, self._state)
-
-        except asyncio.TimeoutError:
-            self._attr_available = False
-            _LOGGER.error("Timeout when fetching Kp index data for aurora prediction")
-            self._state = 'Error'
-            self._attributes = {'error': 'Timeout fetching data'}
-        except aiohttp.ClientError as e:
-            self._attr_available = False
-            _LOGGER.error("Error fetching Kp index data for aurora prediction: %s", e)
-            self._state = 'Error'
-            self._attributes = {'error': f'Request error: {e}'}
-
-
-class AuroraDurationSensor(Entity):
+class AuroraDurationSensor(CoordinatorEntity):
     """Representation of Aurora Duration sensor for specific location."""
 
-    def __init__(self, office_code):
+    def __init__(self, coordinator, office_code):
         """Initialize the sensor."""
+        super().__init__(coordinator)
         self._office_code = office_code
-        self._state = None
-        self._attributes = {}
 
     @property
     def name(self):
         """Return the name of the sensor."""
         return 'NOAA Space - Aurora Duration'
 
+    def _get_kp_and_lat(self):
+        """Extract current Kp index and office magnetic latitude from coordinator data."""
+        if self.coordinator.data is None:
+            return None, None
+        kp_data = self.coordinator.data.get("kp_index", [])
+        if not kp_data or len(kp_data) == 0:
+            return None, None
+        current_kp = kp_data[-1].get('kp_index', 0)
+        office_lat = OFFICE_MAGNETIC_LATITUDES.get(self._office_code, 0)
+        return current_kp, office_lat
+
     @property
     def state(self):
         """Return the state of the sensor."""
-        return self._state
+        current_kp, office_lat = self._get_kp_and_lat()
+        if current_kp is None:
+            return None
+        return calculate_aurora_duration(current_kp, office_lat)
 
     @property
     def extra_state_attributes(self):
         """Return the state attributes."""
-        return self._attributes
+        current_kp, office_lat = self._get_kp_and_lat()
+        if current_kp is None:
+            return {}
+        return {
+            'current_kp': current_kp,
+            'magnetic_latitude': office_lat,
+            'intensity': 'High' if current_kp >= 6 else 'Moderate' if current_kp >= 4 else 'Low'
+        }
 
     @property
     def unique_id(self):
@@ -391,71 +319,52 @@ class AuroraDurationSensor(Entity):
             manufacturer="NOAA"
         )
 
-    async def async_update(self):
-        """Calculate aurora duration based on geomagnetic conditions."""
-        try:
-            # Get current Kp index and geomagnetic data
-            session = async_get_clientsession(self.hass)
-            async with session.get(
-                'https://services.swpc.noaa.gov/json/planetary_k_index_1m.json',
-                timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            ) as response:
-                response.raise_for_status()
-                data = await response.json()
-            self._attr_available = True
-            if not data or len(data) == 0:
-                self._state = 0
-                self._attributes = {'error': 'No Kp index data available'}
-                return
 
-            current_kp = data[-1].get('kp_index', 0)
-            office_lat = OFFICE_MAGNETIC_LATITUDES.get(self._office_code, 0)
-
-            # Calculate duration based on Kp intensity and location
-            self._state = calculate_aurora_duration(current_kp, office_lat)
-            self._attributes = {
-                'current_kp': current_kp,
-                'magnetic_latitude': office_lat,
-                'intensity': 'High' if current_kp >= 6 else 'Moderate' if current_kp >= 4 else 'Low'
-            }
-
-            _LOGGER.debug("Updated aurora duration for %s: %s hours", self._office_code, self._state)
-
-        except asyncio.TimeoutError:
-            self._attr_available = False
-            _LOGGER.error("Timeout when fetching Kp index data for aurora duration")
-            self._state = 0
-            self._attributes = {'error': 'Timeout fetching data'}
-        except aiohttp.ClientError as e:
-            self._attr_available = False
-            _LOGGER.error("Error fetching Kp index data for aurora duration: %s", e)
-            self._state = 0
-            self._attributes = {'error': f'Request error: {e}'}
-
-
-class AuroraVisibilityProbabilitySensor(Entity):
+class AuroraVisibilityProbabilitySensor(CoordinatorEntity):
     """Representation of Aurora Visibility Probability sensor for specific location."""
 
-    def __init__(self, office_code):
+    def __init__(self, coordinator, office_code):
         """Initialize the sensor."""
+        super().__init__(coordinator)
         self._office_code = office_code
-        self._state = None
-        self._attributes = {}
 
     @property
     def name(self):
         """Return the name of the sensor."""
         return 'NOAA Space - Aurora Visibility Probability'
 
+    def _get_kp_and_lat(self):
+        """Extract current Kp index and office magnetic latitude from coordinator data."""
+        if self.coordinator.data is None:
+            return None, None
+        kp_data = self.coordinator.data.get("kp_index", [])
+        if not kp_data or len(kp_data) == 0:
+            return None, None
+        current_kp = kp_data[-1].get('kp_index', 0)
+        office_lat = OFFICE_MAGNETIC_LATITUDES.get(self._office_code, 0)
+        return current_kp, office_lat
+
     @property
     def state(self):
         """Return the state of the sensor."""
-        return self._state
+        current_kp, office_lat = self._get_kp_and_lat()
+        if current_kp is None:
+            return None
+        return calculate_aurora_probability(current_kp, office_lat)
 
     @property
     def extra_state_attributes(self):
         """Return the state attributes."""
-        return self._attributes
+        current_kp, office_lat = self._get_kp_and_lat()
+        if current_kp is None:
+            return {}
+        probability = calculate_aurora_probability(current_kp, office_lat)
+        return {
+            'current_kp': current_kp,
+            'magnetic_latitude': office_lat,
+            'visibility_class': get_visibility_class(probability),
+            'required_kp': get_required_kp(office_lat, AURORA_KP_THRESHOLDS)
+        }
 
     @property
     def unique_id(self):
@@ -481,74 +390,66 @@ class AuroraVisibilityProbabilitySensor(Entity):
             manufacturer="NOAA"
         )
 
-    async def async_update(self):
-        """Calculate aurora visibility probability based on conditions and location."""
-        try:
-            # Get current Kp index and geomagnetic data
-            session = async_get_clientsession(self.hass)
-            async with session.get(
-                'https://services.swpc.noaa.gov/json/planetary_k_index_1m.json',
-                timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            ) as response:
-                response.raise_for_status()
-                data = await response.json()
-            self._attr_available = True
-            if not data or len(data) == 0:
-                self._state = 0
-                self._attributes = {'error': 'No Kp index data available'}
-                return
 
-            current_kp = data[-1].get('kp_index', 0)
-            office_lat = OFFICE_MAGNETIC_LATITUDES.get(self._office_code, 0)
-
-            # Calculate probability based on Kp and magnetic latitude
-            probability = calculate_aurora_probability(current_kp, office_lat)
-
-            self._state = probability
-            self._attributes = {
-                'current_kp': current_kp,
-                'magnetic_latitude': office_lat,
-                'visibility_class': get_visibility_class(probability),
-                'required_kp': get_required_kp(office_lat, AURORA_KP_THRESHOLDS)
-            }
-
-            _LOGGER.debug("Updated aurora visibility probability for %s: %s%%", self._office_code, self._state)
-
-        except asyncio.TimeoutError:
-            self._attr_available = False
-            _LOGGER.error("Timeout when fetching Kp index data for aurora probability")
-            self._state = 0
-            self._attributes = {'error': 'Timeout fetching data'}
-        except aiohttp.ClientError as e:
-            self._attr_available = False
-            _LOGGER.error("Error fetching Kp index data for aurora probability: %s", e)
-            self._state = 0
-            self._attributes = {'error': f'Request error: {e}'}
-
-
-class SolarRadiationStormAlertsSensor(Entity):
+class SolarRadiationStormAlertsSensor(CoordinatorEntity):
     """Representation of Solar Radiation Storm Alerts sensor for specific location."""
 
-    def __init__(self, office_code):
+    def __init__(self, coordinator, office_code):
         """Initialize the sensor."""
+        super().__init__(coordinator)
         self._office_code = office_code
-        self._state = None
-        self._attributes = {}
 
     @property
     def name(self):
         """Return the name of the sensor."""
         return 'NOAA Space - Solar Radiation Storm Alerts'
 
+    def _get_solar_radiation_alerts(self):
+        """Filter and parse solar radiation alerts from coordinator data."""
+        if self.coordinator.data is None:
+            return None
+        alerts_data = self.coordinator.data.get("space_alerts", [])
+        if not alerts_data:
+            return []
+
+        solar_radiation_alerts = []
+        for alert in alerts_data:
+            message = alert.get('message', '').lower()
+            product_id = alert.get('product_id', '')
+
+            is_solar_radiation = any(keyword in message for keyword in SOLAR_RADIATION_KEYWORDS)
+            is_solar_product = product_id.startswith(('S1', 'S2', 'S3', 'S4', 'S5', 'TIVA', 'EF3'))
+
+            if is_solar_radiation or is_solar_product:
+                alert_info = self._parse_solar_radiation_alert(alert)
+                if alert_info:
+                    solar_radiation_alerts.append(alert_info)
+
+        return solar_radiation_alerts
+
     @property
     def state(self):
         """Return the state of the sensor."""
-        return self._state
+        alerts = self._get_solar_radiation_alerts()
+        if alerts is None:
+            return None
+        return len(alerts)
 
     @property
     def extra_state_attributes(self):
         """Return the state attributes."""
-        return self._attributes
+        alerts = self._get_solar_radiation_alerts()
+        if alerts is None:
+            return {}
+        office_lat = OFFICE_MAGNETIC_LATITUDES.get(self._office_code, 45.0)
+        return {
+            'alerts': alerts[:5],
+            'office_code': self._office_code,
+            'magnetic_latitude': office_lat,
+            'location_impact_risk': assess_location_risk(office_lat, alerts),
+            'last_updated': datetime.now(timezone.utc).isoformat(),
+            'total_alerts': len(alerts)
+        }
 
     @property
     def unique_id(self):
@@ -573,71 +474,6 @@ class SolarRadiationStormAlertsSensor(Entity):
             name="NOAA Space",
             manufacturer="NOAA"
         )
-
-    async def async_update(self):
-        """Fetch solar radiation storm alerts from NOAA."""
-        try:
-            session = async_get_clientsession(self.hass)
-            async with session.get(
-                NOAA_SPACE_WEATHER_ALERTS_URL,
-                timeout=aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            ) as response:
-                response.raise_for_status()
-                alerts_data = await response.json()
-            self._attr_available = True
-            if not alerts_data:
-                self._state = 0
-                self._attributes = {'alerts': [], 'last_updated': datetime.now(timezone.utc).isoformat()}
-                return
-
-            # Filter alerts for solar radiation storm related content
-            solar_radiation_alerts = []
-            for alert in alerts_data:
-                message = alert.get('message', '').lower()
-                product_id = alert.get('product_id', '')
-
-                # Check for solar radiation storm keywords or specific product IDs
-                is_solar_radiation = any(keyword in message for keyword in SOLAR_RADIATION_KEYWORDS)
-                is_solar_product = product_id.startswith(('S1', 'S2', 'S3', 'S4', 'S5', 'TIVA', 'EF3'))
-
-                if is_solar_radiation or is_solar_product:
-                    # Parse alert for relevant information
-                    alert_info = self._parse_solar_radiation_alert(alert)
-                    if alert_info:
-                        solar_radiation_alerts.append(alert_info)
-
-            self._state = len(solar_radiation_alerts)
-
-            # Get office location for relevance scoring
-            office_lat = OFFICE_MAGNETIC_LATITUDES.get(self._office_code, 45.0)
-
-            self._attributes = {
-                'alerts': solar_radiation_alerts[:5],  # Limit to 5 most recent
-                'office_code': self._office_code,
-                'magnetic_latitude': office_lat,
-                'location_impact_risk': assess_location_risk(office_lat, solar_radiation_alerts),
-                'last_updated': datetime.now(timezone.utc).isoformat(),
-                'total_alerts': len(solar_radiation_alerts)
-            }
-
-            _LOGGER.debug("Successfully updated solar radiation storm alerts for %s: %d alerts",
-                          self._office_code, self._state)
-
-        except asyncio.TimeoutError:
-            self._attr_available = False
-            _LOGGER.error("Timeout when fetching solar radiation alerts from NOAA API")
-            self._state = 'Error'
-            self._attributes = {'error': 'Request timeout'}
-        except aiohttp.ClientError as e:
-            self._attr_available = False
-            _LOGGER.error("Error fetching solar radiation alerts from NOAA API: %s", e)
-            self._state = 'Error'
-            self._attributes = {'error': f'Request error: {e}'}
-        except (ValueError, KeyError) as e:
-            self._attr_available = False
-            _LOGGER.error("Error parsing solar radiation alerts from NOAA API: %s", e)
-            self._state = 'Error'
-            self._attributes = {'error': f'Parse error: {e}'}
 
     def _parse_solar_radiation_alert(self, alert):
         """Parse a solar radiation storm alert for relevant information."""
