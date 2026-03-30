@@ -202,14 +202,24 @@ class ObservationsCoordinator(DataUpdateCoordinator):
         self.latitude = latitude
         self.longitude = longitude
         self.station_id: str | None = OFFICE_STATION_IDS.get(office_code)
-        self._station_fetched: bool = self.station_id is not None
+        # If latitude/longitude are provided, always attempt to resolve the nearest
+        # station via the NWS Points API on first update, using OFFICE_STATION_IDS
+        # only as a fallback if resolution fails.
+        if self.latitude is not None and self.longitude is not None:
+            self._station_fetched = False
+        else:
+            self._station_fetched = self.station_id is not None
 
     async def _async_update_data(self) -> dict:
         session = async_get_clientsession(self.hass)
         timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
 
         # Resolve station from lat/lon on first run
-        if not self._station_fetched and self.latitude and self.longitude:
+        if (
+            not self._station_fetched
+            and self.latitude is not None
+            and self.longitude is not None
+        ):
             await self._resolve_station(session, timeout)
 
         if not self.station_id:

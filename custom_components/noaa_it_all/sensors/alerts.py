@@ -20,8 +20,6 @@ class NWSAlertsSensor(CoordinatorEntity):
         self._office_code = office_code
         self._latitude = latitude
         self._longitude = longitude
-        self._state = None
-        self._attributes = {}
 
     @property
     def name(self):
@@ -32,7 +30,7 @@ class NWSAlertsSensor(CoordinatorEntity):
     def state(self):
         """Return the state of the sensor."""
         if not self.coordinator.data:
-            return self._state
+            return None
         features = self.coordinator.data.get("features", [])
         active_alerts, _ = parse_nws_alert_features(features)
         return len(active_alerts)
@@ -41,7 +39,7 @@ class NWSAlertsSensor(CoordinatorEntity):
     def extra_state_attributes(self):
         """Return the state attributes."""
         if not self.coordinator.data:
-            return self._attributes
+            return {}
         features = self.coordinator.data.get("features", [])
         active_alerts, alert_summary = parse_nws_alert_features(features)
         return {
@@ -65,7 +63,7 @@ class NWSAlertsSensor(CoordinatorEntity):
     @property
     def icon(self):
         """Return the icon."""
-        if self._state and self._state > 0:
+        if self.state and self.state > 0:
             return 'mdi:alert-circle'
         return 'mdi:check-circle-outline'
 

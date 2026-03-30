@@ -77,7 +77,6 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
         self._office_code = office_code
         self._latitude = latitude
         self._longitude = longitude
-        self._precipitation_probability = None
 
     @property
     def name(self) -> str:
@@ -105,8 +104,15 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
         """Return entity specific state attributes."""
         attributes = {}
 
-        if self._precipitation_probability is not None:
-            attributes["precipitation_probability"] = self._precipitation_probability
+        # Compute precipitation probability directly from forecast coordinator
+        if self._forecast_coordinator and self._forecast_coordinator.data:
+            hourly_data = self._forecast_coordinator.data.get("hourly")
+            if hourly_data:
+                periods = hourly_data.get("properties", {}).get("periods", [])
+                if periods:
+                    precip_prob = self._extract_precipitation_probability(periods[0])
+                    if precip_prob is not None:
+                        attributes["precipitation_probability"] = precip_prob
 
         if self.coordinator.data:
             station_id = self.coordinator.data.get("station_id")
@@ -173,17 +179,6 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
                 self._attr_native_apparent_temperature = self._attr_native_temperature
 
             self._attr_cloud_coverage = None
-
-            # Precipitation probability from forecast coordinator
-            self._precipitation_probability = None
-            if self._forecast_coordinator and self._forecast_coordinator.data:
-                hourly_data = self._forecast_coordinator.data.get("hourly")
-                if hourly_data:
-                    periods = hourly_data.get("properties", {}).get("periods", [])
-                    if periods:
-                        self._precipitation_probability = (
-                            self._extract_precipitation_probability(periods[0])
-                        )
 
         super()._handle_coordinator_update()
 

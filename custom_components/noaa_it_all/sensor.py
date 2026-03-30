@@ -53,9 +53,11 @@ _LOGGER = logging.getLogger(__name__)
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
     """Set up the sensor platform (legacy YAML support)."""
-    _LOGGER.warning(
-        "Legacy YAML setup for NOAA sensors is deprecated. "
-        "Please use the config flow UI for full coordinator-based support."
+    _LOGGER.error(
+        "Legacy YAML configuration for NOAA sensors is no longer supported and "
+        "will not create any entities. Please remove the YAML configuration "
+        "from configuration.yaml and re-add the integration via the Home "
+        "Assistant UI config flow."
     )
 
 
