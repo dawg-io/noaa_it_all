@@ -1,5 +1,9 @@
 # NOAA IT ALL HACS Integration for Solar Data, Hurricane Tracking, and Location-Specific Rip Current Forecasts
 
+> [!NOTE]
+> This integration and its developer are independent and are not affiliated, endorsed, or sponsored by NOAA in any way.
+
+
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
 [![GitHub Release](https://img.shields.io/github/release/dawg-io/noaa_it_all.svg)](https://github.com/dawg-io/noaa_it_all/releases)
 [![License](https://img.shields.io/github/license/dawg-io/noaa_it_all.svg)](LICENSE)
