@@ -9,7 +9,10 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from ..const import DOMAIN
-from ..parsers import parse_rip_current_risk, parse_surf_height, parse_water_temperature
+from ..parsers import (
+    parse_rip_current_risk, parse_surf_height, parse_water_temperature,
+    normalize_numeric,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -82,8 +85,7 @@ class SurfHeightSensor(CoordinatorEntity):
         if wave_ft is not None:
             return wave_ft
         text = self.coordinator.data.get("forecast_text", "")
-        surf_height = parse_surf_height(text)
-        return surf_height if surf_height else "Unknown"
+        return normalize_numeric(parse_surf_height(text))
 
     @property
     def unit_of_measurement(self):
@@ -107,7 +109,7 @@ class SurfHeightSensor(CoordinatorEntity):
         }
         wave_source = self.coordinator.data.get("wave_height_source")
         if wave_source:
-            attrs['wave_data_source'] = wave_source
+            attrs['wave_height_source'] = wave_source
         return attrs
 
     @property
@@ -142,8 +144,7 @@ class WaterTemperatureSensor(CoordinatorEntity):
         if water_temp is not None:
             return water_temp
         text = self.coordinator.data.get("forecast_text", "")
-        parsed = parse_water_temperature(text)
-        return parsed if parsed else "Unknown"
+        return normalize_numeric(parse_water_temperature(text))
 
     @property
     def unit_of_measurement(self):

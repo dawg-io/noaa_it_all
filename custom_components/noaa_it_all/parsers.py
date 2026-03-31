@@ -499,9 +499,41 @@ def parse_ndbc_wave_height(text: str) -> Optional[float]:
             continue
         wvht = parts[8]  # WVHT column (significant wave height in metres)
         if wvht == "MM":
-            return None
+            # Missing value for this observation; try the next line.
+            continue
         try:
             return round(float(wvht) * _M_TO_FT, 1)
+        except (ValueError, TypeError):
+            # Invalid numeric value; try the next line.
+            continue
+    return None
+
+
+def normalize_numeric(value) -> float | None:
+    """Normalize a parsed value to a numeric float.
+
+    Handles direct numbers, numeric strings, and range strings like
+    ``"2-4"`` or ``"85-89"`` (averaged).  Returns *None* when the value
+    cannot be converted.
+    """
+    if value is None:
+        return None
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return None
+        if "-" in text:
+            parts = text.split("-", 1)
+            try:
+                low = float(parts[0].strip())
+                high = float(parts[1].strip())
+                return round((low + high) / 2.0, 1)
+            except (ValueError, TypeError):
+                return None
+        try:
+            return float(text)
         except (ValueError, TypeError):
             return None
     return None

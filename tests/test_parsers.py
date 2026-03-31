@@ -343,7 +343,7 @@ class TestCoopsWaterTemperature(unittest.TestCase):
         data = {"data": [{"t": "2026-03-30 23:06", "v": "", "f": "0,0,0"}]}
         self.assertIsNone(parse_coops_water_temperature(data))
 
-    def test_none_input(self):
+    def test_empty_dict_input(self):
         self.assertIsNone(parse_coops_water_temperature({}))
 
 
@@ -378,6 +378,17 @@ class TestNdbcWaveHeight(unittest.TestCase):
     def test_only_headers(self):
         text = "#YY  MM DD hh mm WVHT\n#yr  mo dy hr mn    m\n"
         self.assertIsNone(parse_ndbc_wave_height(text))
+
+    def test_multiple_lines_first_missing_wvht(self):
+        text = (
+            "#YY  MM DD hh mm WDIR WSPD GST  WVHT   DPD   APD MWD\n"
+            "#yr  mo dy hr mn degT m/s  m/s     m   sec   sec degT\n"
+            "2026 03 31 02 30  MM   MM   MM    MM     6   4.8 127\n"
+            "2026 03 31 02 00  90   10   12   1.0     7   5.0 090\n"
+        )
+        result = parse_ndbc_wave_height(text)
+        self.assertIsNotNone(result)
+        self.assertAlmostEqual(result, 3.3, places=1)
 
 
 # ---------------------------------------------------------------
