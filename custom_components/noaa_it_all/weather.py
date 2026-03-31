@@ -1,8 +1,6 @@
 """Weather platform for NOAA Integration."""
 import logging
 import re
-import aiohttp
-import asyncio
 from datetime import datetime, timedelta
 
 from homeassistant.components.weather import (
@@ -20,17 +18,13 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
     CONF_OFFICE_CODE,
     CONF_LATITUDE,
     CONF_LONGITUDE,
     DOMAIN,
-    NWS_POINTS_URL,
-    NWS_OBSERVATIONS_URL,
-    OFFICE_STATION_IDS,
-    REQUEST_TIMEOUT,
-    USER_AGENT,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -50,11 +44,21 @@ async def async_setup_entry(
         _LOGGER.error("Weather entity requires latitude and longitude")
         return
 
-    weather_entity = NOAAWeather(office_code, latitude, longitude)
-    async_add_entities([weather_entity], True)
+    data = hass.data[DOMAIN][config_entry.entry_id]
+    observations_coord = data["observations_coordinator"]
+    forecast_coord = data["forecast_coordinator"]
+
+    if not observations_coord:
+        _LOGGER.error("No observations coordinator available")
+        return
+
+    weather_entity = NOAAWeather(
+        observations_coord, forecast_coord, office_code, latitude, longitude
+    )
+    async_add_entities([weather_entity])
 
 
-class NOAAWeather(WeatherEntity):
+class NOAAWeather(CoordinatorEntity, WeatherEntity):
     """Representation of NOAA weather data."""
 
     _attr_native_temperature_unit = UnitOfTemperature.FAHRENHEIT
@@ -65,31 +69,14 @@ class NOAAWeather(WeatherEntity):
         WeatherEntityFeature.FORECAST_DAILY | WeatherEntityFeature.FORECAST_HOURLY
     )
 
-    def __init__(self, office_code: str, latitude: float, longitude: float):
+    def __init__(self, observations_coordinator, forecast_coordinator,
+                 office_code: str, latitude: float, longitude: float):
         """Initialize the NOAA weather entity."""
+        super().__init__(observations_coordinator)
+        self._forecast_coordinator = forecast_coordinator
         self._office_code = office_code
         self._latitude = latitude
         self._longitude = longitude
-        self._station_id = OFFICE_STATION_IDS.get(office_code)
-        self._station_fetched = False
-
-        # Current conditions
-        self._attr_native_temperature = None
-        self._attr_humidity = None
-        self._attr_native_pressure = None
-        self._attr_condition = None
-        self._attr_native_apparent_temperature = None
-        self._attr_native_dew_point = None
-        self._attr_native_visibility = None
-        self._attr_native_wind_speed = None
-        self._attr_wind_bearing = None
-        self._attr_cloud_coverage = None
-        self._precipitation_probability = None
-
-        # Forecast URLs
-        self._forecast_url = None
-        self._hourly_forecast_url = None
-        self._forecast_urls_fetched = False
 
     @property
     def name(self) -> str:
@@ -114,316 +101,101 @@ class NOAAWeather(WeatherEntity):
 
     @property
     def extra_state_attributes(self) -> dict:
-        """Return entity specific state attributes.
-
-        Only expose useful attributes, hiding unit-only attributes.
-        """
+        """Return entity specific state attributes."""
         attributes = {}
 
-        # Add precipitation probability if available
-        if self._precipitation_probability is not None:
-            attributes["precipitation_probability"] = self._precipitation_probability
+        # Compute precipitation probability directly from forecast coordinator
+        if self._forecast_coordinator and self._forecast_coordinator.data:
+            hourly_data = self._forecast_coordinator.data.get("hourly")
+            if hourly_data:
+                periods = hourly_data.get("properties", {}).get("periods", [])
+                if periods:
+                    precip_prob = self._extract_precipitation_probability(periods[0])
+                    if precip_prob is not None:
+                        attributes["precipitation_probability"] = precip_prob
 
-        # Add station information if available
-        if self._station_id:
-            attributes["station_id"] = self._station_id
+        if self.coordinator.data:
+            station_id = self.coordinator.data.get("station_id")
+            if station_id:
+                attributes["station_id"] = station_id
 
         return attributes
 
-    async def async_update(self) -> None:
-        """Fetch new weather data from the NWS API."""
-        # Fetch station ID if not already done
-        if not self._station_fetched:
-            await self._async_fetch_station_from_location()
+    def _handle_coordinator_update(self) -> None:
+        """Process observation data from coordinator."""
+        if self.coordinator.data:
+            properties = self.coordinator.data.get("properties", {})
 
-        if not self._station_id:
-            _LOGGER.error(
-                "Unable to find weather station for coordinates (lat: %s, lon: %s)",
-                self._latitude,
-                self._longitude,
-            )
-            return
-
-        # Fetch observation data
-        await self._async_fetch_observation_data()
-
-        # Fetch forecast URLs if not already done
-        if not self._forecast_urls_fetched:
-            await self._async_fetch_forecast_urls()
-
-        # Fetch precipitation probability from hourly forecast
-        await self._async_fetch_precipitation_probability()
-
-    async def _async_fetch_station_from_location(self) -> None:
-        """Fetch the nearest observation station from latitude and longitude."""
-        try:
-            points_url = NWS_POINTS_URL.format(lat=self._latitude, lon=self._longitude)
-            _LOGGER.debug(
-                "Fetching station for lat=%s, lon=%s from %s",
-                self._latitude,
-                self._longitude,
-                points_url,
-            )
-
-            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(
-                    points_url, headers={"User-Agent": USER_AGENT}
-                ) as response:
-                    response.raise_for_status()
-                    data = await response.json()
-
-            properties = data.get("properties", {})
-            stations_url = properties.get("observationStations")
-
-            if not stations_url:
-                _LOGGER.error(
-                    "No observation stations URL found for lat=%s, lon=%s",
-                    self._latitude,
-                    self._longitude,
-                )
-                self._station_fetched = True
-                return
-
-            # Fetch list of nearby stations
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(
-                    stations_url, headers={"User-Agent": USER_AGENT}
-                ) as response:
-                    response.raise_for_status()
-                    stations_data = await response.json()
-
-            stations_list = stations_data.get("features", [])
-
-            if stations_list:
-                # Use the first (nearest) station
-                station_id = stations_list[0].get("properties", {}).get("stationIdentifier")
-                if station_id and isinstance(station_id, str) and station_id.strip():
-                    self._station_id = station_id.strip()
-                    _LOGGER.info(
-                        "Found station %s for lat=%s, lon=%s",
-                        self._station_id,
-                        self._latitude,
-                        self._longitude,
-                    )
-            else:
-                _LOGGER.warning(
-                    "No stations found for lat=%s, lon=%s", self._latitude, self._longitude
-                )
-
-            self._station_fetched = True
-
-        except asyncio.TimeoutError:
-            _LOGGER.error(
-                "Timeout fetching station for lat=%s, lon=%s", self._latitude, self._longitude
-            )
-            self._station_fetched = True
-        except aiohttp.ClientError as e:
-            _LOGGER.error(
-                "Error fetching station for lat=%s, lon=%s: %s",
-                self._latitude,
-                self._longitude,
-                e,
-            )
-            self._station_fetched = True
-        except Exception as e:
-            _LOGGER.error(
-                "Unexpected error fetching station for lat=%s, lon=%s: %s",
-                self._latitude,
-                self._longitude,
-                e,
-            )
-            self._station_fetched = True
-
-    async def _async_fetch_observation_data(self) -> None:
-        """Fetch current weather observation data."""
-        try:
-            url = NWS_OBSERVATIONS_URL.format(station=self._station_id)
-            _LOGGER.debug("Fetching observation data from %s", url)
-
-            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(
-                    url, headers={"User-Agent": USER_AGENT}
-                ) as response:
-                    response.raise_for_status()
-                    data = await response.json()
-
-            properties = data.get("properties", {})
-
-            # Extract and convert temperature (C to F)
+            # Temperature (C to F)
             temp_c = self._get_value(properties, "temperature", "value")
             self._attr_native_temperature = self._celsius_to_fahrenheit(temp_c)
 
-            # Extract humidity
+            # Humidity
             humidity = self._get_value(properties, "relativeHumidity", "value")
             self._attr_humidity = round(humidity) if humidity is not None else None
 
-            # Extract and convert pressure (Pa to inHg)
+            # Pressure (Pa to inHg)
             pressure_pa = self._get_value(properties, "barometricPressure", "value")
             if pressure_pa is not None:
                 self._attr_native_pressure = round(pressure_pa * 0.00029530, 2)
             else:
                 self._attr_native_pressure = None
 
-            # Extract condition from text description
+            # Condition
             text_description = properties.get("textDescription")
             timestamp = properties.get("timestamp")
             self._attr_condition = self._map_condition(text_description, timestamp)
 
-            # Extract and convert dewpoint (C to F)
+            # Dewpoint (C to F)
             dewpoint_c = self._get_value(properties, "dewpoint", "value")
             self._attr_native_dew_point = self._celsius_to_fahrenheit(dewpoint_c)
 
-            # Extract and convert visibility (m to mi)
+            # Visibility (m to mi)
             visibility_m = self._get_value(properties, "visibility", "value")
             if visibility_m is not None:
                 self._attr_native_visibility = round(visibility_m * 0.000621371, 1)
             else:
                 self._attr_native_visibility = None
 
-            # Extract and convert wind speed (km/h to mph)
+            # Wind speed (km/h to mph)
             wind_speed_kmh = self._get_value(properties, "windSpeed", "value")
             if wind_speed_kmh is not None:
                 self._attr_native_wind_speed = round(wind_speed_kmh * 0.621371, 1)
             else:
                 self._attr_native_wind_speed = None
 
-            # Extract wind direction
+            # Wind direction
             wind_dir = self._get_value(properties, "windDirection", "value")
             self._attr_wind_bearing = round(wind_dir) if wind_dir is not None else None
 
-            # Extract apparent temperature (wind chill or heat index)
-            # If neither is available, fall back to actual temperature
+            # Apparent temperature (wind chill or heat index, fallback to actual temp)
             wind_chill_c = self._get_value(properties, "windChill", "value")
             heat_index_c = self._get_value(properties, "heatIndex", "value")
-
             if wind_chill_c is not None:
                 self._attr_native_apparent_temperature = self._celsius_to_fahrenheit(wind_chill_c)
             elif heat_index_c is not None:
                 self._attr_native_apparent_temperature = self._celsius_to_fahrenheit(heat_index_c)
             else:
-                # Use actual temperature when no apparent temperature is calculated
                 self._attr_native_apparent_temperature = self._attr_native_temperature
 
-            # Cloud coverage is not directly available in observations API
-            # It would require gridpoint data which is more complex
             self._attr_cloud_coverage = None
 
-            _LOGGER.debug(
-                "Updated weather for %s: temp=%s°F, condition=%s",
-                self._office_code, self._attr_native_temperature, self._attr_condition
-            )
-
-        except asyncio.TimeoutError:
-            _LOGGER.error("Timeout fetching observation data for %s", self._office_code)
-        except aiohttp.ClientError as e:
-            _LOGGER.error("Error fetching observation data for %s: %s", self._office_code, e)
-        except Exception as e:
-            _LOGGER.error(
-                "Unexpected error fetching observation data for %s: %s",
-                self._office_code, e
-            )
-
-    async def _async_fetch_forecast_urls(self) -> None:
-        """Fetch forecast URLs from the points API."""
-        try:
-            points_url = NWS_POINTS_URL.format(lat=self._latitude, lon=self._longitude)
-            _LOGGER.debug("Fetching forecast URLs from %s", points_url)
-
-            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(
-                    points_url, headers={"User-Agent": USER_AGENT}
-                ) as response:
-                    response.raise_for_status()
-                    data = await response.json()
-
-            properties = data.get("properties", {})
-            self._forecast_url = properties.get("forecast")
-            self._hourly_forecast_url = properties.get("forecastHourly")
-
-            if self._forecast_url:
-                _LOGGER.info("Found forecast URL: %s", self._forecast_url)
-            if self._hourly_forecast_url:
-                _LOGGER.info("Found hourly forecast URL: %s", self._hourly_forecast_url)
-
-            self._forecast_urls_fetched = True
-
-        except asyncio.TimeoutError:
-            _LOGGER.error(
-                "Timeout fetching forecast URLs for lat=%s, lon=%s",
-                self._latitude, self._longitude
-            )
-            self._forecast_urls_fetched = True
-        except aiohttp.ClientError as e:
-            _LOGGER.error(
-                "Error fetching forecast URLs for lat=%s, lon=%s: %s",
-                self._latitude, self._longitude, e
-            )
-            self._forecast_urls_fetched = True
-        except Exception as e:
-            _LOGGER.error(
-                "Unexpected error fetching forecast URLs for lat=%s, lon=%s: %s",
-                self._latitude, self._longitude, e
-            )
-            self._forecast_urls_fetched = True
-
-    async def _async_fetch_precipitation_probability(self) -> None:
-        """Fetch current precipitation probability from hourly forecast."""
-        if not self._hourly_forecast_url:
-            _LOGGER.debug("No hourly forecast URL available for precipitation probability")
-            return
-
-        try:
-            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(
-                    self._hourly_forecast_url, headers={"User-Agent": USER_AGENT}
-                ) as response:
-                    response.raise_for_status()
-                    data = await response.json()
-
-            properties = data.get("properties", {})
-            periods = properties.get("periods", [])
-
-            if not periods:
-                _LOGGER.warning("No hourly forecast periods found for precipitation probability")
-                return
-
-            # Get the first period (current hour) and extract precipitation probability
-            current_period = periods[0]
-            self._precipitation_probability = self._extract_precipitation_probability(current_period)
-
-            _LOGGER.debug("Updated precipitation probability: %s%%", self._precipitation_probability)
-
-        except asyncio.TimeoutError:
-            _LOGGER.debug("Timeout fetching precipitation probability")
-        except aiohttp.ClientError as e:
-            _LOGGER.debug("Error fetching precipitation probability: %s", e)
-        except Exception as e:
-            _LOGGER.debug("Unexpected error fetching precipitation probability: %s", e)
+        super()._handle_coordinator_update()
 
     async def async_forecast_daily(self) -> list[Forecast] | None:
         """Return the daily forecast."""
-        if not self._forecast_url:
-            _LOGGER.warning("No forecast URL available for daily forecast")
+        if not self._forecast_coordinator or not self._forecast_coordinator.data:
+            return None
+
+        extended_data = self._forecast_coordinator.data.get("extended")
+        if not extended_data:
             return None
 
         try:
-            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(
-                    self._forecast_url, headers={"User-Agent": USER_AGENT}
-                ) as response:
-                    response.raise_for_status()
-                    data = await response.json()
-
-            properties = data.get("properties", {})
+            properties = extended_data.get("properties", {})
             periods = properties.get("periods", [])
 
             if not periods:
-                _LOGGER.warning("No forecast periods found")
                 return None
 
             # Convert NWS periods to Home Assistant forecast format
@@ -470,53 +242,58 @@ class NOAAWeather(WeatherEntity):
 
                         # Determine today's datetime string (set to 6 AM on tonight's calendar date)
                         if night_dt is not None:
-                            today_dt = night_dt.replace(hour=6, minute=0, second=0, microsecond=0)
+                            today_dt = night_dt.replace(
+                                hour=6, minute=0, second=0, microsecond=0
+                            )
                             today_datetime = today_dt.isoformat()
                         else:
                             today_datetime = night_period.get("startTime")
 
-                        # Only include a "today" forecast entry if tonight's calendar date matches
-                        # the current local date (i.e., we are still before midnight today).
-                        # After midnight the night period belongs to yesterday, so we skip it.
+                        # Only include a "today" forecast entry if tonight's calendar date
+                        # matches the current local date (i.e., we are still before midnight
+                        # today).  After midnight the night period belongs to yesterday.
                         is_tonight_today = (
                             night_dt is not None
                             and night_dt.date() == datetime.now(night_dt.tzinfo).date()
                         )
 
                         if saved_today_high is not None or is_tonight_today:
-                            # Use the saved daytime high when available; otherwise fall back to
-                            # the current observed temperature so the entry still appears today.
+                            # Use the saved daytime high when available; otherwise fall
+                            # back to the current observed temperature.
                             high_temp = (
                                 saved_today_high if saved_today_high is not None
                                 else self._attr_native_temperature
                             )
 
-                            # Don't call _adjust_forecast_date for today's forecast - we've already
-                            # set the correct date. Calling it could cause duplicate days after midnight.
                             forecast = Forecast(
                                 datetime=today_datetime,
                                 temperature=high_temp,
-                                templow=night_period.get("temperature"),  # Low temp from tonight
+                                templow=night_period.get("temperature"),
                                 condition=self._map_condition(
                                     night_period.get("shortForecast"),
                                     night_period.get("startTime")
                                 ),
-                                precipitation_probability=self._extract_precipitation_probability(night_period),
-                                wind_speed=self._parse_wind_speed(night_period.get("windSpeed")),
-                                wind_bearing=self._parse_wind_direction(night_period.get("windDirection")),
+                                precipitation_probability=(
+                                    self._extract_precipitation_probability(night_period)
+                                ),
+                                wind_speed=self._parse_wind_speed(
+                                    night_period.get("windSpeed")
+                                ),
+                                wind_bearing=self._parse_wind_direction(
+                                    night_period.get("windDirection")
+                                ),
                             )
                             forecasts.append(forecast)
                             _LOGGER.debug(
-                                "Created today forecast with high=%s, low=%s (queried in evening)",
+                                "Created today forecast with high=%s, low=%s "
+                                "(queried in evening)",
                                 high_temp, night_period.get("temperature")
                             )
                         else:
                             _LOGGER.debug(
-                                "Skipping today forecast - night period belongs to yesterday "
-                                "and no saved high temperature available"
+                                "Skipping today forecast - night period belongs to "
+                                "yesterday and no saved high temperature available"
                             )
-                        # Move to next period (tomorrow's day), which will be processed in next iteration
-                        # Next iteration will pair tomorrow's day with tomorrow's night (i+2)
                         i += 1
                         continue
                     else:
@@ -527,57 +304,54 @@ class NOAAWeather(WeatherEntity):
                 # Create forecast from day/night pair
                 if day_period:
                     forecast = Forecast(
-                        datetime=self._adjust_forecast_date(day_period.get("startTime")),
-                        temperature=day_period.get("temperature"),  # High temp from day
-                        templow=night_period.get("temperature") if night_period else None,  # Low temp from night
+                        datetime=self._adjust_forecast_date(
+                            day_period.get("startTime")
+                        ),
+                        temperature=day_period.get("temperature"),
+                        templow=(
+                            night_period.get("temperature") if night_period else None
+                        ),
                         condition=self._map_condition(
                             day_period.get("shortForecast"),
                             day_period.get("startTime")
                         ),
-                        precipitation_probability=self._extract_precipitation_probability(day_period),
-                        wind_speed=self._parse_wind_speed(day_period.get("windSpeed")),
-                        wind_bearing=self._parse_wind_direction(day_period.get("windDirection")),
+                        precipitation_probability=(
+                            self._extract_precipitation_probability(day_period)
+                        ),
+                        wind_speed=self._parse_wind_speed(
+                            day_period.get("windSpeed")
+                        ),
+                        wind_bearing=self._parse_wind_direction(
+                            day_period.get("windDirection")
+                        ),
                     )
                     forecasts.append(forecast)
 
             _LOGGER.debug("Retrieved %d daily forecast periods", len(forecasts))
             return forecasts
 
-        except asyncio.TimeoutError:
-            _LOGGER.error("Timeout fetching daily forecast")
-            return None
-        except aiohttp.ClientError as e:
-            _LOGGER.error("Error fetching daily forecast: %s", e)
-            return None
         except Exception as e:
-            _LOGGER.error("Unexpected error fetching daily forecast: %s", e)
+            _LOGGER.error("Error parsing daily forecast data: %s", e)
             return None
 
     async def async_forecast_hourly(self) -> list[Forecast] | None:
         """Return the hourly forecast."""
-        if not self._hourly_forecast_url:
-            _LOGGER.warning("No hourly forecast URL available")
+        if not self._forecast_coordinator or not self._forecast_coordinator.data:
+            return None
+
+        hourly_data = self._forecast_coordinator.data.get("hourly")
+        if not hourly_data:
             return None
 
         try:
-            timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(
-                    self._hourly_forecast_url, headers={"User-Agent": USER_AGENT}
-                ) as response:
-                    response.raise_for_status()
-                    data = await response.json()
-
-            properties = data.get("properties", {})
+            properties = hourly_data.get("properties", {})
             periods = properties.get("periods", [])
 
             if not periods:
-                _LOGGER.warning("No hourly forecast periods found")
                 return None
 
-            # Convert NWS hourly periods to Home Assistant forecast format
             forecasts = []
-            for period in periods[:48]:  # Limit to 48 hours
+            for period in periods[:48]:
                 forecast = Forecast(
                     datetime=period.get("startTime"),
                     temperature=period.get("temperature"),
@@ -585,23 +359,21 @@ class NOAAWeather(WeatherEntity):
                         period.get("shortForecast"),
                         period.get("startTime")
                     ),
-                    precipitation_probability=self._extract_precipitation_probability(period),
+                    precipitation_probability=(
+                        self._extract_precipitation_probability(period)
+                    ),
                     wind_speed=self._parse_wind_speed(period.get("windSpeed")),
-                    wind_bearing=self._parse_wind_direction(period.get("windDirection")),
+                    wind_bearing=self._parse_wind_direction(
+                        period.get("windDirection")
+                    ),
                 )
                 forecasts.append(forecast)
 
             _LOGGER.debug("Retrieved %d hourly forecast periods", len(forecasts))
             return forecasts
 
-        except asyncio.TimeoutError:
-            _LOGGER.error("Timeout fetching hourly forecast")
-            return None
-        except aiohttp.ClientError as e:
-            _LOGGER.error("Error fetching hourly forecast: %s", e)
-            return None
         except Exception as e:
-            _LOGGER.error("Unexpected error fetching hourly forecast: %s", e)
+            _LOGGER.error("Error parsing hourly forecast data: %s", e)
             return None
 
     @staticmethod
