@@ -176,7 +176,7 @@ class AuroraNextTimeSensor(CoordinatorEntity):
     @property
     def name(self):
         """Return the name of the sensor."""
-        return 'NOAA Space - Aurora Next Time'
+        return f'NOAA {self._office_code} Aurora Next Time'
 
     def _compute_aurora_timing(self):
         """Compute aurora timing state and attributes from coordinator data."""
@@ -234,7 +234,7 @@ class AuroraNextTimeSensor(CoordinatorEntity):
     @property
     def unique_id(self):
         """Return a unique ID for this entity."""
-        return f"aurora_next_time_{self._office_code}"
+        return f"noaa_{self._office_code}_aurora_next_time"
 
     @property
     def icon(self):
@@ -262,7 +262,7 @@ class AuroraDurationSensor(CoordinatorEntity):
     @property
     def name(self):
         """Return the name of the sensor."""
-        return 'NOAA Space - Aurora Duration'
+        return f'NOAA {self._office_code} Aurora Duration'
 
     def _get_kp_and_lat(self):
         """Extract current Kp index and office magnetic latitude from coordinator data."""
@@ -298,7 +298,7 @@ class AuroraDurationSensor(CoordinatorEntity):
     @property
     def unique_id(self):
         """Return a unique ID for this entity."""
-        return f"aurora_duration_{self._office_code}"
+        return f"noaa_{self._office_code}_aurora_duration"
 
     @property
     def icon(self):
@@ -331,7 +331,7 @@ class AuroraVisibilityProbabilitySensor(CoordinatorEntity):
     @property
     def name(self):
         """Return the name of the sensor."""
-        return 'NOAA Space - Aurora Visibility Probability'
+        return f'NOAA {self._office_code} Aurora Visibility Probability'
 
     def _get_kp_and_lat(self):
         """Extract current Kp index and office magnetic latitude from coordinator data."""
@@ -373,7 +373,7 @@ class AuroraVisibilityProbabilitySensor(CoordinatorEntity):
     @property
     def unique_id(self):
         """Return a unique ID for this entity."""
-        return f"aurora_visibility_probability_{self._office_code}"
+        return f"noaa_{self._office_code}_aurora_visibility_probability"
 
     @property
     def icon(self):
@@ -406,7 +406,7 @@ class SolarRadiationStormAlertsSensor(CoordinatorEntity):
     @property
     def name(self):
         """Return the name of the sensor."""
-        return 'NOAA Space - Solar Radiation Storm Alerts'
+        return f'NOAA {self._office_code} Solar Radiation Storm Alerts'
 
     def _get_solar_radiation_alerts(self):
         """Filter and parse solar radiation alerts from coordinator data."""
@@ -458,7 +458,7 @@ class SolarRadiationStormAlertsSensor(CoordinatorEntity):
     @property
     def unique_id(self):
         """Return a unique ID for this entity."""
-        return f"solar_radiation_storm_alerts_{self._office_code}"
+        return f"noaa_{self._office_code}_solar_radiation_storm_alerts"
 
     @property
     def icon(self):

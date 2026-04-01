@@ -24,7 +24,7 @@ class NWSAlertsSensor(CoordinatorEntity):
     @property
     def name(self):
         """Return the name of the sensor."""
-        return 'NOAA Weather - Active NWS Alerts'
+        return f'NOAA {self._office_code} Active NWS Alerts'
 
     @property
     def state(self):

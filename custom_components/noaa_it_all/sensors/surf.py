@@ -27,7 +27,7 @@ class RipCurrentRiskSensor(CoordinatorEntity):
         self._state = None
         self._attributes = {}
         self._attr_unique_id = f"noaa_{office_code}_rip_current_risk"
-        self._attr_name = "NOAA Surf - Rip Current Risk"
+        self._attr_name = f"NOAA {office_code} Rip Current Risk"
 
     @property
     def state(self):
@@ -73,7 +73,7 @@ class SurfHeightSensor(CoordinatorEntity):
         self._state = None
         self._attributes = {}
         self._attr_unique_id = f"noaa_{office_code}_surf_height"
-        self._attr_name = "NOAA Surf - Surf Height"
+        self._attr_name = f"NOAA {office_code} Surf Height"
 
     @property
     def state(self):
@@ -132,7 +132,7 @@ class WaterTemperatureSensor(CoordinatorEntity):
         self._state = None
         self._attributes = {}
         self._attr_unique_id = f"noaa_{office_code}_water_temperature"
-        self._attr_name = "NOAA Surf - Water Temperature"
+        self._attr_name = f"NOAA {office_code} Water Temperature"
 
     @property
     def state(self):

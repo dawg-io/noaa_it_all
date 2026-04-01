@@ -81,7 +81,7 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
     @property
     def name(self) -> str:
         """Return the name of the entity."""
-        return f"NOAA Weather - {self._office_code}"
+        return f"NOAA {self._office_code} Weather"
 
     @property
     def unique_id(self) -> str:

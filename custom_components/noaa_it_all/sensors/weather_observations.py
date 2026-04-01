@@ -41,7 +41,7 @@ class WeatherObservationSensor(CoordinatorEntity):
     @property
     def name(self):
         """Return the name of the sensor."""
-        return f'NOAA Weather - {self._sensor_name}'
+        return f'NOAA {self._office_code} {self._sensor_name}'
 
     @property
     def state(self):

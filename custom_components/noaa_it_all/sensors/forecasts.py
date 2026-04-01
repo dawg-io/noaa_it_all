@@ -59,7 +59,7 @@ class ExtendedForecastSensor(ForecastBaseSensor):
     @property
     def name(self):
         """Return the name of the sensor."""
-        return 'NOAA Weather - Extended Forecast'
+        return f'NOAA {self._office_code} Extended Forecast'
 
     @property
     def state(self):
@@ -115,7 +115,7 @@ class HourlyForecastSensor(ForecastBaseSensor):
     @property
     def name(self):
         """Return the name of the sensor."""
-        return 'NOAA Weather - Hourly Forecast'
+        return f'NOAA {self._office_code} Hourly Forecast'
 
     @property
     def state(self):
