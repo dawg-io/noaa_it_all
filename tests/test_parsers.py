@@ -25,6 +25,8 @@ from parsers import (
     parse_rip_current_risk,
     parse_surf_height,
     parse_water_temperature,
+    parse_coops_water_temperature,
+    parse_ndbc_wave_height,
     parse_nws_alert_features,
     format_forecast_text,
     format_forecast_periods,
@@ -306,6 +308,87 @@ class TestSurfParsing(unittest.TestCase):
 
     def test_water_temp_none(self):
         self.assertIsNone(parse_water_temperature("no temperature data"))
+
+
+# ---------------------------------------------------------------
+# CO-OPS / NDBC API parsing tests
+# ---------------------------------------------------------------
+
+class TestCoopsWaterTemperature(unittest.TestCase):
+    """Tests for CO-OPS water temperature JSON parsing."""
+
+    def test_valid_response(self):
+        data = {
+            "metadata": {"id": "8658163", "name": "Wrightsville Beach"},
+            "data": [{"t": "2026-03-30 23:06", "v": "60.6", "f": "0,0,0"}],
+        }
+        self.assertEqual(parse_coops_water_temperature(data), 60.6)
+
+    def test_multiple_records_uses_latest(self):
+        data = {
+            "data": [
+                {"t": "2026-03-30 22:00", "v": "59.0", "f": "0,0,0"},
+                {"t": "2026-03-30 23:00", "v": "61.2", "f": "0,0,0"},
+            ],
+        }
+        self.assertEqual(parse_coops_water_temperature(data), 61.2)
+
+    def test_empty_data_list(self):
+        self.assertIsNone(parse_coops_water_temperature({"data": []}))
+
+    def test_missing_data_key(self):
+        self.assertIsNone(parse_coops_water_temperature({"error": "bad"}))
+
+    def test_missing_value(self):
+        data = {"data": [{"t": "2026-03-30 23:06", "v": "", "f": "0,0,0"}]}
+        self.assertIsNone(parse_coops_water_temperature(data))
+
+    def test_empty_dict_input(self):
+        self.assertIsNone(parse_coops_water_temperature({}))
+
+
+class TestNdbcWaveHeight(unittest.TestCase):
+    """Tests for NDBC real-time wave height text parsing."""
+
+    SAMPLE_TEXT = (
+        "#YY  MM DD hh mm WDIR WSPD GST  WVHT   DPD   APD MWD   "
+        "PRES  ATMP  WTMP  DEWP  VIS PTDY  TIDE\n"
+        "#yr  mo dy hr mn degT m/s  m/s     m   sec   sec degT   "
+        "hPa  degC  degC  degC  nmi  hPa    ft\n"
+        "2026 03 31 02 30  MM   MM   MM   1.1     6   4.8 127     "
+        "MM  16.8  15.7    MM   MM   MM    MM\n"
+    )
+
+    def test_valid_data(self):
+        result = parse_ndbc_wave_height(self.SAMPLE_TEXT)
+        self.assertIsNotNone(result)
+        self.assertAlmostEqual(result, 3.6, places=1)
+
+    def test_missing_wvht(self):
+        text = (
+            "#YY  MM DD hh mm WDIR WSPD GST  WVHT   DPD   APD MWD\n"
+            "#yr  mo dy hr mn degT m/s  m/s     m   sec   sec degT\n"
+            "2026 03 31 02 30  MM   MM   MM    MM     6   4.8 127\n"
+        )
+        self.assertIsNone(parse_ndbc_wave_height(text))
+
+    def test_empty_text(self):
+        self.assertIsNone(parse_ndbc_wave_height(""))
+
+    def test_only_headers(self):
+        text = "#YY  MM DD hh mm WVHT\n#yr  mo dy hr mn    m\n"
+        self.assertIsNone(parse_ndbc_wave_height(text))
+
+    def test_multiple_lines_first_missing_wvht(self):
+        text = (
+            "#YY  MM DD hh mm WDIR WSPD GST  WVHT   DPD   APD MWD\n"
+            "#yr  mo dy hr mn degT m/s  m/s     m   sec   sec degT\n"
+            "2026 03 31 02 30  MM   MM   MM    MM     6   4.8 127\n"
+            "2026 03 31 02 00  90   10   12   1.0     7   5.0 090\n"
+        )
+        result = parse_ndbc_wave_height(text)
+        self.assertIsNotNone(result)
+        self.assertAlmostEqual(result, 3.3, places=1)
 
 
 # ---------------------------------------------------------------

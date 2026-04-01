@@ -31,16 +31,13 @@ GOES_GEOCOLOR_URL = 'https://cdn.star.nesdis.noaa.gov/GOES19/ABI/CONUS/GEOCOLOR/
 
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
-    """Set up the Geoelectric Field Image entity."""
-    geoelectric_image_entity = GeoelectricFieldImageEntity(hass)
-    aurora_image_entity = AuroraForecastImageEntity(hass)
-    hurricane_outlook_image = HurricaneOutlookImageEntity(hass)
-    goes_airmass_image = GOESAirMassImageEntity(hass)
-    goes_geocolor_image = GOESGeoColorImageEntity(hass)
-
-    # Add all image entities
-    add_entities([geoelectric_image_entity, aurora_image_entity, hurricane_outlook_image,
-                  goes_airmass_image, goes_geocolor_image])
+    """Set up the Geoelectric Field Image entity (legacy YAML support)."""
+    _LOGGER.error(
+        "Legacy YAML configuration for NOAA images is no longer supported. "
+        "Please remove the YAML configuration and re-add the integration "
+        "via the Home Assistant UI config flow."
+    )
+    return
 
 
 async def async_setup_entry(
@@ -51,12 +48,12 @@ async def async_setup_entry(
     """Set up NOAA image entities from config entry."""
     office_code = config_entry.data[CONF_OFFICE_CODE]
 
-    # Global image entities (not location-specific)
-    geoelectric_image_entity = GeoelectricFieldImageEntity(hass)
-    aurora_image_entity = AuroraForecastImageEntity(hass)
-    hurricane_outlook_image = HurricaneOutlookImageEntity(hass)
-    goes_airmass_image = GOESAirMassImageEntity(hass)
-    goes_geocolor_image = GOESGeoColorImageEntity(hass)
+    # Global image entities (grouped under office device)
+    geoelectric_image_entity = GeoelectricFieldImageEntity(hass, office_code)
+    aurora_image_entity = AuroraForecastImageEntity(hass, office_code)
+    hurricane_outlook_image = HurricaneOutlookImageEntity(hass, office_code)
+    goes_airmass_image = GOESAirMassImageEntity(hass, office_code)
+    goes_geocolor_image = GOESGeoColorImageEntity(hass, office_code)
 
     # Location-specific radar image entities
     radar_site = OFFICE_RADAR_SITES.get(office_code)
@@ -84,10 +81,11 @@ async def async_setup_entry(
 class GeoelectricFieldImageEntity(ImageEntity):
     """Representation of the Geoelectric Field Image."""
 
-    def __init__(self, hass):
+    def __init__(self, hass, office_code):
         """Initialize the image entity."""
         super().__init__(hass)
         self.hass = hass
+        self._office_code = office_code
         self._image_url = self.get_cache_busted_url()
 
     @property
@@ -103,14 +101,14 @@ class GeoelectricFieldImageEntity(ImageEntity):
     @property
     def unique_id(self):
         """Return a unique ID for this entity."""
-        return 'noaa_geoelectric_image'
+        return f'noaa_{self._office_code}_geoelectric_image'
 
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information."""
         return DeviceInfo(
-            identifiers={(DOMAIN, "noaa_space")},
-            name="NOAA Space",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}_space")},
+            name=f"NOAA {self._office_code} Space",
             manufacturer="NOAA"
         )
 
@@ -157,10 +155,11 @@ class GeoelectricFieldImageEntity(ImageEntity):
 class AuroraForecastImageEntity(ImageEntity):
     """Representation of the aurora Field Image."""
 
-    def __init__(self, hass):
+    def __init__(self, hass, office_code):
         """Initialize the image entity."""
         super().__init__(hass)
         self.hass = hass
+        self._office_code = office_code
         self._image_url = self.get_cache_busted_url()
 
     @property
@@ -176,14 +175,14 @@ class AuroraForecastImageEntity(ImageEntity):
     @property
     def unique_id(self):
         """Return a unique ID for this entity."""
-        return 'noaa_aurora_image'
+        return f'noaa_{self._office_code}_aurora_image'
 
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information."""
         return DeviceInfo(
-            identifiers={(DOMAIN, "noaa_space")},
-            name="NOAA Space",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}_space")},
+            name=f"NOAA {self._office_code} Space",
             manufacturer="NOAA"
         )
 
@@ -230,10 +229,11 @@ class AuroraForecastImageEntity(ImageEntity):
 class HurricaneOutlookImageEntity(ImageEntity):
     """Representation of the Hurricane Outlook Image."""
 
-    def __init__(self, hass):
+    def __init__(self, hass, office_code):
         """Initialize the image entity."""
         super().__init__(hass)
         self.hass = hass
+        self._office_code = office_code
         self._image_url = self.get_cache_busted_url()
 
     @property
@@ -249,14 +249,14 @@ class HurricaneOutlookImageEntity(ImageEntity):
     @property
     def unique_id(self):
         """Return a unique ID for this entity."""
-        return 'noaa_hurricane_outlook_image'
+        return f'noaa_{self._office_code}_hurricane_outlook_image'
 
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information."""
         return DeviceInfo(
-            identifiers={(DOMAIN, "noaa_weather")},
-            name="NOAA Weather",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}_weather")},
+            name=f"NOAA {self._office_code} Weather",
             manufacturer="NOAA"
         )
 
@@ -328,8 +328,8 @@ class RadarBaseReflectivityImageEntity(ImageEntity):
     def device_info(self) -> DeviceInfo:
         """Return device information."""
         return DeviceInfo(
-            identifiers={(DOMAIN, "noaa_weather")},
-            name="NOAA Weather",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}_weather")},
+            name=f"NOAA {self._office_code} Weather",
             manufacturer="NOAA"
         )
 
@@ -408,8 +408,8 @@ class RadarLoopImageEntity(ImageEntity):
     def device_info(self) -> DeviceInfo:
         """Return device information."""
         return DeviceInfo(
-            identifiers={(DOMAIN, "noaa_weather")},
-            name="NOAA Weather",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}_weather")},
+            name=f"NOAA {self._office_code} Weather",
             manufacturer="NOAA"
         )
 
@@ -462,10 +462,11 @@ class RadarLoopImageEntity(ImageEntity):
 class GOESAirMassImageEntity(ImageEntity):
     """Representation of the GOES-19 Air Mass RGB Satellite Image."""
 
-    def __init__(self, hass):
+    def __init__(self, hass, office_code):
         """Initialize the image entity."""
         super().__init__(hass)
         self.hass = hass
+        self._office_code = office_code
         self._image_url = self.get_cache_busted_url()
 
     @property
@@ -481,14 +482,14 @@ class GOESAirMassImageEntity(ImageEntity):
     @property
     def unique_id(self):
         """Return a unique ID for this entity."""
-        return 'noaa_goes_airmass_image'
+        return f'noaa_{self._office_code}_goes_airmass_image'
 
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information."""
         return DeviceInfo(
-            identifiers={(DOMAIN, "noaa_weather")},
-            name="NOAA Weather",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}_weather")},
+            name=f"NOAA {self._office_code} Weather",
             manufacturer="NOAA"
         )
 
@@ -535,10 +536,11 @@ class GOESAirMassImageEntity(ImageEntity):
 class GOESGeoColorImageEntity(ImageEntity):
     """Representation of the GOES-19 GeoColor Satellite Image."""
 
-    def __init__(self, hass):
+    def __init__(self, hass, office_code):
         """Initialize the image entity."""
         super().__init__(hass)
         self.hass = hass
+        self._office_code = office_code
         self._image_url = self.get_cache_busted_url()
 
     @property
@@ -554,14 +556,14 @@ class GOESGeoColorImageEntity(ImageEntity):
     @property
     def unique_id(self):
         """Return a unique ID for this entity."""
-        return 'noaa_goes_geocolor_image'
+        return f'noaa_{self._office_code}_goes_geocolor_image'
 
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information."""
         return DeviceInfo(
-            identifiers={(DOMAIN, "noaa_weather")},
-            name="NOAA Weather",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}_weather")},
+            name=f"NOAA {self._office_code} Weather",
             manufacturer="NOAA"
         )
 

@@ -41,7 +41,7 @@ class WeatherObservationSensor(CoordinatorEntity):
     @property
     def name(self):
         """Return the name of the sensor."""
-        return f'NOAA Weather - {self._sensor_name}'
+        return f'NOAA {self._office_code} {self._sensor_name}'
 
     @property
     def state(self):
@@ -96,8 +96,8 @@ class WeatherObservationSensor(CoordinatorEntity):
     def device_info(self) -> DeviceInfo:
         """Return device information to group this entity."""
         return DeviceInfo(
-            identifiers={(DOMAIN, "noaa_weather")},
-            name="NOAA Weather",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}_weather")},
+            name=f"NOAA {self._office_code} Weather",
             manufacturer="NOAA"
         )
 

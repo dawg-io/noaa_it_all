@@ -13,9 +13,10 @@ _LOGGER = logging.getLogger(__name__)
 class HurricaneAlertsSensor(CoordinatorEntity):
     """Representation of Hurricane Alerts sensor."""
 
-    def __init__(self, coordinator):
+    def __init__(self, coordinator, office_code):
         """Initialize the hurricane alerts sensor."""
         super().__init__(coordinator)
+        self._office_code = office_code
         self._state = None
         self._attributes = {}
 
@@ -56,14 +57,14 @@ class HurricaneAlertsSensor(CoordinatorEntity):
     @property
     def unique_id(self):
         """Return a unique ID for this entity."""
-        return 'noaa_hurricane_alerts'
+        return f'noaa_{self._office_code}_hurricane_alerts'
 
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information to group this entity."""
         return DeviceInfo(
-            identifiers={(DOMAIN, "noaa_weather")},
-            name="NOAA Weather",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}_weather")},
+            name=f"NOAA {self._office_code} Weather",
             manufacturer="NOAA"
         )
 
@@ -71,9 +72,10 @@ class HurricaneAlertsSensor(CoordinatorEntity):
 class HurricaneActivitySensor(CoordinatorEntity):
     """Representation of Hurricane Activity sensor for general hurricane status."""
 
-    def __init__(self, coordinator):
+    def __init__(self, coordinator, office_code):
         """Initialize the hurricane activity sensor."""
         super().__init__(coordinator)
+        self._office_code = office_code
         self._state = None
         self._attributes = {}
 
@@ -109,13 +111,13 @@ class HurricaneActivitySensor(CoordinatorEntity):
     @property
     def unique_id(self):
         """Return a unique ID for this entity."""
-        return 'noaa_hurricane_activity'
+        return f'noaa_{self._office_code}_hurricane_activity'
 
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information to group this entity."""
         return DeviceInfo(
-            identifiers={(DOMAIN, "noaa_weather")},
-            name="NOAA Weather",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}_weather")},
+            name=f"NOAA {self._office_code} Weather",
             manufacturer="NOAA"
         )

@@ -29,7 +29,7 @@ class CloudCoverSensor(CoordinatorEntity):
     @property
     def name(self):
         """Return the name of the sensor."""
-        return 'NOAA Weather - Cloud Cover'
+        return f'NOAA {self._office_code} Cloud Cover'
 
     @property
     def state(self):
@@ -90,8 +90,8 @@ class CloudCoverSensor(CoordinatorEntity):
     def device_info(self) -> DeviceInfo:
         """Return device information to group this entity."""
         return DeviceInfo(
-            identifiers={(DOMAIN, "noaa_weather")},
-            name="NOAA Weather",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}_weather")},
+            name=f"NOAA {self._office_code} Weather",
             manufacturer="NOAA"
         )
 
@@ -109,7 +109,7 @@ class RadarTimestampSensor(CoordinatorEntity):
     @property
     def name(self):
         """Return the name of the sensor."""
-        return 'NOAA Weather - Radar Timestamp'
+        return f'NOAA {self._office_code} Radar Timestamp'
 
     @property
     def state(self):
@@ -157,8 +157,8 @@ class RadarTimestampSensor(CoordinatorEntity):
     def device_info(self) -> DeviceInfo:
         """Return device information to group this entity."""
         return DeviceInfo(
-            identifiers={(DOMAIN, "noaa_weather")},
-            name="NOAA Weather",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}_weather")},
+            name=f"NOAA {self._office_code} Weather",
             manufacturer="NOAA"
         )
 
@@ -176,7 +176,7 @@ class ForecastDiscussionSensor(CoordinatorEntity):
     @property
     def name(self):
         """Return the name of the sensor."""
-        return 'NOAA Weather - Forecast Discussion'
+        return f'NOAA {self._office_code} Forecast Discussion'
 
     @property
     def state(self):
@@ -227,7 +227,7 @@ class ForecastDiscussionSensor(CoordinatorEntity):
     def device_info(self) -> DeviceInfo:
         """Return device information to group this entity."""
         return DeviceInfo(
-            identifiers={(DOMAIN, "noaa_weather")},
-            name="NOAA Weather",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}_weather")},
+            name=f"NOAA {self._office_code} Weather",
             manufacturer="NOAA"
         )

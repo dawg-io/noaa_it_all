@@ -81,7 +81,7 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
     @property
     def name(self) -> str:
         """Return the name of the entity."""
-        return f"NOAA Weather - {self._office_code}"
+        return f"NOAA {self._office_code} Weather"
 
     @property
     def unique_id(self) -> str:
@@ -94,8 +94,8 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
     def device_info(self) -> DeviceInfo:
         """Return device information to group this entity."""
         return DeviceInfo(
-            identifiers={(DOMAIN, "noaa_weather")},
-            name="NOAA Weather",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}_weather")},
+            name=f"NOAA {self._office_code} Weather",
             manufacturer="NOAA",
         )
 

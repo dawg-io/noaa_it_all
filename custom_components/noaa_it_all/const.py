@@ -24,6 +24,16 @@ NWS_ALERTS_ZONE_URL = "https://api.weather.gov/alerts/active?zone={zone}"
 NWS_GRIDPOINT_URL = "https://api.weather.gov/gridpoints/{office}/{gridX},{gridY}"
 NWS_AFD_URL = "https://forecast.weather.gov/product.php?site={office}&issuedby={office}&product=AFD&format=TXT"
 
+# NOAA CO-OPS API for water temperature (Tides and Currents)
+COOPS_WATER_TEMP_URL = (
+    "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter"
+    "?station={station}&product=water_temperature&units=english"
+    "&time_zone=lst_ldt&format=json&date=latest&application=HomeAssistant"
+)
+
+# NDBC real-time buoy data for wave height
+NDBC_REALTIME_URL = "https://www.ndbc.noaa.gov/data/realtime2/{station}.txt"
+
 # NWS office to observation station mapping
 # Each office uses the primary weather observation station in their area
 OFFICE_STATION_IDS = {
@@ -63,6 +73,68 @@ OFFICE_STATION_IDS = {
     "SJU": "TJSJ",  # Luis Muñoz Marín International Airport
     "TAE": "KTLH",  # Tallahassee International Airport
     "TBW": "KTPA",  # Tampa International Airport
+}
+
+# NWS office to CO-OPS tide station mapping (water temperature)
+# Station IDs from https://tidesandcurrents.noaa.gov
+OFFICE_TIDE_STATIONS = {
+    "AKQ": "8638610",   # Sewells Point, VA
+    "BOX": "8443970",   # Boston, MA
+    "BRO": "8779770",   # Port Isabel, TX
+    "CAR": "8413320",   # Bar Harbor, ME
+    "CHS": "8665530",   # Charleston, SC
+    "CLE": "9063063",   # Cleveland, OH
+    "CRP": "8775870",   # Bob Hall Pier, TX
+    "DLH": "9099064",   # Duluth, MN
+    "EKA": "9418767",   # North Spit, CA
+    "GRB": "9087068",   # Sturgeon Bay, WI
+    "GUM": "1630000",   # Apra Harbor, Guam
+    "GYX": "8418150",   # Portland, ME
+    "HFO": "1612340",   # Honolulu, HI
+    "ILM": "8658163",   # Wrightsville Beach, NC
+    "JAX": "8720218",   # Mayport, FL
+    "LOX": "9410660",   # Los Angeles, CA
+    "MFL": "8723214",   # Virginia Key, FL
+    "MHX": "8656483",   # Beaufort, NC
+    "MKX": "9087044",   # Milwaukee, WI
+    "MLB": "8721604",   # Trident Pier, FL
+    "MOB": "8737048",   # Mobile State Docks, AL
+    "MQT": "9099018",   # Marquette, MI
+    "MTR": "9414290",   # San Francisco, CA
+    "OKX": "8518750",   # The Battery, NY
+    "PHI": "8545240",   # Philadelphia, PA
+    "PQR": "9439040",   # Astoria, OR
+    "SGX": "9410170",   # San Diego, CA
+    "SJU": "9755371",   # San Juan, PR
+    "TAE": "8728690",   # Apalachicola, FL
+    "TBW": "8726520",   # St. Petersburg, FL
+}
+
+# NWS office to NDBC buoy station mapping (wave height)
+# Station IDs from https://www.ndbc.noaa.gov
+OFFICE_BUOY_STATIONS = {
+    "AKQ": "44014",   # Virginia Beach, VA
+    "BOX": "44013",   # Boston 16 NM east of Boston, MA
+    "BRO": "42020",   # Corpus Christi area
+    "CHS": "41004",   # EDISTO - 41 NM southeast of Charleston, SC
+    "CRP": "42020",   # Corpus Christi, TX
+    "EKA": "46022",   # Eel River, CA
+    "GYX": "44007",   # Portland, ME
+    "HFO": "51202",   # Waimea Bay, HI
+    "ILM": "41110",   # Wrightsville Beach Nearshore, NC
+    "JAX": "41112",   # St. Augustine, FL
+    "LOX": "46222",   # San Pedro, CA
+    "MFL": "41047",   # Canaveral East, FL
+    "MHX": "41159",   # Cape Lookout Nearshore, NC
+    "MLB": "41113",   # Cape Canaveral Nearshore, FL
+    "MOB": "42040",   # Mobile South, AL
+    "MTR": "46026",   # San Francisco, CA
+    "OKX": "44025",   # Long Island, NY
+    "PQR": "46029",   # Columbia River Bar, OR
+    "SGX": "46235",   # Point Loma South, CA
+    "SJU": "41053",   # San Juan, PR
+    "TAE": "42039",   # Pensacola, FL
+    "TBW": "42036",   # West Tampa, FL
 }
 
 # NWS office to radar site mapping

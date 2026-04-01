@@ -42,8 +42,8 @@ class ForecastBaseSensor(CoordinatorEntity):
     def device_info(self) -> DeviceInfo:
         """Return device information to group this entity."""
         return DeviceInfo(
-            identifiers={(DOMAIN, "noaa_weather")},
-            name="NOAA Weather",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}_weather")},
+            name=f"NOAA {self._office_code} Weather",
             manufacturer="NOAA"
         )
 
@@ -59,7 +59,7 @@ class ExtendedForecastSensor(ForecastBaseSensor):
     @property
     def name(self):
         """Return the name of the sensor."""
-        return 'NOAA Weather - Extended Forecast'
+        return f'NOAA {self._office_code} Extended Forecast'
 
     @property
     def state(self):
@@ -115,7 +115,7 @@ class HourlyForecastSensor(ForecastBaseSensor):
     @property
     def name(self):
         """Return the name of the sensor."""
-        return 'NOAA Weather - Hourly Forecast'
+        return f'NOAA {self._office_code} Hourly Forecast'
 
     @property
     def state(self):

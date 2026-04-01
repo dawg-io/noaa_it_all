@@ -8,7 +8,7 @@ from homeassistant.helpers import discovery
 
 from .const import (
     DOMAIN, CONF_OFFICE_CODE, CONF_LATITUDE, CONF_LONGITUDE,
-    OFFICE_RADAR_SITES,
+    OFFICE_RADAR_SITES, OFFICE_TIDE_STATIONS, OFFICE_BUOY_STATIONS,
 )
 from .coordinator import (
     SpaceWeatherCoordinator,
@@ -57,7 +57,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     hurricane_coord = HurricaneCoordinator(hass)
 
     # Office-specific coordinators
-    surf_coord = SurfCoordinator(hass, office_code)
+    tide_station = OFFICE_TIDE_STATIONS.get(office_code)
+    buoy_station = OFFICE_BUOY_STATIONS.get(office_code)
+    surf_coord = SurfCoordinator(hass, office_code, tide_station, buoy_station)
     discussion_coord = ForecastDiscussionCoordinator(hass, office_code)
 
     radar_site = OFFICE_RADAR_SITES.get(office_code)

@@ -22,8 +22,10 @@ from .const import (
     REQUEST_TIMEOUT, USER_AGENT,
     NWS_POINTS_URL, NWS_OBSERVATIONS_URL, NWS_ALERTS_URL,
     NWS_SRF_URL, NWS_AFD_URL, NWS_RADAR_BASE_URL,
+    COOPS_WATER_TEMP_URL, NDBC_REALTIME_URL,
     OFFICE_STATION_IDS,
 )
+from .parsers import parse_coops_water_temperature, parse_ndbc_wave_height
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -303,9 +305,15 @@ class ObservationsCoordinator(DataUpdateCoordinator):
 # -------------------------------------------------------------------
 
 class SurfCoordinator(DataUpdateCoordinator):
-    """Fetch SRF (Surf Zone Forecast) text for a specific NWS office."""
+    """Fetch SRF text, CO-OPS water temperature and NDBC wave height."""
 
-    def __init__(self, hass: HomeAssistant, office_code: str) -> None:
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        office_code: str,
+        tide_station: str | None = None,
+        buoy_station: str | None = None,
+    ) -> None:
         super().__init__(
             hass,
             _LOGGER,
@@ -313,25 +321,75 @@ class SurfCoordinator(DataUpdateCoordinator):
             update_interval=DEFAULT_UPDATE_INTERVAL,
         )
         self.office_code = office_code
+        self.tide_station = tide_station
+        self.buoy_station = buoy_station
 
     async def _async_update_data(self) -> dict:
         session = async_get_clientsession(self.hass)
         timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-        url = NWS_SRF_URL.format(office=self.office_code)
 
+        result: dict = {}
+
+        # 1. SRF text (rip current risk)
+        srf_url = NWS_SRF_URL.format(office=self.office_code)
         try:
             async with session.get(
-                url,
+                srf_url,
                 headers={"User-Agent": USER_AGENT},
                 timeout=timeout,
             ) as resp:
                 resp.raise_for_status()
-                text = (await resp.text()).lower()
-            return {"forecast_text": text, "source_url": url}
+                result["forecast_text"] = (await resp.text()).lower()
+                result["source_url"] = srf_url
         except Exception as err:
-            raise UpdateFailed(
-                f"Error fetching surf forecast: {err}"
-            ) from err
+            _LOGGER.warning("Error fetching SRF forecast: %s", err)
+            result["forecast_text"] = ""
+            result["source_url"] = srf_url
+
+        # 2. CO-OPS water temperature
+        if self.tide_station:
+            coops_url = COOPS_WATER_TEMP_URL.format(station=self.tide_station)
+            try:
+                async with session.get(
+                    coops_url,
+                    headers={"User-Agent": USER_AGENT},
+                    timeout=timeout,
+                ) as resp:
+                    resp.raise_for_status()
+                    data = await resp.json(content_type=None)
+                temp = parse_coops_water_temperature(data)
+                if temp is not None:
+                    result["water_temp_f"] = temp
+                    result["water_temp_source"] = coops_url
+            except Exception as err:
+                _LOGGER.warning("Error fetching CO-OPS water temp: %s", err)
+
+        # 3. NDBC wave height
+        if self.buoy_station:
+            ndbc_url = NDBC_REALTIME_URL.format(station=self.buoy_station)
+            try:
+                async with session.get(
+                    ndbc_url,
+                    headers={"User-Agent": USER_AGENT},
+                    timeout=timeout,
+                ) as resp:
+                    resp.raise_for_status()
+                    text = await resp.text()
+                height = parse_ndbc_wave_height(text)
+                if height is not None:
+                    result["wave_height_ft"] = height
+                    result["wave_height_source"] = ndbc_url
+            except Exception as err:
+                _LOGGER.warning("Error fetching NDBC wave height: %s", err)
+
+        if (
+            not result.get("forecast_text")
+            and "water_temp_f" not in result
+            and "wave_height_ft" not in result
+        ):
+            _LOGGER.debug("All surf data sources returned no usable data")
+
+        return result
 
 
 # -------------------------------------------------------------------
