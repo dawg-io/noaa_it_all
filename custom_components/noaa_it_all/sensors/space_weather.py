@@ -60,8 +60,8 @@ class GeomagneticSensor(CoordinatorEntity):
     def device_info(self) -> DeviceInfo:
         """Return device information to group this entity."""
         return DeviceInfo(
-            identifiers={(DOMAIN, f"noaa_{self._office_code}")},
-            name=f"NOAA {self._office_code}",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}_space")},
+            name=f"NOAA {self._office_code} Space",
             manufacturer="NOAA"
         )
 
@@ -95,8 +95,8 @@ class GeomagneticSensorInterpretation(CoordinatorEntity):
     def device_info(self) -> DeviceInfo:
         """Return device information to group this entity."""
         return DeviceInfo(
-            identifiers={(DOMAIN, f"noaa_{self._office_code}")},
-            name=f"NOAA {self._office_code}",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}_space")},
+            name=f"NOAA {self._office_code} Space",
             manufacturer="NOAA"
         )
 
@@ -128,8 +128,8 @@ class PlanetaryKIndexSensor(CoordinatorEntity):
     def device_info(self) -> DeviceInfo:
         """Return device information to group this entity."""
         return DeviceInfo(
-            identifiers={(DOMAIN, f"noaa_{self._office_code}")},
-            name=f"NOAA {self._office_code}",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}_space")},
+            name=f"NOAA {self._office_code} Space",
             manufacturer="NOAA"
         )
 
@@ -163,8 +163,8 @@ class PlanetaryKIndexSensorRating(CoordinatorEntity):
     def device_info(self) -> DeviceInfo:
         """Return device information to group this entity."""
         return DeviceInfo(
-            identifiers={(DOMAIN, f"noaa_{self._office_code}")},
-            name=f"NOAA {self._office_code}",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}_space")},
+            name=f"NOAA {self._office_code} Space",
             manufacturer="NOAA"
         )
 
@@ -249,8 +249,8 @@ class AuroraNextTimeSensor(CoordinatorEntity):
     def device_info(self) -> DeviceInfo:
         """Return device information to group this entity."""
         return DeviceInfo(
-            identifiers={(DOMAIN, f"noaa_{self._office_code}")},
-            name=f"NOAA {self._office_code}",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}_space")},
+            name=f"NOAA {self._office_code} Space",
             manufacturer="NOAA"
         )
 
@@ -318,8 +318,8 @@ class AuroraDurationSensor(CoordinatorEntity):
     def device_info(self) -> DeviceInfo:
         """Return device information to group this entity."""
         return DeviceInfo(
-            identifiers={(DOMAIN, f"noaa_{self._office_code}")},
-            name=f"NOAA {self._office_code}",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}_space")},
+            name=f"NOAA {self._office_code} Space",
             manufacturer="NOAA"
         )
 
@@ -393,8 +393,8 @@ class AuroraVisibilityProbabilitySensor(CoordinatorEntity):
     def device_info(self) -> DeviceInfo:
         """Return device information to group this entity."""
         return DeviceInfo(
-            identifiers={(DOMAIN, f"noaa_{self._office_code}")},
-            name=f"NOAA {self._office_code}",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}_space")},
+            name=f"NOAA {self._office_code} Space",
             manufacturer="NOAA"
         )
 
@@ -478,8 +478,8 @@ class SolarRadiationStormAlertsSensor(CoordinatorEntity):
     def device_info(self) -> DeviceInfo:
         """Return device information to group this entity."""
         return DeviceInfo(
-            identifiers={(DOMAIN, f"noaa_{self._office_code}")},
-            name=f"NOAA {self._office_code}",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}_space")},
+            name=f"NOAA {self._office_code} Space",
             manufacturer="NOAA"
         )
 

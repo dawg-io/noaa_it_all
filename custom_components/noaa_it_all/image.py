@@ -107,8 +107,8 @@ class GeoelectricFieldImageEntity(ImageEntity):
     def device_info(self) -> DeviceInfo:
         """Return device information."""
         return DeviceInfo(
-            identifiers={(DOMAIN, f"noaa_{self._office_code}")},
-            name=f"NOAA {self._office_code}",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}_space")},
+            name=f"NOAA {self._office_code} Space",
             manufacturer="NOAA"
         )
 
@@ -181,8 +181,8 @@ class AuroraForecastImageEntity(ImageEntity):
     def device_info(self) -> DeviceInfo:
         """Return device information."""
         return DeviceInfo(
-            identifiers={(DOMAIN, f"noaa_{self._office_code}")},
-            name=f"NOAA {self._office_code}",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}_space")},
+            name=f"NOAA {self._office_code} Space",
             manufacturer="NOAA"
         )
 
@@ -255,8 +255,8 @@ class HurricaneOutlookImageEntity(ImageEntity):
     def device_info(self) -> DeviceInfo:
         """Return device information."""
         return DeviceInfo(
-            identifiers={(DOMAIN, f"noaa_{self._office_code}")},
-            name=f"NOAA {self._office_code}",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}_weather")},
+            name=f"NOAA {self._office_code} Weather",
             manufacturer="NOAA"
         )
 
@@ -328,8 +328,8 @@ class RadarBaseReflectivityImageEntity(ImageEntity):
     def device_info(self) -> DeviceInfo:
         """Return device information."""
         return DeviceInfo(
-            identifiers={(DOMAIN, f"noaa_{self._office_code}")},
-            name=f"NOAA {self._office_code}",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}_weather")},
+            name=f"NOAA {self._office_code} Weather",
             manufacturer="NOAA"
         )
 
@@ -408,8 +408,8 @@ class RadarLoopImageEntity(ImageEntity):
     def device_info(self) -> DeviceInfo:
         """Return device information."""
         return DeviceInfo(
-            identifiers={(DOMAIN, f"noaa_{self._office_code}")},
-            name=f"NOAA {self._office_code}",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}_weather")},
+            name=f"NOAA {self._office_code} Weather",
             manufacturer="NOAA"
         )
 
@@ -488,8 +488,8 @@ class GOESAirMassImageEntity(ImageEntity):
     def device_info(self) -> DeviceInfo:
         """Return device information."""
         return DeviceInfo(
-            identifiers={(DOMAIN, f"noaa_{self._office_code}")},
-            name=f"NOAA {self._office_code}",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}_weather")},
+            name=f"NOAA {self._office_code} Weather",
             manufacturer="NOAA"
         )
 
@@ -562,8 +562,8 @@ class GOESGeoColorImageEntity(ImageEntity):
     def device_info(self) -> DeviceInfo:
         """Return device information."""
         return DeviceInfo(
-            identifiers={(DOMAIN, f"noaa_{self._office_code}")},
-            name=f"NOAA {self._office_code}",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}_weather")},
+            name=f"NOAA {self._office_code} Weather",
             manufacturer="NOAA"
         )
 
