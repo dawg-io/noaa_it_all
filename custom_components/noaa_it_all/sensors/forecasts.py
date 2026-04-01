@@ -42,8 +42,8 @@ class ForecastBaseSensor(CoordinatorEntity):
     def device_info(self) -> DeviceInfo:
         """Return device information to group this entity."""
         return DeviceInfo(
-            identifiers={(DOMAIN, "noaa_weather")},
-            name="NOAA Weather",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}")},
+            name=f"NOAA {self._office_code}",
             manufacturer="NOAA"
         )
 

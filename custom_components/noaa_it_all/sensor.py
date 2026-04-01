@@ -84,18 +84,18 @@ async def async_setup_entry(
 
     entities = [
         # Space weather (global, use SpaceWeatherCoordinator)
-        GeomagneticSensor(space_coord),
-        GeomagneticSensorInterpretation(space_coord),
-        PlanetaryKIndexSensor(space_coord),
-        PlanetaryKIndexSensorRating(space_coord),
+        GeomagneticSensor(space_coord, office_code),
+        GeomagneticSensorInterpretation(space_coord, office_code),
+        PlanetaryKIndexSensor(space_coord, office_code),
+        PlanetaryKIndexSensorRating(space_coord, office_code),
         AuroraNextTimeSensor(space_coord, office_code),
         AuroraDurationSensor(space_coord, office_code),
         AuroraVisibilityProbabilitySensor(space_coord, office_code),
         SolarRadiationStormAlertsSensor(space_coord, office_code),
 
         # Hurricanes (global, use HurricaneCoordinator)
-        HurricaneAlertsSensor(hurricane_coord),
-        HurricaneActivitySensor(hurricane_coord),
+        HurricaneAlertsSensor(hurricane_coord, office_code),
+        HurricaneActivitySensor(hurricane_coord, office_code),
 
         # Surf (office-specific, use SurfCoordinator)
         RipCurrentRiskSensor(surf_coord, office_code),

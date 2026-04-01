@@ -362,5 +362,151 @@ class TestNamingConventionFormat(unittest.TestCase):
             )
 
 
+# ---------------------------------------------------------------------------
+# Device grouping: all entities use the same device per office
+# ---------------------------------------------------------------------------
+
+DOMAIN = "noaa_it_all"
+
+
+class TestDeviceInfoGrouping(unittest.TestCase):
+    """Verify all entities for a given office share a single device."""
+
+    def _expected_device_info(self):
+        """Return the expected device_info dict for OFFICE."""
+        return {
+            "identifiers": {(DOMAIN, f"noaa_{OFFICE}")},
+            "name": f"NOAA {OFFICE}",
+            "manufacturer": "NOAA",
+        }
+
+    # -- weather observation sensors -----------------------------------------
+
+    def test_temperature_device_info(self):
+        from noaa_it_all.sensors.weather_observations import TemperatureSensor
+        s = TemperatureSensor(COORD, OFFICE, latitude=LAT, longitude=LON)
+        self.assertEqual(s.device_info, self._expected_device_info())
+
+    def test_humidity_device_info(self):
+        from noaa_it_all.sensors.weather_observations import HumiditySensor
+        s = HumiditySensor(COORD, OFFICE, latitude=LAT, longitude=LON)
+        self.assertEqual(s.device_info, self._expected_device_info())
+
+    # -- space weather sensors -----------------------------------------------
+
+    def test_geomagnetic_device_info(self):
+        from noaa_it_all.sensors.space_weather import GeomagneticSensor
+        s = GeomagneticSensor(COORD, OFFICE)
+        self.assertEqual(s.device_info, self._expected_device_info())
+
+    def test_kp_index_device_info(self):
+        from noaa_it_all.sensors.space_weather import PlanetaryKIndexSensor
+        s = PlanetaryKIndexSensor(COORD, OFFICE)
+        self.assertEqual(s.device_info, self._expected_device_info())
+
+    def test_aurora_next_time_device_info(self):
+        from noaa_it_all.sensors.space_weather import AuroraNextTimeSensor
+        s = AuroraNextTimeSensor(COORD, OFFICE)
+        self.assertEqual(s.device_info, self._expected_device_info())
+
+    def test_solar_radiation_device_info(self):
+        from noaa_it_all.sensors.space_weather import SolarRadiationStormAlertsSensor
+        s = SolarRadiationStormAlertsSensor(COORD, OFFICE)
+        self.assertEqual(s.device_info, self._expected_device_info())
+
+    # -- surf sensors --------------------------------------------------------
+
+    def test_rip_current_device_info(self):
+        from noaa_it_all.sensors.surf import RipCurrentRiskSensor
+        s = RipCurrentRiskSensor(COORD, OFFICE)
+        self.assertEqual(s.device_info, self._expected_device_info())
+
+    def test_surf_height_device_info(self):
+        from noaa_it_all.sensors.surf import SurfHeightSensor
+        s = SurfHeightSensor(COORD, OFFICE)
+        self.assertEqual(s.device_info, self._expected_device_info())
+
+    def test_water_temperature_device_info(self):
+        from noaa_it_all.sensors.surf import WaterTemperatureSensor
+        s = WaterTemperatureSensor(COORD, OFFICE)
+        self.assertEqual(s.device_info, self._expected_device_info())
+
+    # -- hurricane sensors ---------------------------------------------------
+
+    def test_hurricane_alerts_device_info(self):
+        from noaa_it_all.sensors.hurricanes import HurricaneAlertsSensor
+        s = HurricaneAlertsSensor(COORD, OFFICE)
+        self.assertEqual(s.device_info, self._expected_device_info())
+
+    def test_hurricane_activity_device_info(self):
+        from noaa_it_all.sensors.hurricanes import HurricaneActivitySensor
+        s = HurricaneActivitySensor(COORD, OFFICE)
+        self.assertEqual(s.device_info, self._expected_device_info())
+
+    # -- forecast sensors ----------------------------------------------------
+
+    def test_extended_forecast_device_info(self):
+        from noaa_it_all.sensors.forecasts import ExtendedForecastSensor
+        s = ExtendedForecastSensor(COORD, OFFICE, LAT, LON)
+        self.assertEqual(s.device_info, self._expected_device_info())
+
+    # -- alerts sensor -------------------------------------------------------
+
+    def test_nws_alerts_device_info(self):
+        from noaa_it_all.sensors.alerts import NWSAlertsSensor
+        s = NWSAlertsSensor(COORD, OFFICE, LAT, LON)
+        self.assertEqual(s.device_info, self._expected_device_info())
+
+    # -- weather extra sensors -----------------------------------------------
+
+    def test_cloud_cover_device_info(self):
+        from noaa_it_all.sensors.weather_extra import CloudCoverSensor
+        s = CloudCoverSensor(COORD, OFFICE, LAT, LON)
+        self.assertEqual(s.device_info, self._expected_device_info())
+
+    def test_radar_timestamp_device_info(self):
+        from noaa_it_all.sensors.weather_extra import RadarTimestampSensor
+        s = RadarTimestampSensor(COORD, OFFICE)
+        self.assertEqual(s.device_info, self._expected_device_info())
+
+    def test_forecast_discussion_device_info(self):
+        from noaa_it_all.sensors.weather_extra import ForecastDiscussionSensor
+        s = ForecastDiscussionSensor(COORD, OFFICE)
+        self.assertEqual(s.device_info, self._expected_device_info())
+
+    # -- cross-cutting: every sensor uses the SAME device --------------------
+
+    def test_all_sensors_share_one_device(self):
+        """All office-specific sensors must share identical device_info."""
+        from noaa_it_all.sensors.weather_observations import TemperatureSensor
+        from noaa_it_all.sensors.space_weather import (
+            GeomagneticSensor, AuroraNextTimeSensor,
+        )
+        from noaa_it_all.sensors.surf import RipCurrentRiskSensor
+        from noaa_it_all.sensors.hurricanes import HurricaneAlertsSensor
+        from noaa_it_all.sensors.forecasts import ExtendedForecastSensor
+        from noaa_it_all.sensors.alerts import NWSAlertsSensor
+        from noaa_it_all.sensors.weather_extra import CloudCoverSensor
+
+        sensors = [
+            TemperatureSensor(COORD, OFFICE, latitude=LAT, longitude=LON),
+            GeomagneticSensor(COORD, OFFICE),
+            AuroraNextTimeSensor(COORD, OFFICE),
+            RipCurrentRiskSensor(COORD, OFFICE),
+            HurricaneAlertsSensor(COORD, OFFICE),
+            ExtendedForecastSensor(COORD, OFFICE, LAT, LON),
+            NWSAlertsSensor(COORD, OFFICE, LAT, LON),
+            CloudCoverSensor(COORD, OFFICE, LAT, LON),
+        ]
+
+        expected = self._expected_device_info()
+        for sensor in sensors:
+            self.assertEqual(
+                sensor.device_info, expected,
+                f"{type(sensor).__name__}.device_info does not match — "
+                f"all entities for office {OFFICE} must share the same device"
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

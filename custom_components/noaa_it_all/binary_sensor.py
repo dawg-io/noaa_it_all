@@ -119,8 +119,8 @@ class UnsafeToSwimBinarySensor(CoordinatorEntity, BinarySensorEntity):
     def device_info(self) -> DeviceInfo:
         """Return device information to group this entity."""
         return DeviceInfo(
-            identifiers={(DOMAIN, "noaa_surf")},
-            name="NOAA Surf",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}")},
+            name=f"NOAA {self._office_code}",
             manufacturer="NOAA"
         )
 
@@ -213,8 +213,8 @@ class SevereWeatherAlertBinarySensor(CoordinatorEntity, BinarySensorEntity):
     def device_info(self) -> DeviceInfo:
         """Return device information to group this entity."""
         return DeviceInfo(
-            identifiers={(DOMAIN, f"noaa_weather_{self._office_code}")},
-            name=f"NOAA Weather {self._office_code}",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}")},
+            name=f"NOAA {self._office_code}",
             manufacturer="NOAA"
         )
 
@@ -305,8 +305,8 @@ class FloodWinterAlertBinarySensor(CoordinatorEntity, BinarySensorEntity):
     def device_info(self) -> DeviceInfo:
         """Return device information to group this entity."""
         return DeviceInfo(
-            identifiers={(DOMAIN, f"noaa_weather_{self._office_code}")},
-            name=f"NOAA Weather {self._office_code}",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}")},
+            name=f"NOAA {self._office_code}",
             manufacturer="NOAA"
         )
 
@@ -396,8 +396,8 @@ class HeatAirQualityAlertBinarySensor(CoordinatorEntity, BinarySensorEntity):
     def device_info(self) -> DeviceInfo:
         """Return device information to group this entity."""
         return DeviceInfo(
-            identifiers={(DOMAIN, f"noaa_weather_{self._office_code}")},
-            name=f"NOAA Weather {self._office_code}",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}")},
+            name=f"NOAA {self._office_code}",
             manufacturer="NOAA"
         )
 
@@ -479,7 +479,7 @@ class ActiveAlertsGeneralBinarySensor(CoordinatorEntity, BinarySensorEntity):
     def device_info(self) -> DeviceInfo:
         """Return device information to group this entity."""
         return DeviceInfo(
-            identifiers={(DOMAIN, f"noaa_weather_{self._office_code}")},
-            name=f"NOAA Weather {self._office_code}",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}")},
+            name=f"NOAA {self._office_code}",
             manufacturer="NOAA"
         )

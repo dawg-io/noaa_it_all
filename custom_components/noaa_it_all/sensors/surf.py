@@ -57,8 +57,8 @@ class RipCurrentRiskSensor(CoordinatorEntity):
     def device_info(self) -> DeviceInfo:
         """Return device information to group this entity."""
         return DeviceInfo(
-            identifiers={(DOMAIN, "noaa_surf")},
-            name="NOAA Surf",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}")},
+            name=f"NOAA {self._office_code}",
             manufacturer="NOAA"
         )
 
@@ -116,8 +116,8 @@ class SurfHeightSensor(CoordinatorEntity):
     def device_info(self) -> DeviceInfo:
         """Return device information to group this entity."""
         return DeviceInfo(
-            identifiers={(DOMAIN, "noaa_surf")},
-            name="NOAA Surf",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}")},
+            name=f"NOAA {self._office_code}",
             manufacturer="NOAA"
         )
 
@@ -175,7 +175,7 @@ class WaterTemperatureSensor(CoordinatorEntity):
     def device_info(self) -> DeviceInfo:
         """Return device information to group this entity."""
         return DeviceInfo(
-            identifiers={(DOMAIN, "noaa_surf")},
-            name="NOAA Surf",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}")},
+            name=f"NOAA {self._office_code}",
             manufacturer="NOAA"
         )
