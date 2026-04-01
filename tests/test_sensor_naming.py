@@ -306,7 +306,7 @@ class TestNamingConventionFormat(unittest.TestCase):
     """Verify all sensor names follow the NOAA {OFFICE} {Metric} pattern."""
 
     def _slug(self, name):
-        """Simple slugify matching HA behaviour for entity_id."""
+        """Simple slugify matching HA behavior for entity_id."""
         return name.lower().replace(" ", "_").replace("-", "_")
 
     def test_all_names_produce_correct_entity_prefix(self):
@@ -345,11 +345,11 @@ class TestNamingConventionFormat(unittest.TestCase):
         forecasts = [cls(COORD, OFFICE, LAT, LON)
                      for cls in (ExtendedForecastSensor, HourlyForecastSensor)]
         alerts = [NWSAlertsSensor(COORD, OFFICE, LAT, LON)]
-        extras_loc = [CloudCoverSensor(COORD, OFFICE, LAT, LON)]
-        extras_off = [cls(COORD, OFFICE)
-                      for cls in (RadarTimestampSensor, ForecastDiscussionSensor)]
+        extras_with_location = [CloudCoverSensor(COORD, OFFICE, LAT, LON)]
+        extras_office_only = [cls(COORD, OFFICE)
+                              for cls in (RadarTimestampSensor, ForecastDiscussionSensor)]
 
-        all_sensors = obs + space + surf + forecasts + alerts + extras_loc + extras_off
+        all_sensors = obs + space + surf + forecasts + alerts + extras_with_location + extras_office_only
 
         expected_prefix = f"noaa_{OFFICE.lower()}_"
         for sensor in all_sensors:
