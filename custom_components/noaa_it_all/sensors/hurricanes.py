@@ -57,7 +57,7 @@ class HurricaneAlertsSensor(CoordinatorEntity):
     @property
     def unique_id(self):
         """Return a unique ID for this entity."""
-        return 'noaa_hurricane_alerts'
+        return f'noaa_{self._office_code}_hurricane_alerts'
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -111,7 +111,7 @@ class HurricaneActivitySensor(CoordinatorEntity):
     @property
     def unique_id(self):
         """Return a unique ID for this entity."""
-        return 'noaa_hurricane_activity'
+        return f'noaa_{self._office_code}_hurricane_activity'
 
     @property
     def device_info(self) -> DeviceInfo:

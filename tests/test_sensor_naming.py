@@ -7,7 +7,7 @@ their name and unique_id, matching the README documented format.
 import os
 import sys
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 
 # ---------------------------------------------------------------------------
@@ -20,7 +20,7 @@ if _CC not in sys.path:
     sys.path.insert(0, _CC)
 
 # ---------------------------------------------------------------------------
-# Mock Home Assistant modules before importing any sensor code
+# Mock Home Assistant modules — scoped so they don't leak into other tests
 # ---------------------------------------------------------------------------
 
 _ha_entity = MagicMock()
@@ -32,19 +32,21 @@ _ha_config_entries = MagicMock()
 _ha_core = MagicMock()
 _ha_platform = MagicMock()
 
-sys.modules.setdefault("homeassistant", MagicMock())
-sys.modules.setdefault("homeassistant.helpers", MagicMock())
-sys.modules.setdefault("homeassistant.helpers.entity", _ha_entity)
-sys.modules.setdefault("homeassistant.helpers.update_coordinator", _ha_coordinator)
-sys.modules.setdefault("homeassistant.helpers.entity_platform", _ha_platform)
-sys.modules.setdefault("homeassistant.helpers.aiohttp_client", MagicMock())
-sys.modules.setdefault("homeassistant.components", MagicMock())
-sys.modules.setdefault("homeassistant.components.binary_sensor", _ha_binary)
-sys.modules.setdefault("homeassistant.components.weather", _ha_weather_mod)
-sys.modules.setdefault("homeassistant.const", _ha_const)
-sys.modules.setdefault("homeassistant.config_entries", _ha_config_entries)
-sys.modules.setdefault("homeassistant.core", _ha_core)
-sys.modules.setdefault("aiohttp", MagicMock())
+_MOCK_MODULES = {
+    "homeassistant": MagicMock(),
+    "homeassistant.helpers": MagicMock(),
+    "homeassistant.helpers.entity": _ha_entity,
+    "homeassistant.helpers.update_coordinator": _ha_coordinator,
+    "homeassistant.helpers.entity_platform": _ha_platform,
+    "homeassistant.helpers.aiohttp_client": MagicMock(),
+    "homeassistant.components": MagicMock(),
+    "homeassistant.components.binary_sensor": _ha_binary,
+    "homeassistant.components.weather": _ha_weather_mod,
+    "homeassistant.const": _ha_const,
+    "homeassistant.config_entries": _ha_config_entries,
+    "homeassistant.core": _ha_core,
+    "aiohttp": MagicMock(),
+}
 
 # Make CoordinatorEntity a plain base class for testing
 _ha_coordinator.CoordinatorEntity = type("CoordinatorEntity", (), {
@@ -56,6 +58,22 @@ _ha_entity.DeviceInfo = dict
 
 # BinarySensorEntity stub
 _ha_binary.BinarySensorEntity = type("BinarySensorEntity", (), {})
+
+_patcher = None
+
+
+def setUpModule():
+    """Install HA mocks into sys.modules for this test module only."""
+    global _patcher
+    _patcher = patch.dict(sys.modules, _MOCK_MODULES)
+    _patcher.start()
+
+
+def tearDownModule():
+    """Remove HA mocks from sys.modules."""
+    if _patcher is not None:
+        _patcher.stop()
+
 
 OFFICE = "SGX"
 COORD = MagicMock()

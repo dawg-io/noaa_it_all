@@ -47,6 +47,11 @@ class GeomagneticSensor(CoordinatorEntity):
         return 'NOAA Space - Geomagnetic Storm'
 
     @property
+    def unique_id(self):
+        """Return a unique ID for this entity."""
+        return f'noaa_{self._office_code}_geomagnetic_storm'
+
+    @property
     def state(self):
         """Return the state of the sensor."""
         if self.coordinator.data is None:
@@ -92,6 +97,11 @@ class GeomagneticSensorInterpretation(CoordinatorEntity):
         return 'NOAA Space - Geomagnetic Storm Interpretation'
 
     @property
+    def unique_id(self):
+        """Return a unique ID for this entity."""
+        return f'noaa_{self._office_code}_geomagnetic_storm_interpretation'
+
+    @property
     def device_info(self) -> DeviceInfo:
         """Return device information to group this entity."""
         return DeviceInfo(
@@ -113,6 +123,11 @@ class PlanetaryKIndexSensor(CoordinatorEntity):
     def name(self):
         """Return the name of the sensor."""
         return 'NOAA Space - Planetary K-index'
+
+    @property
+    def unique_id(self):
+        """Return a unique ID for this entity."""
+        return f'noaa_{self._office_code}_planetary_k_index'
 
     @property
     def state(self):
@@ -158,6 +173,11 @@ class PlanetaryKIndexSensorRating(CoordinatorEntity):
     def name(self):
         """Return the name of the sensor."""
         return 'NOAA Space - Planetary K-index Rating'
+
+    @property
+    def unique_id(self):
+        """Return a unique ID for this entity."""
+        return f'noaa_{self._office_code}_planetary_k_index_rating'
 
     @property
     def device_info(self) -> DeviceInfo:

@@ -101,7 +101,7 @@ class GeoelectricFieldImageEntity(ImageEntity):
     @property
     def unique_id(self):
         """Return a unique ID for this entity."""
-        return 'noaa_geoelectric_image'
+        return f'noaa_{self._office_code}_geoelectric_image'
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -175,7 +175,7 @@ class AuroraForecastImageEntity(ImageEntity):
     @property
     def unique_id(self):
         """Return a unique ID for this entity."""
-        return 'noaa_aurora_image'
+        return f'noaa_{self._office_code}_aurora_image'
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -249,7 +249,7 @@ class HurricaneOutlookImageEntity(ImageEntity):
     @property
     def unique_id(self):
         """Return a unique ID for this entity."""
-        return 'noaa_hurricane_outlook_image'
+        return f'noaa_{self._office_code}_hurricane_outlook_image'
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -482,7 +482,7 @@ class GOESAirMassImageEntity(ImageEntity):
     @property
     def unique_id(self):
         """Return a unique ID for this entity."""
-        return 'noaa_goes_airmass_image'
+        return f'noaa_{self._office_code}_goes_airmass_image'
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -556,7 +556,7 @@ class GOESGeoColorImageEntity(ImageEntity):
     @property
     def unique_id(self):
         """Return a unique ID for this entity."""
-        return 'noaa_goes_geocolor_image'
+        return f'noaa_{self._office_code}_goes_geocolor_image'
 
     @property
     def device_info(self) -> DeviceInfo:
