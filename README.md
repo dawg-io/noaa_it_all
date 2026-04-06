@@ -284,15 +284,15 @@ automation:
     action:
       - service: notify.mobile_app
         data:
-          title: "⚠️ Severe Weather Alert"
-          message: "Tornado, thunderstorm, or hurricane warning active for your area. Check details immediately!"
+          title: "⚠️ {{ state_attr('binary_sensor.noaa_ilm_active_alerts','alerts')[0].event }}"
+          message: "{{ state_attr('binary_sensor.noaa_ilm_active_alerts','alerts')[0].description | replace('\r\n',' ') }}"
           data:
             priority: high
             notification_icon: mdi:weather-lightning-rainy
       - service: tts.google_translate_say
         data:
           entity_id: media_player.home_speaker
-          message: "Warning: Severe weather alert has been issued for your location. Seek shelter immediately."
+          message: "{{ state_attr('binary_sensor.noaa_ilm_active_alerts','alerts')[0].description | replace('\r\n',' ') }}"
 ```
 
 #### Winter Storm Alert with Light Flash
