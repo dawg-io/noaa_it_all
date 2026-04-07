@@ -1,0 +1,14 @@
+[
+  {
+    "time_tag": "2026-04-07T15:00:00",
+    "kp_index": 3.33,
+    "a_running": 12,
+    "station_count": 8
+  },
+  {
+    "time_tag": "2026-04-07T14:57:00",
+    "kp_index": 3.00,
+    "a_running": 11,
+    "station_count": 8
+  }
+]

@@ -1,0 +1,40 @@
+{
+  "title": "NOAA It All",
+  "config": {
+    "step": {
+      "user": {
+        "title": "NOAA It All Setup",
+        "description": "Select your NWS Forecast Office and enter your coordinates to get location-specific NOAA data.",
+        "data": {
+          "office_code": "NWS Forecast Office",
+          "latitude": "Latitude",
+          "longitude": "Longitude"
+        }
+      }
+    },
+    "error": {
+      "invalid_latitude": "Latitude must be between -90 and 90.",
+      "invalid_longitude": "Longitude must be between -180 and 180."
+    },
+    "abort": {
+      "already_configured": "This NOAA office and location is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "NOAA It All Options",
+        "description": "Update your NWS Forecast Office and coordinates.",
+        "data": {
+          "office_code": "NWS Forecast Office",
+          "latitude": "Latitude",
+          "longitude": "Longitude"
+        }
+      }
+    },
+    "error": {
+      "invalid_latitude": "Latitude must be between -90 and 90.",
+      "invalid_longitude": "Longitude must be between -180 and 180."
+    }
+  }
+}
