@@ -4,9 +4,9 @@
   "codeowners": ["@turbo5000c"],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/turbo5000c/dev-noaa_it_all",
+  "documentation": "https://github.com/dawg-io/noaa_it_all",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/turbo5000c/dev-noaa_it_all/issues",
+  "issue_tracker": "https://github.com/dawg-io/noaa_it_all/issues",
   "requirements": ["aiohttp", "voluptuous"],
   "version": "0.3.9"
 }
