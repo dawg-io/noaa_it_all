@@ -185,6 +185,142 @@ class TestFloodWinterAlertBinarySensor(unittest.TestCase):
         self.assertEqual(sensor._attr_unique_id, f"noaa_{OFFICE}_flood_winter_alert")
 
 
+class TestHeatAirQualityAlertBinarySensor(unittest.TestCase):
+    """Tests for the HeatAirQualityAlertBinarySensor."""
+
+    def _make(self, features=None):
+        from noaa_it_all.binary_sensor import HeatAirQualityAlertBinarySensor
+        data = {"features": features or []}
+        coord = _make_coordinator(data)
+        return HeatAirQualityAlertBinarySensor(coord, OFFICE, LAT, LON)
+
+    def test_no_alerts_is_off(self):
+        sensor = self._make([])
+        self.assertFalse(sensor.is_on)
+
+    def test_heat_advisory_is_on(self):
+        features = [{
+            "properties": {
+                "event": "Heat Advisory",
+                "status": "Actual",
+                "headline": "Heat Advisory",
+                "severity": "Minor",
+                "urgency": "Expected",
+                "certainty": "Likely",
+                "areaDesc": "Coastal Carolina",
+                "effective": "2025-04-07T12:00:00+00:00",
+                "expires": "2025-04-07T20:00:00+00:00",
+                "description": "Excessive heat expected."
+            }
+        }]
+        sensor = self._make(features)
+        self.assertTrue(sensor.is_on)
+
+    def test_excessive_heat_warning_is_on(self):
+        features = [{
+            "properties": {
+                "event": "Excessive Heat Warning",
+                "status": "Actual",
+                "headline": "Excessive Heat Warning",
+                "severity": "Severe",
+                "urgency": "Immediate",
+                "certainty": "Observed",
+                "areaDesc": "Inland areas",
+                "effective": "2025-04-07T12:00:00+00:00",
+                "expires": "2025-04-07T20:00:00+00:00",
+                "description": "Dangerously hot conditions."
+            }
+        }]
+        sensor = self._make(features)
+        self.assertTrue(sensor.is_on)
+
+    def test_air_quality_alert_is_on(self):
+        features = [{
+            "properties": {
+                "event": "Air Quality Alert",
+                "status": "Actual",
+                "headline": "Air Quality Alert",
+                "severity": "Minor",
+                "urgency": "Expected",
+                "certainty": "Likely",
+                "areaDesc": "Metro area",
+                "effective": "2025-04-07T12:00:00+00:00",
+                "expires": "2025-04-07T20:00:00+00:00",
+                "description": "Poor air quality."
+            }
+        }]
+        sensor = self._make(features)
+        self.assertTrue(sensor.is_on)
+
+    def test_red_flag_warning_is_on(self):
+        features = [{
+            "properties": {
+                "event": "Red Flag Warning",
+                "status": "Actual",
+                "headline": "Red Flag Warning",
+                "severity": "Severe",
+                "urgency": "Immediate",
+                "certainty": "Likely",
+                "areaDesc": "Mountain areas",
+                "effective": "2025-04-07T12:00:00+00:00",
+                "expires": "2025-04-07T20:00:00+00:00",
+                "description": "Critical fire weather conditions."
+            }
+        }]
+        sensor = self._make(features)
+        self.assertTrue(sensor.is_on)
+
+    def test_test_status_excluded(self):
+        features = [{
+            "properties": {
+                "event": "Heat Advisory",
+                "status": "Test",
+                "headline": "Test Alert",
+                "severity": "Minor",
+                "urgency": "Expected",
+                "certainty": "Likely",
+                "areaDesc": "Test area",
+                "effective": "2025-04-07T12:00:00+00:00",
+                "expires": "2025-04-07T20:00:00+00:00",
+                "description": "Test."
+            }
+        }]
+        sensor = self._make(features)
+        self.assertFalse(sensor.is_on)
+
+    def test_unique_id(self):
+        sensor = self._make()
+        self.assertEqual(sensor._attr_unique_id, f"noaa_{OFFICE}_heat_air_quality_alert")
+
+    def test_icon_when_on(self):
+        features = [{
+            "properties": {
+                "event": "Heat Advisory",
+                "status": "Actual",
+                "headline": "Heat Advisory",
+                "severity": "Minor",
+                "urgency": "Expected",
+                "certainty": "Likely",
+                "areaDesc": "Area",
+                "effective": "2025-04-07T12:00:00+00:00",
+                "expires": "2025-04-07T20:00:00+00:00",
+                "description": "Hot."
+            }
+        }]
+        sensor = self._make(features)
+        self.assertEqual(sensor.icon, "mdi:fire-alert")
+
+    def test_icon_when_off(self):
+        sensor = self._make([])
+        self.assertEqual(sensor.icon, "mdi:thermometer")
+
+    def test_device_info_weather_group(self):
+        sensor = self._make()
+        info = sensor.device_info
+        ids = list(info["identifiers"])[0]
+        self.assertIn("weather", ids[1])
+
+
 class TestActiveAlertsGeneralBinarySensor(unittest.TestCase):
     """Tests for the ActiveAlertsGeneralBinarySensor."""
 

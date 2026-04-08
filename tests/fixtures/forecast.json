@@ -1,0 +1,66 @@
+{
+    "extended": {
+        "properties": {
+            "generatedAt": "2025-04-07T18:00:00+00:00",
+            "updateTime": "2025-04-07T18:00:00+00:00",
+            "periods": [
+                {
+                    "number": 1,
+                    "name": "This Afternoon",
+                    "startTime": "2025-04-07T14:00:00-04:00",
+                    "endTime": "2025-04-07T18:00:00-04:00",
+                    "isDaytime": true,
+                    "temperature": 75,
+                    "temperatureUnit": "F",
+                    "windSpeed": "10 mph",
+                    "windDirection": "SW",
+                    "shortForecast": "Mostly Cloudy",
+                    "detailedForecast": "Mostly cloudy, with a high near 75."
+                },
+                {
+                    "number": 2,
+                    "name": "Tonight",
+                    "startTime": "2025-04-07T18:00:00-04:00",
+                    "endTime": "2025-04-08T06:00:00-04:00",
+                    "isDaytime": false,
+                    "temperature": 58,
+                    "temperatureUnit": "F",
+                    "windSpeed": "5 mph",
+                    "windDirection": "S",
+                    "shortForecast": "Partly Cloudy",
+                    "detailedForecast": "Partly cloudy, with a low around 58."
+                }
+            ]
+        }
+    },
+    "hourly": {
+        "properties": {
+            "generatedAt": "2025-04-07T18:00:00+00:00",
+            "updateTime": "2025-04-07T18:00:00+00:00",
+            "periods": [
+                {
+                    "number": 1,
+                    "startTime": "2025-04-07T14:00:00-04:00",
+                    "endTime": "2025-04-07T15:00:00-04:00",
+                    "temperature": 73,
+                    "temperatureUnit": "F",
+                    "windSpeed": "10 mph",
+                    "windDirection": "SW",
+                    "shortForecast": "Mostly Cloudy",
+                    "icon": "https://api.weather.gov/icons/land/day/bkn"
+                },
+                {
+                    "number": 2,
+                    "startTime": "2025-04-07T15:00:00-04:00",
+                    "endTime": "2025-04-07T16:00:00-04:00",
+                    "temperature": 74,
+                    "temperatureUnit": "F",
+                    "windSpeed": "12 mph",
+                    "windDirection": "SW",
+                    "shortForecast": "Partly Sunny",
+                    "icon": "https://api.weather.gov/icons/land/day/sct"
+                }
+            ]
+        }
+    }
+}

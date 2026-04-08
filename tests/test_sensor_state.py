@@ -235,5 +235,178 @@ class TestWaterTemperatureSensor(unittest.TestCase):
         self.assertIsNone(sensor.state)
 
 
+# ---------------------------------------------------------------
+# Aurora and solar radiation sensor tests
+# ---------------------------------------------------------------
+
+class TestAuroraNextTimeSensor(unittest.TestCase):
+    """Tests for AuroraNextTimeSensor state computation."""
+
+    def _make(self, kp_data=None):
+        from noaa_it_all.sensors.space_weather import AuroraNextTimeSensor
+        data = {"kp_index": kp_data or []}
+        coord = _make_coordinator(data)
+        return AuroraNextTimeSensor(coord, OFFICE)
+
+    def test_state_with_data(self):
+        sensor = self._make([{"kp_index": 3.0}])
+        state = sensor.state
+        self.assertIsNotNone(state)
+        self.assertIn("UTC", state)
+
+    def test_state_no_data(self):
+        from noaa_it_all.sensors.space_weather import AuroraNextTimeSensor
+        coord = _make_coordinator(None)
+        sensor = AuroraNextTimeSensor(coord, OFFICE)
+        self.assertIsNone(sensor.state)
+
+    def test_state_empty_kp(self):
+        sensor = self._make([])
+        self.assertEqual(sensor.state, "No Data")
+
+    def test_unique_id(self):
+        sensor = self._make()
+        self.assertEqual(sensor.unique_id, f"noaa_{OFFICE}_aurora_next_time")
+
+    def test_icon(self):
+        sensor = self._make()
+        self.assertEqual(sensor.icon, "mdi:weather-night")
+
+    def test_extra_attrs_with_data(self):
+        sensor = self._make([{"kp_index": 5.0}])
+        attrs = sensor.extra_state_attributes
+        self.assertIn("current_kp", attrs)
+        self.assertIn("conditions", attrs)
+
+    def test_device_info_space_group(self):
+        sensor = self._make()
+        info = sensor.device_info
+        ids = list(info["identifiers"])[0]
+        self.assertIn("space", ids[1])
+
+
+class TestAuroraDurationSensor(unittest.TestCase):
+    """Tests for AuroraDurationSensor state computation."""
+
+    def _make(self, kp_data=None):
+        from noaa_it_all.sensors.space_weather import AuroraDurationSensor
+        data = {"kp_index": kp_data or []}
+        coord = _make_coordinator(data)
+        return AuroraDurationSensor(coord, OFFICE)
+
+    def test_state_with_data(self):
+        sensor = self._make([{"kp_index": 5.0}])
+        state = sensor.state
+        self.assertIsNotNone(state)
+
+    def test_state_no_data(self):
+        from noaa_it_all.sensors.space_weather import AuroraDurationSensor
+        coord = _make_coordinator(None)
+        sensor = AuroraDurationSensor(coord, OFFICE)
+        self.assertIsNone(sensor.state)
+
+    def test_unique_id(self):
+        sensor = self._make()
+        self.assertEqual(sensor.unique_id, f"noaa_{OFFICE}_aurora_duration")
+
+    def test_icon(self):
+        sensor = self._make()
+        self.assertEqual(sensor.icon, "mdi:timer-outline")
+
+    def test_unit(self):
+        sensor = self._make()
+        self.assertEqual(sensor.unit_of_measurement, "hours")
+
+    def test_name(self):
+        sensor = self._make()
+        self.assertEqual(sensor.name, f"NOAA {OFFICE} Aurora Duration")
+
+
+class TestAuroraVisibilityProbabilitySensor(unittest.TestCase):
+    """Tests for AuroraVisibilityProbabilitySensor state computation."""
+
+    def _make(self, kp_data=None):
+        from noaa_it_all.sensors.space_weather import AuroraVisibilityProbabilitySensor
+        data = {"kp_index": kp_data or []}
+        coord = _make_coordinator(data)
+        return AuroraVisibilityProbabilitySensor(coord, OFFICE)
+
+    def test_state_with_data(self):
+        sensor = self._make([{"kp_index": 5.0}])
+        state = sensor.state
+        self.assertIsNotNone(state)
+
+    def test_state_no_data(self):
+        from noaa_it_all.sensors.space_weather import AuroraVisibilityProbabilitySensor
+        coord = _make_coordinator(None)
+        sensor = AuroraVisibilityProbabilitySensor(coord, OFFICE)
+        self.assertIsNone(sensor.state)
+
+    def test_unique_id(self):
+        sensor = self._make()
+        self.assertEqual(sensor.unique_id, f"noaa_{OFFICE}_aurora_visibility_probability")
+
+    def test_icon(self):
+        sensor = self._make()
+        self.assertEqual(sensor.icon, "mdi:percent")
+
+    def test_unit(self):
+        sensor = self._make()
+        self.assertEqual(sensor.unit_of_measurement, "%")
+
+    def test_name(self):
+        sensor = self._make()
+        self.assertEqual(sensor.name, f"NOAA {OFFICE} Aurora Visibility Probability")
+
+    def test_extra_attrs_with_data(self):
+        sensor = self._make([{"kp_index": 5.0}])
+        attrs = sensor.extra_state_attributes
+        self.assertIn("current_kp", attrs)
+        self.assertIn("visibility_class", attrs)
+        self.assertIn("required_kp", attrs)
+
+
+class TestSolarRadiationStormAlertsSensor(unittest.TestCase):
+    """Tests for SolarRadiationStormAlertsSensor state computation."""
+
+    def _make(self, space_alerts=None):
+        from noaa_it_all.sensors.space_weather import SolarRadiationStormAlertsSensor
+        data = {"space_alerts": space_alerts or []}
+        coord = _make_coordinator(data)
+        return SolarRadiationStormAlertsSensor(coord, OFFICE)
+
+    def test_state_no_alerts(self):
+        sensor = self._make([])
+        self.assertEqual(sensor.state, 0)
+
+    def test_state_no_data(self):
+        from noaa_it_all.sensors.space_weather import SolarRadiationStormAlertsSensor
+        coord = _make_coordinator(None)
+        sensor = SolarRadiationStormAlertsSensor(coord, OFFICE)
+        self.assertIsNone(sensor.state)
+
+    def test_unique_id(self):
+        sensor = self._make()
+        self.assertEqual(sensor.unique_id, f"noaa_{OFFICE}_solar_radiation_storm_alerts")
+
+    def test_icon(self):
+        sensor = self._make()
+        self.assertEqual(sensor.icon, "mdi:radioactive")
+
+    def test_unit(self):
+        sensor = self._make()
+        self.assertEqual(sensor.unit_of_measurement, "alerts")
+
+    def test_name(self):
+        sensor = self._make()
+        self.assertEqual(sensor.name, f"NOAA {OFFICE} Solar Radiation Storm Alerts")
+
+    def test_device_info_space_group(self):
+        sensor = self._make()
+        info = sensor.device_info
+        ids = list(info["identifiers"])[0]
+        self.assertIn("space", ids[1])
+
+
 if __name__ == "__main__":
     unittest.main()

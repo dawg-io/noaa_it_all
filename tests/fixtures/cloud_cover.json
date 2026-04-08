@@ -1,0 +1,10 @@
+{
+    "properties": {
+        "skyCover": {
+            "values": [
+                {"validTime": "2025-04-07T14:00:00+00:00/PT1H", "value": 75},
+                {"validTime": "2025-04-07T15:00:00+00:00/PT1H", "value": 60}
+            ]
+        }
+    }
+}
