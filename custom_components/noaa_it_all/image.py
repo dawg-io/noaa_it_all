@@ -15,7 +15,7 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
-SCAN_INTERVAL = timedelta(minutes=5)  # Update every 5 minutes
+SCAN_INTERVAL = timedelta(minutes=10)  # Update every 10 minutes
 
 BASE_IMAGE_URL = ('https://services.swpc.noaa.gov/images/animations/geoelectric/'
                   'InterMagEarthScope/EmapGraphics_1m/latest.png')

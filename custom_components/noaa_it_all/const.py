@@ -8,7 +8,7 @@ CONF_LATITUDE = "latitude"
 CONF_LONGITUDE = "longitude"
 
 # Default values
-DEFAULT_SCAN_INTERVAL = 5  # minutes
+DEFAULT_SCAN_INTERVAL = 10  # minutes
 REQUEST_TIMEOUT = 30  # seconds
 USER_AGENT = "HomeAssistant/NOAA-Integration"
 

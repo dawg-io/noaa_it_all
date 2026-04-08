@@ -29,7 +29,7 @@ from .parsers import parse_coops_water_temperature, parse_ndbc_wave_height
 
 _LOGGER = logging.getLogger(__name__)
 
-DEFAULT_UPDATE_INTERVAL = timedelta(minutes=5)
+DEFAULT_UPDATE_INTERVAL = timedelta(minutes=10)
 
 # Space weather API endpoints
 _DST_URL = "https://services.swpc.noaa.gov/json/geospace/geospace_dst_1_hour.json"
