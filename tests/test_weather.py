@@ -37,6 +37,9 @@ class _FakeCoordinatorEntity:
     def _handle_coordinator_update(self):
         pass
 
+    def async_write_ha_state(self):
+        pass
+
 
 _ha_coordinator.CoordinatorEntity = _FakeCoordinatorEntity
 _ha_coordinator.DataUpdateCoordinator = type("DataUpdateCoordinator", (), {})
@@ -174,8 +177,21 @@ class TestAsyncAddedToHass(unittest.TestCase):
         entity = self._make()
         self._run(entity.async_added_to_hass())
         entity._forecast_coordinator.async_add_listener.assert_called_once()
+        # The listener should be _handle_forecast_update (lightweight),
+        # not _handle_coordinator_update (which re-parses observations).
+        listener = entity._forecast_coordinator.async_add_listener.call_args[0][0]
+        self.assertEqual(listener.__name__, "_handle_forecast_update")
         # async_on_remove should have been called to register cleanup
         self.assertEqual(len(entity._remove_callbacks), 1)
+
+    def test_forecast_update_calls_write_ha_state(self):
+        """Forecast listener should call async_write_ha_state, not re-parse obs."""
+        from unittest.mock import patch as _patch
+        entity = self._make()
+        self._run(entity.async_added_to_hass())
+        with _patch.object(entity, "async_write_ha_state") as mock_write:
+            entity._handle_forecast_update()
+            mock_write.assert_called_once()
 
     def test_no_forecast_coordinator_no_listener(self):
         """Entity should not crash when forecast coordinator is None."""
