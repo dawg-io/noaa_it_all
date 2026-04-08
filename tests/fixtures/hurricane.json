@@ -1,0 +1,26 @@
+{
+    "alerts": {
+        "features": [
+            {
+                "properties": {
+                    "event": "Hurricane Warning",
+                    "headline": "Hurricane Warning for coastal areas",
+                    "areaDesc": "Coastal Carolina",
+                    "severity": "Extreme",
+                    "urgency": "Immediate",
+                    "sent": "2025-04-07T12:00:00+00:00"
+                }
+            }
+        ]
+    },
+    "storms": {
+        "activeStorms": [
+            {
+                "name": "Hurricane Alpha",
+                "classification": "HU",
+                "intensity": 120,
+                "movement": {"direction": "NW", "speed": 12}
+            }
+        ]
+    }
+}

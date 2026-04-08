@@ -1,0 +1,17 @@
+{
+    "station_id": "KILM",
+    "properties": {
+        "stationName": "Wilmington International Airport",
+        "timestamp": "2025-04-07T18:53:00+00:00",
+        "textDescription": "Mostly Cloudy",
+        "temperature": {"value": 22.2, "unitCode": "wmoUnit:degC"},
+        "dewpoint": {"value": 15.0, "unitCode": "wmoUnit:degC"},
+        "windDirection": {"value": 200, "unitCode": "wmoUnit:degree_(angle)"},
+        "windSpeed": {"value": 16.1, "unitCode": "wmoUnit:km_h-1"},
+        "barometricPressure": {"value": 101325, "unitCode": "wmoUnit:Pa"},
+        "visibility": {"value": 16093, "unitCode": "wmoUnit:m"},
+        "relativeHumidity": {"value": 63.5, "unitCode": "wmoUnit:percent"},
+        "windChill": {"value": null, "unitCode": "wmoUnit:degC"},
+        "heatIndex": {"value": 23.5, "unitCode": "wmoUnit:degC"}
+    }
+}
