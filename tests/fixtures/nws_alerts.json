@@ -1,0 +1,48 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "properties": {
+        "id": "urn:oid:2.49.0.1.840.0.test1",
+        "event": "Tornado Warning",
+        "severity": "Extreme",
+        "urgency": "Immediate",
+        "certainty": "Observed",
+        "status": "Actual",
+        "headline": "Tornado Warning issued for Test County",
+        "areaDesc": "Test County, TX",
+        "description": "A tornado was observed near Test City moving northeast at 30 mph.",
+        "effective": "2026-04-07T12:00:00-05:00",
+        "expires": "2026-04-07T13:00:00-05:00"
+      }
+    },
+    {
+      "properties": {
+        "id": "urn:oid:2.49.0.1.840.0.test2",
+        "event": "Flood Warning",
+        "severity": "Moderate",
+        "urgency": "Expected",
+        "certainty": "Likely",
+        "status": "Actual",
+        "headline": "Flood Warning issued for Test River",
+        "areaDesc": "Test County, TX",
+        "description": "Flooding is expected along the Test River.",
+        "effective": "2026-04-07T10:00:00-05:00",
+        "expires": "2026-04-08T10:00:00-05:00"
+      }
+    },
+    {
+      "properties": {
+        "id": "urn:oid:2.49.0.1.840.0.test3",
+        "event": "Test Event",
+        "severity": "Minor",
+        "urgency": "Future",
+        "certainty": "Possible",
+        "status": "Test",
+        "headline": "This is a test alert",
+        "areaDesc": "Test Area",
+        "description": "This alert should be filtered out."
+      }
+    }
+  ]
+}
