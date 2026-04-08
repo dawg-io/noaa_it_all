@@ -9,13 +9,14 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from datetime import timedelta, datetime
 
 from .const import (
-    CONF_OFFICE_CODE, DOMAIN, NWS_RADAR_BASE_URL, NWS_RADAR_LOOP_URL,
+    CONF_OFFICE_CODE, DEFAULT_SCAN_INTERVAL, DOMAIN,
+    NWS_RADAR_BASE_URL, NWS_RADAR_LOOP_URL,
     OFFICE_RADAR_SITES, REQUEST_TIMEOUT,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
-SCAN_INTERVAL = timedelta(minutes=10)  # Update every 10 minutes
+SCAN_INTERVAL = timedelta(minutes=DEFAULT_SCAN_INTERVAL)
 
 BASE_IMAGE_URL = ('https://services.swpc.noaa.gov/images/animations/geoelectric/'
                   'InterMagEarthScope/EmapGraphics_1m/latest.png')
