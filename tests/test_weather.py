@@ -186,10 +186,9 @@ class TestAsyncAddedToHass(unittest.TestCase):
 
     def test_forecast_update_calls_write_ha_state(self):
         """Forecast listener should call async_write_ha_state, not re-parse obs."""
-        from unittest.mock import patch as _patch
         entity = self._make()
         self._run(entity.async_added_to_hass())
-        with _patch.object(entity, "async_write_ha_state") as mock_write:
+        with patch.object(entity, "async_write_ha_state") as mock_write:
             entity._handle_forecast_update()
             mock_write.assert_called_once()
 
