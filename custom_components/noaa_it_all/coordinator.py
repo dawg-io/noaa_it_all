@@ -19,6 +19,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import (
+    DEFAULT_SCAN_INTERVAL,
     REQUEST_TIMEOUT, USER_AGENT,
     NWS_POINTS_URL, NWS_OBSERVATIONS_URL, NWS_ALERTS_URL,
     NWS_SRF_URL, NWS_AFD_URL, NWS_RADAR_BASE_URL,
@@ -29,7 +30,7 @@ from .parsers import parse_coops_water_temperature, parse_ndbc_wave_height
 
 _LOGGER = logging.getLogger(__name__)
 
-DEFAULT_UPDATE_INTERVAL = timedelta(minutes=5)
+DEFAULT_UPDATE_INTERVAL = timedelta(minutes=DEFAULT_SCAN_INTERVAL)
 
 # Space weather API endpoints
 _DST_URL = "https://services.swpc.noaa.gov/json/geospace/geospace_dst_1_hour.json"
