@@ -115,6 +115,16 @@ class TestAuroraForecastImageEntity(unittest.TestCase):
         self.assertTrue(entity.entity_picture.startswith("https://"))
         self.assertIn("aurora", entity.entity_picture)
 
+    def test_cache_bust_contains_timestamp(self):
+        entity = self._make()
+        self.assertIn("?t=", entity.entity_picture)
+
+    def test_device_info(self):
+        entity = self._make()
+        info = entity.device_info
+        self.assertIn("identifiers", info)
+        self.assertIn("manufacturer", info)
+
 
 class TestHurricaneOutlookImageEntity(unittest.TestCase):
     """Tests for HurricaneOutlookImageEntity properties."""

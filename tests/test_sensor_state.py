@@ -100,6 +100,20 @@ class TestGeomagneticSensor(unittest.TestCase):
         sensor = self._make([])
         self.assertIsNone(sensor.state)
 
+    def test_name(self):
+        sensor = self._make()
+        self.assertEqual(sensor.name, "NOAA Space - Geomagnetic Storm")
+
+    def test_unique_id(self):
+        sensor = self._make()
+        self.assertEqual(sensor.unique_id, f"noaa_{OFFICE}_geomagnetic_storm")
+
+    def test_device_info_space_group(self):
+        sensor = self._make()
+        info = sensor.device_info
+        ids = list(info["identifiers"])[0]
+        self.assertIn("space", ids[1])
+
 
 class TestGeomagneticSensorInterpretation(unittest.TestCase):
     """Tests for GeomagneticSensorInterpretation state computation."""
@@ -120,6 +134,20 @@ class TestGeomagneticSensorInterpretation(unittest.TestCase):
         coord = _make_coordinator(None)
         sensor = GeomagneticSensorInterpretation(coord, OFFICE)
         self.assertIsNone(sensor.state)
+
+    def test_name(self):
+        sensor = self._make()
+        self.assertEqual(sensor.name, "NOAA Space - Geomagnetic Storm Interpretation")
+
+    def test_unique_id(self):
+        sensor = self._make()
+        self.assertEqual(sensor.unique_id, f"noaa_{OFFICE}_geomagnetic_storm_interpretation")
+
+    def test_device_info_space_group(self):
+        sensor = self._make()
+        info = sensor.device_info
+        ids = list(info["identifiers"])[0]
+        self.assertIn("space", ids[1])
 
 
 class TestPlanetaryKIndexSensor(unittest.TestCase):
@@ -143,6 +171,20 @@ class TestPlanetaryKIndexSensor(unittest.TestCase):
         sensor = PlanetaryKIndexSensor(coord, OFFICE)
         self.assertIsNone(sensor.state)
 
+    def test_name(self):
+        sensor = self._make()
+        self.assertEqual(sensor.name, "NOAA Space - Planetary K-index")
+
+    def test_unique_id(self):
+        sensor = self._make()
+        self.assertEqual(sensor.unique_id, f"noaa_{OFFICE}_planetary_k_index")
+
+    def test_device_info_space_group(self):
+        sensor = self._make()
+        info = sensor.device_info
+        ids = list(info["identifiers"])[0]
+        self.assertIn("space", ids[1])
+
 
 class TestPlanetaryKIndexSensorRating(unittest.TestCase):
     """Tests for PlanetaryKIndexSensorRating state computation."""
@@ -160,6 +202,26 @@ class TestPlanetaryKIndexSensorRating(unittest.TestCase):
     def test_state_low(self):
         sensor = self._make([{"kp_index": 1.0}])
         self.assertEqual(sensor.state, "low")
+
+    def test_name(self):
+        sensor = self._make()
+        self.assertEqual(sensor.name, "NOAA Space - Planetary K-index Rating")
+
+    def test_unique_id(self):
+        sensor = self._make()
+        self.assertEqual(sensor.unique_id, f"noaa_{OFFICE}_planetary_k_index_rating")
+
+    def test_state_no_data(self):
+        from noaa_it_all.sensors.space_weather import PlanetaryKIndexSensorRating
+        coord = _make_coordinator(None)
+        sensor = PlanetaryKIndexSensorRating(coord, OFFICE)
+        self.assertIsNone(sensor.state)
+
+    def test_device_info_space_group(self):
+        sensor = self._make()
+        info = sensor.device_info
+        ids = list(info["identifiers"])[0]
+        self.assertIn("space", ids[1])
 
 
 # ---------------------------------------------------------------
