@@ -19,8 +19,8 @@ SCAN_INTERVAL = timedelta(minutes=5)  # Update every 5 minutes
 
 BASE_IMAGE_URL = ('https://services.swpc.noaa.gov/images/animations/geoelectric/'
                   'InterMagEarthScope/EmapGraphics_1m/latest.png')
-AURORA_URL = ('https://services.swpc.noaa.gov/experimental/images/aurora_dashboard/'
-              'tonights_static_viewline_forecast.png')
+AURORA_URL = ('https://services.swpc.noaa.gov/images/animations/ovation/'
+              'north/latest.jpg')
 
 # NOAA Hurricane Image Sources
 HURRICANE_OUTLOOK_URL = 'https://www.nhc.noaa.gov/xgtwo/two_atl_2d0.png'

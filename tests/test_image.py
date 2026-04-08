@@ -113,7 +113,7 @@ class TestAuroraForecastImageEntity(unittest.TestCase):
     def test_entity_picture_is_url(self):
         entity = self._make()
         self.assertTrue(entity.entity_picture.startswith("https://"))
-        self.assertIn("aurora", entity.entity_picture)
+        self.assertIn("ovation", entity.entity_picture)
 
     def test_cache_bust_contains_timestamp(self):
         entity = self._make()
