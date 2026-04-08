@@ -38,14 +38,12 @@ class TestManifest(unittest.TestCase):
         # NOTE: documentation and issue_tracker must point to the primary
         # dawg-io/noaa_it_all repository, NOT this dev fork.
         doc = self.manifest.get("documentation", "")
-        self.assertTrue(doc.startswith("https://github.com/"))
-        self.assertIn("noaa_it_all", doc)
+        self.assertIn("github.com/dawg-io/noaa_it_all", doc)
 
     def test_issue_tracker_url(self):
         # NOTE: Must point to dawg-io/noaa_it_all, not the dev repo.
         tracker = self.manifest.get("issue_tracker", "")
-        self.assertTrue(tracker.startswith("https://github.com/"))
-        self.assertIn("noaa_it_all", tracker)
+        self.assertIn("github.com/dawg-io/noaa_it_all", tracker)
         self.assertTrue(tracker.endswith("/issues"))
 
     def test_documentation_url_not_dev_repo(self):
