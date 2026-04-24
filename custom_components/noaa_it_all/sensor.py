@@ -11,7 +11,10 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CONF_OFFICE_CODE, CONF_LATITUDE, CONF_LONGITUDE, DOMAIN
+from .const import (
+    CONF_OFFICE_CODE, CONF_LATITUDE, CONF_LONGITUDE, DOMAIN,
+    HURRICANE_SENSORS_ADDED_KEY,
+)
 
 # Re-export every sensor class so that existing code that imports
 # directly from ``sensor`` continues to work.
@@ -93,15 +96,22 @@ async def async_setup_entry(
         AuroraVisibilityProbabilitySensor(space_coord, office_code),
         SolarRadiationStormAlertsSensor(space_coord, office_code),
 
-        # Hurricanes (global, use HurricaneCoordinator)
-        HurricaneAlertsSensor(hurricane_coord, office_code),
-        HurricaneActivitySensor(hurricane_coord, office_code),
-
         # Surf (office-specific, use SurfCoordinator)
         RipCurrentRiskSensor(surf_coord, office_code),
         SurfHeightSensor(surf_coord, office_code),
         WaterTemperatureSensor(surf_coord, office_code),
     ]
+
+    # Hurricane sensors are global (NHC) and grouped under a single
+    # dedicated NOAA Hurricane device. Only add them once across all
+    # configured NWS offices to prevent duplicates.
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    if not domain_data.get(HURRICANE_SENSORS_ADDED_KEY):
+        entities.extend([
+            HurricaneAlertsSensor(hurricane_coord),
+            HurricaneActivitySensor(hurricane_coord),
+        ])
+        domain_data[HURRICANE_SENSORS_ADDED_KEY] = True
 
     # Observation sensors (location-specific)
     if observations_coord:

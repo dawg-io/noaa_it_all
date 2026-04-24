@@ -2,6 +2,19 @@
 
 DOMAIN = "noaa_it_all"
 
+# Global (non office-specific) device identifiers.
+# Hurricane data comes from the National Hurricane Center and is global,
+# not tied to any single NWS forecast office, so all hurricane entities
+# are grouped under a single dedicated device.
+HURRICANE_DEVICE_ID = "noaa_hurricane"
+HURRICANE_DEVICE_NAME = "NOAA Hurricane"
+
+# Key used in hass.data[DOMAIN] to track whether the global hurricane
+# entities have already been added by an earlier config entry, so they
+# are not duplicated when multiple offices are configured.
+HURRICANE_SENSORS_ADDED_KEY = "_hurricane_sensors_added"
+HURRICANE_IMAGES_ADDED_KEY = "_hurricane_images_added"
+
 # Configuration keys
 CONF_OFFICE_CODE = "office_code"
 CONF_LATITUDE = "latitude"

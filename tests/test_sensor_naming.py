@@ -412,6 +412,16 @@ class TestDeviceInfoGrouping(unittest.TestCase):
             "manufacturer": "NOAA",
         }
 
+    def _expected_hurricane(self):
+        from noaa_it_all.const import (
+            DOMAIN, HURRICANE_DEVICE_ID, HURRICANE_DEVICE_NAME,
+        )
+        return {
+            "identifiers": {(DOMAIN, HURRICANE_DEVICE_ID)},
+            "name": HURRICANE_DEVICE_NAME,
+            "manufacturer": "NOAA",
+        }
+
     # -- weather device -------------------------------------------------------
 
     def test_temperature_device_info(self):
@@ -427,12 +437,12 @@ class TestDeviceInfoGrouping(unittest.TestCase):
     def test_hurricane_alerts_device_info(self):
         from noaa_it_all.sensors.hurricanes import HurricaneAlertsSensor
         s = HurricaneAlertsSensor(COORD, OFFICE)
-        self.assertEqual(s.device_info, self._expected_weather())
+        self.assertEqual(s.device_info, self._expected_hurricane())
 
     def test_hurricane_activity_device_info(self):
         from noaa_it_all.sensors.hurricanes import HurricaneActivitySensor
         s = HurricaneActivitySensor(COORD, OFFICE)
-        self.assertEqual(s.device_info, self._expected_weather())
+        self.assertEqual(s.device_info, self._expected_hurricane())
 
     def test_extended_forecast_device_info(self):
         from noaa_it_all.sensors.forecasts import ExtendedForecastSensor
@@ -503,14 +513,12 @@ class TestDeviceInfoGrouping(unittest.TestCase):
     def test_weather_sensors_share_device(self):
         """All weather-domain sensors share 'NOAA {OFFICE} Weather'."""
         from noaa_it_all.sensors.weather_observations import TemperatureSensor
-        from noaa_it_all.sensors.hurricanes import HurricaneAlertsSensor
         from noaa_it_all.sensors.forecasts import ExtendedForecastSensor
         from noaa_it_all.sensors.alerts import NWSAlertsSensor
         from noaa_it_all.sensors.weather_extra import CloudCoverSensor
 
         sensors = [
             TemperatureSensor(COORD, OFFICE, latitude=LAT, longitude=LON),
-            HurricaneAlertsSensor(COORD, OFFICE),
             ExtendedForecastSensor(COORD, OFFICE, LAT, LON),
             NWSAlertsSensor(COORD, OFFICE, LAT, LON),
             CloudCoverSensor(COORD, OFFICE, LAT, LON),
@@ -520,6 +528,22 @@ class TestDeviceInfoGrouping(unittest.TestCase):
             self.assertEqual(
                 sensor.device_info, expected,
                 f"{type(sensor).__name__}.device_info should be Weather device"
+            )
+
+    def test_hurricane_sensors_share_device(self):
+        """All hurricane-domain sensors share the global 'NOAA Hurricane' device."""
+        from noaa_it_all.sensors.hurricanes import (
+            HurricaneAlertsSensor, HurricaneActivitySensor,
+        )
+        sensors = [
+            HurricaneAlertsSensor(COORD, OFFICE),
+            HurricaneActivitySensor(COORD, OFFICE),
+        ]
+        expected = self._expected_hurricane()
+        for sensor in sensors:
+            self.assertEqual(
+                sensor.device_info, expected,
+                f"{type(sensor).__name__}.device_info should be Hurricane device"
             )
 
     def test_surf_sensors_share_device(self):

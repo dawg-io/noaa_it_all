@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [3.7.2] - Current
 
 ### Added
+- Dedicated `NOAA Hurricane` device that groups all global hurricane / NHC entities (Hurricane Alerts, Hurricane Activity, Hurricane Outlook Image, GOES Air Mass, GOES GeoColor) into a single device, independent of any configured NWS office.
 - Location-specific aurora visibility predictions with timing and duration
 - Solar Radiation Storm alerts with S1-S5 classification and location-specific risk assessment
 - Forecast Discussion sensor (AFD product) with meteorologist-written technical analysis
@@ -18,7 +19,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Improved
 - Weather observations now fetched from nearest station using coordinates (weather.gov API)
-- Device grouping organises all entities under NOAA Space, NOAA Weather, NOAA Surf, and NOAA Weather [OFFICE]
+- Device grouping organises all entities under NOAA Space, NOAA Weather, NOAA Surf, NOAA Hurricane, and NOAA Weather [OFFICE]
+
+### Breaking Changes
+- Hurricane sensors and hurricane image entities are no longer duplicated per configured NWS office. Their `unique_id` values changed from `noaa_{office}_hurricane_*` / `noaa_{office}_goes_*` to global IDs (`noaa_hurricane_alerts`, `noaa_hurricane_activity`, `noaa_hurricane_outlook_image`, `noaa_goes_airmass_image`, `noaa_goes_geocolor_image`). Existing entity registry entries from previous versions will become orphaned and may need to be deleted; the new entities will be created automatically under the `NOAA Hurricane` device.
 
 ## [1.0.20]
 

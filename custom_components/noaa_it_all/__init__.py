@@ -8,6 +8,7 @@ from homeassistant.helpers import discovery
 
 from .const import (
     DOMAIN, CONF_OFFICE_CODE, CONF_LATITUDE, CONF_LONGITUDE,
+    HURRICANE_IMAGES_ADDED_KEY, HURRICANE_SENSORS_ADDED_KEY,
     OFFICE_RADAR_SITES, OFFICE_TIDE_STATIONS, OFFICE_BUOY_STATIONS,
 )
 from .coordinator import (
@@ -131,6 +132,16 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id)
+
+        # If no per-entry data remains, also clear the global hurricane
+        # "added" flags so a fresh setup re-creates the global hurricane
+        # entities. (Keys starting with "_" are global flags, not entry data.)
+        remaining_entries = [
+            k for k in hass.data[DOMAIN] if not k.startswith("_")
+        ]
+        if not remaining_entries:
+            hass.data[DOMAIN].pop(HURRICANE_SENSORS_ADDED_KEY, None)
+            hass.data[DOMAIN].pop(HURRICANE_IMAGES_ADDED_KEY, None)
 
     return unload_ok
 
