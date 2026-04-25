@@ -4,7 +4,7 @@
     "step": {
       "user": {
         "title": "NOAA It All Setup",
-        "description": "Detected Home Assistant Home location: {ha_location}.\n\nLatitude and longitude have been pre-filled from your Home Assistant Home zone. You may override them to use a different location. The closest NWS forecast office will be suggested in the next step.",
+        "description": "Detected Home Assistant Home location: {ha_location}.\n\nIf a Home location is configured, latitude and longitude have been pre-filled from your Home Assistant Home zone; otherwise enter them manually. You may override the values to use a different location. The closest NWS forecast office will be suggested in the next step.",
         "data": {
           "latitude": "Latitude",
           "longitude": "Longitude"
