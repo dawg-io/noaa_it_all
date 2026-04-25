@@ -90,7 +90,7 @@ class TestHurricaneAlertsSensor(unittest.TestCase):
 
     def test_unique_id(self):
         sensor = self._make()
-        self.assertEqual(sensor.unique_id, f"noaa_{OFFICE}_hurricane_alerts")
+        self.assertEqual(sensor.unique_id, "noaa_hurricane_alerts")
 
     def test_state_with_alerts(self):
         data = _load_fixture("hurricane.json")
@@ -113,11 +113,12 @@ class TestHurricaneAlertsSensor(unittest.TestCase):
         self.assertIn("alerts", attrs)
         self.assertIsInstance(attrs["alerts"], list)
 
-    def test_device_info_weather_group(self):
+    def test_device_info_hurricane_group(self):
         sensor = self._make()
         info = sensor.device_info
         ids = list(info["identifiers"])[0]
-        self.assertIn("weather", ids[1])
+        self.assertEqual(ids[1], "noaa_hurricane")
+        self.assertEqual(info["name"], "NOAA Hurricane")
 
 
 # ---------------------------------------------------------------
@@ -137,7 +138,7 @@ class TestHurricaneActivitySensor(unittest.TestCase):
 
     def test_unique_id(self):
         sensor = self._make()
-        self.assertEqual(sensor.unique_id, f"noaa_{OFFICE}_hurricane_activity")
+        self.assertEqual(sensor.unique_id, "noaa_hurricane_activity")
 
     def test_state_no_data(self):
         sensor = self._make(None)
@@ -155,11 +156,12 @@ class TestHurricaneActivitySensor(unittest.TestCase):
         attrs = sensor.extra_state_attributes
         self.assertIsInstance(attrs, dict)
 
-    def test_device_info_weather_group(self):
+    def test_device_info_hurricane_group(self):
         sensor = self._make()
         info = sensor.device_info
         ids = list(info["identifiers"])[0]
-        self.assertIn("weather", ids[1])
+        self.assertEqual(ids[1], "noaa_hurricane")
+        self.assertEqual(info["name"], "NOAA Hurricane")
 
 
 if __name__ == "__main__":

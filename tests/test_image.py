@@ -139,7 +139,7 @@ class TestHurricaneOutlookImageEntity(unittest.TestCase):
 
     def test_unique_id(self):
         entity = self._make()
-        self.assertEqual(entity.unique_id, f"noaa_{OFFICE}_hurricane_outlook_image")
+        self.assertEqual(entity.unique_id, "noaa_hurricane_outlook_image")
 
 
 class TestRadarBaseReflectivityImageEntity(unittest.TestCase):
@@ -184,7 +184,7 @@ class TestGOESImageEntities(unittest.TestCase):
     def test_goes_airmass_unique_id(self):
         from noaa_it_all.image import GOESAirMassImageEntity
         entity = GOESAirMassImageEntity(HASS, OFFICE)
-        self.assertEqual(entity.unique_id, f"noaa_{OFFICE}_goes_airmass_image")
+        self.assertEqual(entity.unique_id, "noaa_goes_airmass_image")
 
     def test_goes_airmass_name(self):
         from noaa_it_all.image import GOESAirMassImageEntity
@@ -194,7 +194,7 @@ class TestGOESImageEntities(unittest.TestCase):
     def test_goes_geocolor_unique_id(self):
         from noaa_it_all.image import GOESGeoColorImageEntity
         entity = GOESGeoColorImageEntity(HASS, OFFICE)
-        self.assertEqual(entity.unique_id, f"noaa_{OFFICE}_goes_geocolor_image")
+        self.assertEqual(entity.unique_id, "noaa_goes_geocolor_image")
 
     def test_goes_geocolor_name(self):
         from noaa_it_all.image import GOESGeoColorImageEntity

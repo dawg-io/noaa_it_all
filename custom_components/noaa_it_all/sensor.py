@@ -11,7 +11,10 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import CONF_OFFICE_CODE, CONF_LATITUDE, CONF_LONGITUDE, DOMAIN
+from .const import (
+    CONF_OFFICE_CODE, CONF_LATITUDE, CONF_LONGITUDE, DOMAIN,
+    HURRICANE_SENSORS_ADDED_KEY,
+)
 
 # Re-export every sensor class so that existing code that imports
 # directly from ``sensor`` continues to work.
@@ -93,15 +96,57 @@ async def async_setup_entry(
         AuroraVisibilityProbabilitySensor(space_coord, office_code),
         SolarRadiationStormAlertsSensor(space_coord, office_code),
 
-        # Hurricanes (global, use HurricaneCoordinator)
-        HurricaneAlertsSensor(hurricane_coord, office_code),
-        HurricaneActivitySensor(hurricane_coord, office_code),
-
         # Surf (office-specific, use SurfCoordinator)
         RipCurrentRiskSensor(surf_coord, office_code),
         SurfHeightSensor(surf_coord, office_code),
         WaterTemperatureSensor(surf_coord, office_code),
     ]
+
+    # Hurricane sensors are global (NHC) and grouped under a single
+    # dedicated NOAA Hurricane device. Only add them once across all
+    # configured NWS offices to prevent duplicates. Track the owning
+    # config entry's entry_id so that if the owner is unloaded while
+    # other entries remain we can release ownership and trigger a
+    # remaining entry to re-create the entities.
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    if not domain_data.get(HURRICANE_SENSORS_ADDED_KEY):
+        entities.extend([
+            HurricaneAlertsSensor(hurricane_coord),
+            HurricaneActivitySensor(hurricane_coord),
+        ])
+        domain_data[HURRICANE_SENSORS_ADDED_KEY] = config_entry.entry_id
+
+        def _release_hurricane_sensor_ownership() -> None:
+            """Release hurricane-sensor ownership and re-create on a remaining entry.
+
+            Fires when the owning config entry is unloaded. If other entries
+            remain, clear the flag and reload one of them so its
+            ``async_setup_entry`` re-adds the global hurricane sensors;
+            otherwise the entities would disappear until Home Assistant
+            restarts.
+            """
+            if domain_data.get(HURRICANE_SENSORS_ADDED_KEY) != config_entry.entry_id:
+                return
+            domain_data.pop(HURRICANE_SENSORS_ADDED_KEY, None)
+            remaining = [
+                e for e in hass.config_entries.async_entries(DOMAIN)
+                if e.entry_id != config_entry.entry_id
+            ]
+            if remaining:
+                target_entry_id = remaining[0].entry_id
+
+                async def _reload_for_hurricane_sensors() -> None:
+                    try:
+                        await hass.config_entries.async_reload(target_entry_id)
+                    except Exception:  # noqa: BLE001
+                        _LOGGER.exception(
+                            "Failed to reload entry %s to re-create global "
+                            "hurricane sensors", target_entry_id,
+                        )
+
+                hass.async_create_task(_reload_for_hurricane_sensors())
+
+        config_entry.async_on_unload(_release_hurricane_sensor_ownership)
 
     # Observation sensors (location-specific)
     if observations_coord:
