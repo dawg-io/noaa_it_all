@@ -199,6 +199,48 @@ OFFICE_RADAR_SITES = {
     "TBW": "KTBW",  # Tampa, FL - Ruskin
 }
 
+# NWS forecast office approximate geographic coordinates (lat, lon).
+# Used by the config flow to suggest the closest office to the user's
+# Home Assistant Home zone via a haversine distance calculation.
+OFFICE_COORDINATES = {
+    "AKQ": (36.9840, -77.0072),    # Wakefield, VA (Norfolk/Richmond)
+    "APX": (44.9075, -84.7197),    # Gaylord, MI
+    "BOX": (41.9559, -71.1314),    # Taunton, MA (Boston)
+    "BRO": (25.9140, -97.4220),    # Brownsville, TX
+    "CAR": (46.8714, -68.0142),    # Caribou, ME
+    "CHS": (32.8986, -80.0408),    # Charleston, SC
+    "CLE": (41.4117, -81.8497),    # Cleveland, OH
+    "CRP": (27.7700, -97.5067),    # Corpus Christi, TX
+    "DLH": (46.8369, -92.1833),    # Duluth, MN
+    "DTX": (42.6997, -83.4716),    # White Lake, MI (Detroit)
+    "EKA": (40.9789, -124.1085),   # Eureka, CA
+    "GRB": (44.4983, -88.1114),    # Green Bay, WI
+    "GRR": (42.8939, -85.5447),    # Grand Rapids, MI
+    "GUM": (13.4828, 144.7997),    # Guam
+    "GYX": (43.8915, -70.2569),    # Gray, ME (Portland)
+    "HFO": (21.3245, -158.0250),   # Honolulu, HI
+    "ILM": (34.2675, -77.9011),    # Wilmington, NC
+    "IWX": (41.3589, -85.7000),    # North Webster, IN (Northern Indiana)
+    "JAX": (30.4842, -81.7019),    # Jacksonville, FL
+    "LOT": (41.6042, -88.0842),    # Romeoville, IL (Chicago)
+    "LOX": (34.2475, -119.1842),   # Oxnard, CA (Los Angeles)
+    "MFL": (25.7547, -80.3839),    # Miami, FL
+    "MFR": (42.3650, -122.8722),   # Medford, OR
+    "MHX": (34.7758, -76.8783),    # Newport/Morehead City, NC
+    "MKX": (42.9669, -88.5506),    # Sullivan, WI (Milwaukee)
+    "MLB": (28.1131, -80.6539),    # Melbourne, FL
+    "MOB": (30.6797, -88.2400),    # Mobile, AL
+    "MQT": (46.5311, -87.5489),    # Negaunee, MI (Marquette)
+    "MTR": (36.5950, -121.8480),   # Monterey, CA (San Francisco)
+    "OKX": (40.8656, -72.8639),    # Upton, NY (New York)
+    "PHI": (39.9942, -74.8336),    # Mount Holly, NJ (Philadelphia)
+    "PQR": (45.5503, -122.5667),   # Portland, OR
+    "SGX": (32.8331, -117.2756),   # San Diego, CA
+    "SJU": (18.4314, -66.0042),    # San Juan, PR
+    "TAE": (30.4072, -84.3500),    # Tallahassee, FL
+    "TBW": (27.7053, -82.4014),    # Ruskin, FL (Tampa Bay)
+}
+
 # Aurora visibility mapping - approximate magnetic latitudes for NWS offices
 OFFICE_MAGNETIC_LATITUDES = {
     "AKQ": 40.2,  # Norfolk, VA
