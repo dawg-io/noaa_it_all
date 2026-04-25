@@ -78,6 +78,28 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
         self._latitude = latitude
         self._longitude = longitude
 
+    async def async_added_to_hass(self) -> None:
+        """Process coordinator data immediately when added to HA."""
+        await super().async_added_to_hass()
+        # Subscribe to forecast coordinator updates.  Forecast data is
+        # read directly from the coordinator in async_forecast_*(), so
+        # we only need to tell HA to re-read state — no need to
+        # re-parse observation data via _handle_coordinator_update().
+        if self._forecast_coordinator:
+            self.async_on_remove(
+                self._forecast_coordinator.async_add_listener(
+                    self._handle_forecast_update
+                )
+            )
+        # Immediately process any data that the coordinators already
+        # fetched during integration setup so the entity does not sit
+        # empty until the first scheduled poll.
+        self._handle_coordinator_update()
+
+    def _handle_forecast_update(self) -> None:
+        """Notify HA that forecast data changed (lightweight)."""
+        self.async_write_ha_state()
+
     @property
     def name(self) -> str:
         """Return the name of the entity."""

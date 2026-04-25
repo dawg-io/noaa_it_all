@@ -145,12 +145,22 @@ def _run(coro):
         loop.close()
 
 
+def _make_hass(lat=None, lon=None):
+    """Create a fake Home Assistant object with config.latitude/longitude."""
+    hass = MagicMock()
+    hass.config = MagicMock()
+    hass.config.latitude = lat
+    hass.config.longitude = lon
+    return hass
+
+
 class TestAsyncStepUser(unittest.TestCase):
     """Exercise NOAAConfigFlow.async_step_user with valid/invalid inputs."""
 
-    def _make_flow(self):
+    def _make_flow(self, hass=None):
         from noaa_it_all.config_flow import NOAAConfigFlow
         flow = NOAAConfigFlow()
+        flow.hass = hass
         flow.async_set_unique_id = AsyncMock(return_value=None)
         flow._abort_if_unique_id_configured = MagicMock()
         return flow
@@ -161,51 +171,54 @@ class TestAsyncStepUser(unittest.TestCase):
         self.assertEqual(result["type"], "form")
         self.assertEqual(result["step_id"], "user")
 
-    def test_valid_input_creates_entry(self):
+    def test_no_input_form_has_no_office_code_field(self):
+        """Step 1 must not require an office code from the user."""
         flow = self._make_flow()
-        result = _run(flow.async_step_user(user_input={
-            "office_code": "SGX",
-            "latitude": 32.7157,
-            "longitude": -117.1611,
-        }))
-        self.assertEqual(result["type"], "create_entry")
-        self.assertEqual(result["title"], "NOAA - San Diego, CA")
+        result = _run(flow.async_step_user(user_input=None))
+        # office_code is collected later in step_office, never in step_user
+        self.assertEqual(result["step_id"], "user")
 
-    def test_valid_input_calls_async_set_unique_id(self):
-        flow = self._make_flow()
-        _run(flow.async_step_user(user_input={
-            "office_code": "SGX",
-            "latitude": 32.7157,
-            "longitude": -117.1611,
-        }))
-        flow.async_set_unique_id.assert_awaited_once_with(
-            "noaa_SGX_32_7157_n117_1611"
+    def test_no_input_with_ha_home_includes_ha_location_placeholder(self):
+        flow = self._make_flow(hass=_make_hass(32.7157, -117.1611))
+        result = _run(flow.async_step_user(user_input=None))
+        self.assertIn("ha_location", result["description_placeholders"])
+        self.assertIn("32.7157", result["description_placeholders"]["ha_location"])
+        self.assertIn("-117.1611", result["description_placeholders"]["ha_location"])
+
+    def test_no_input_without_ha_home_falls_back_to_not_configured(self):
+        flow = self._make_flow(hass=_make_hass(None, None))
+        result = _run(flow.async_step_user(user_input=None))
+        self.assertEqual(
+            result["description_placeholders"]["ha_location"], "not configured"
         )
 
-    def test_valid_input_calls_abort_if_configured(self):
+    def test_valid_input_advances_to_office_step(self):
         flow = self._make_flow()
-        _run(flow.async_step_user(user_input={
-            "office_code": "SGX",
+        result = _run(flow.async_step_user(user_input={
             "latitude": 32.7157,
             "longitude": -117.1611,
         }))
-        flow._abort_if_unique_id_configured.assert_called_once()
+        # Now returns the office selection form, not create_entry yet
+        self.assertEqual(result["type"], "form")
+        self.assertEqual(result["step_id"], "office")
+        # Stored on the flow for the next step
+        self.assertAlmostEqual(flow._latitude, 32.7157)
+        self.assertAlmostEqual(flow._longitude, -117.1611)
 
     def test_invalid_latitude_too_high_returns_error(self):
         flow = self._make_flow()
         result = _run(flow.async_step_user(user_input={
-            "office_code": "SGX",
             "latitude": 91.0,
             "longitude": -117.0,
         }))
         self.assertEqual(result["type"], "form")
+        self.assertEqual(result["step_id"], "user")
         self.assertIn("latitude", result["errors"])
         self.assertEqual(result["errors"]["latitude"], "invalid_latitude")
 
     def test_invalid_latitude_too_low_returns_error(self):
         flow = self._make_flow()
         result = _run(flow.async_step_user(user_input={
-            "office_code": "SGX",
             "latitude": -91.0,
             "longitude": -117.0,
         }))
@@ -216,7 +229,6 @@ class TestAsyncStepUser(unittest.TestCase):
     def test_invalid_longitude_too_high_returns_error(self):
         flow = self._make_flow()
         result = _run(flow.async_step_user(user_input={
-            "office_code": "SGX",
             "latitude": 32.0,
             "longitude": 181.0,
         }))
@@ -227,7 +239,6 @@ class TestAsyncStepUser(unittest.TestCase):
     def test_invalid_longitude_too_low_returns_error(self):
         flow = self._make_flow()
         result = _run(flow.async_step_user(user_input={
-            "office_code": "SGX",
             "latitude": 32.0,
             "longitude": -181.0,
         }))
@@ -238,7 +249,6 @@ class TestAsyncStepUser(unittest.TestCase):
     def test_invalid_lat_and_lon_returns_both_errors(self):
         flow = self._make_flow()
         result = _run(flow.async_step_user(user_input={
-            "office_code": "SGX",
             "latitude": 91.0,
             "longitude": -181.0,
         }))
@@ -249,58 +259,135 @@ class TestAsyncStepUser(unittest.TestCase):
     def test_invalid_input_does_not_set_unique_id(self):
         flow = self._make_flow()
         _run(flow.async_step_user(user_input={
-            "office_code": "SGX",
             "latitude": 91.0,
             "longitude": -117.0,
         }))
         flow.async_set_unique_id.assert_not_awaited()
 
-    def test_edge_latitude_90(self):
+    def test_edge_latitude_90_advances_to_office(self):
         flow = self._make_flow()
         result = _run(flow.async_step_user(user_input={
-            "office_code": "SGX",
-            "latitude": 90.0,
-            "longitude": 0.0,
+            "latitude": 90.0, "longitude": 0.0,
         }))
-        self.assertEqual(result["type"], "create_entry")
+        self.assertEqual(result["step_id"], "office")
 
-    def test_edge_latitude_neg90(self):
+    def test_edge_latitude_neg90_advances_to_office(self):
         flow = self._make_flow()
         result = _run(flow.async_step_user(user_input={
-            "office_code": "SGX",
-            "latitude": -90.0,
-            "longitude": 0.0,
+            "latitude": -90.0, "longitude": 0.0,
         }))
-        self.assertEqual(result["type"], "create_entry")
+        self.assertEqual(result["step_id"], "office")
 
-    def test_edge_longitude_180(self):
+    def test_edge_longitude_180_advances_to_office(self):
         flow = self._make_flow()
         result = _run(flow.async_step_user(user_input={
-            "office_code": "SGX",
-            "latitude": 0.0,
-            "longitude": 180.0,
+            "latitude": 0.0, "longitude": 180.0,
         }))
-        self.assertEqual(result["type"], "create_entry")
+        self.assertEqual(result["step_id"], "office")
 
-    def test_edge_longitude_neg180(self):
+    def test_edge_longitude_neg180_advances_to_office(self):
         flow = self._make_flow()
         result = _run(flow.async_step_user(user_input={
-            "office_code": "SGX",
-            "latitude": 0.0,
-            "longitude": -180.0,
+            "latitude": 0.0, "longitude": -180.0,
         }))
-        self.assertEqual(result["type"], "create_entry")
+        self.assertEqual(result["step_id"], "office")
 
-    def test_unique_id_with_negative_coords(self):
-        flow = self._make_flow()
-        _run(flow.async_step_user(user_input={
-            "office_code": "ILM",
-            "latitude": -33.8688,
-            "longitude": -117.1611,
-        }))
+
+class TestAsyncStepOffice(unittest.TestCase):
+    """Exercise NOAAConfigFlow.async_step_office with auto-suggest behavior."""
+
+    def _make_flow(self, lat, lon):
+        from noaa_it_all.config_flow import NOAAConfigFlow
+        flow = NOAAConfigFlow()
+        flow.hass = None
+        flow._latitude = lat
+        flow._longitude = lon
+        flow.async_set_unique_id = AsyncMock(return_value=None)
+        flow._abort_if_unique_id_configured = MagicMock()
+        return flow
+
+    def test_office_form_suggests_closest_office(self):
+        # San Diego coordinates -> SGX should be the default
+        flow = self._make_flow(32.7157, -117.1611)
+        result = _run(flow.async_step_office(user_input=None))
+        self.assertEqual(result["type"], "form")
+        self.assertEqual(result["step_id"], "office")
+
+    def test_office_form_no_warning_when_office_within_50_miles(self):
+        flow = self._make_flow(32.7157, -117.1611)  # San Diego, near SGX
+        result = _run(flow.async_step_office(user_input=None))
+        self.assertEqual(result["description_placeholders"]["warning"], "")
+
+    def test_office_form_warning_when_no_office_within_50_miles(self):
+        # Middle of the Atlantic - no office within 50 miles
+        flow = self._make_flow(0.0, -30.0)
+        result = _run(flow.async_step_office(user_input=None))
+        self.assertNotEqual(result["description_placeholders"]["warning"], "")
+        self.assertIn("50 miles", result["description_placeholders"]["warning"])
+
+    def test_office_choice_creates_entry_with_unique_id(self):
+        flow = self._make_flow(32.7157, -117.1611)
+        result = _run(flow.async_step_office(user_input={"office_code": "SGX"}))
+        self.assertEqual(result["type"], "create_entry")
+        self.assertEqual(result["title"], "NOAA - San Diego, CA")
+        flow.async_set_unique_id.assert_awaited_once_with(
+            "noaa_SGX_32_7157_n117_1611"
+        )
+        flow._abort_if_unique_id_configured.assert_called_once()
+        self.assertEqual(result["data"]["office_code"], "SGX")
+        self.assertAlmostEqual(result["data"]["latitude"], 32.7157)
+        self.assertAlmostEqual(result["data"]["longitude"], -117.1611)
+
+    def test_office_choice_with_negative_coords_unique_id(self):
+        flow = self._make_flow(-33.8688, -117.1611)
+        _run(flow.async_step_office(user_input={"office_code": "ILM"}))
         flow.async_set_unique_id.assert_awaited_once_with(
             "noaa_ILM_n33_8688_n117_1611"
         )
+
+
+class TestHaversineAndOfficeLookup(unittest.TestCase):
+    """Tests for the haversine distance + office lookup helpers."""
+
+    def test_haversine_zero_distance(self):
+        from noaa_it_all.config_flow import haversine_miles
+        self.assertEqual(haversine_miles(40.0, -75.0, 40.0, -75.0), 0.0)
+
+    def test_haversine_known_distance(self):
+        # NY (40.7128, -74.0060) to LA (34.0522, -118.2437) ~ 2451 miles
+        from noaa_it_all.config_flow import haversine_miles
+        d = haversine_miles(40.7128, -74.0060, 34.0522, -118.2437)
+        self.assertAlmostEqual(d, 2451, delta=10)
+
+    def test_find_nearby_offices_returns_only_within_radius(self):
+        from noaa_it_all.config_flow import find_nearby_offices
+        # San Diego -> SGX (San Diego) should be in the result
+        results = find_nearby_offices(32.7157, -117.1611, max_miles=50)
+        codes = [code for code, _ in results]
+        self.assertIn("SGX", codes)
+        for _, dist in results:
+            self.assertLessEqual(dist, 50.0)
+
+    def test_find_nearby_offices_sorted_ascending(self):
+        from noaa_it_all.config_flow import find_nearby_offices
+        results = find_nearby_offices(40.0, -75.0, max_miles=None)
+        distances = [d for _, d in results]
+        self.assertEqual(distances, sorted(distances))
+
+    def test_find_nearby_offices_no_match_returns_empty(self):
+        from noaa_it_all.config_flow import find_nearby_offices
+        # Middle of the Atlantic - far from any US office
+        results = find_nearby_offices(0.0, -30.0, max_miles=50)
+        self.assertEqual(results, [])
+
+    def test_find_nearby_offices_no_max_returns_all(self):
+        from noaa_it_all.config_flow import find_nearby_offices, NWS_OFFICES
+        from noaa_it_all.const import OFFICE_COORDINATES
+        results = find_nearby_offices(0.0, 0.0, max_miles=None)
+        self.assertEqual(len(results), len(OFFICE_COORDINATES))
+        # Every office in NWS_OFFICES should also have coordinates
+        for code in NWS_OFFICES:
+            self.assertIn(code, OFFICE_COORDINATES)
 
 
 class TestAsyncStepInit(unittest.TestCase):
@@ -310,7 +397,9 @@ class TestAsyncStepInit(unittest.TestCase):
         from noaa_it_all.config_flow import NOAAOptionsFlow
         entry = MagicMock()
         entry.data = {"office_code": "SGX", "latitude": 32.0, "longitude": -117.0}
-        return NOAAOptionsFlow(entry)
+        flow = NOAAOptionsFlow(entry)
+        flow.hass = None
+        return flow
 
     def test_no_input_shows_form(self):
         flow = self._make_flow()
@@ -318,19 +407,38 @@ class TestAsyncStepInit(unittest.TestCase):
         self.assertEqual(result["type"], "form")
         self.assertEqual(result["step_id"], "init")
 
-    def test_valid_input_creates_entry(self):
+    def test_no_input_prefills_existing_coords(self):
+        flow = self._make_flow()
+        _run(flow.async_step_init(user_input=None))
+        # We can't easily inspect schema defaults via our MagicMock voluptuous,
+        # but we can confirm the form did not error.
+
+    def test_valid_input_advances_to_office_step(self):
         flow = self._make_flow()
         result = _run(flow.async_step_init(user_input={
-            "office_code": "ILM",
             "latitude": 34.0,
             "longitude": -78.0,
         }))
+        self.assertEqual(result["type"], "form")
+        self.assertEqual(result["step_id"], "office")
+        self.assertAlmostEqual(flow._latitude, 34.0)
+        self.assertAlmostEqual(flow._longitude, -78.0)
+
+    def test_office_step_creates_entry(self):
+        flow = self._make_flow()
+        _run(flow.async_step_init(user_input={
+            "latitude": 34.0,
+            "longitude": -78.0,
+        }))
+        result = _run(flow.async_step_office(user_input={"office_code": "ILM"}))
         self.assertEqual(result["type"], "create_entry")
+        self.assertEqual(result["data"]["office_code"], "ILM")
+        self.assertAlmostEqual(result["data"]["latitude"], 34.0)
+        self.assertAlmostEqual(result["data"]["longitude"], -78.0)
 
     def test_invalid_latitude_returns_error(self):
         flow = self._make_flow()
         result = _run(flow.async_step_init(user_input={
-            "office_code": "SGX",
             "latitude": 91.0,
             "longitude": -117.0,
         }))
@@ -341,7 +449,6 @@ class TestAsyncStepInit(unittest.TestCase):
     def test_invalid_longitude_returns_error(self):
         flow = self._make_flow()
         result = _run(flow.async_step_init(user_input={
-            "office_code": "SGX",
             "latitude": 32.0,
             "longitude": 181.0,
         }))
@@ -352,7 +459,6 @@ class TestAsyncStepInit(unittest.TestCase):
     def test_invalid_lat_and_lon_returns_both_errors(self):
         flow = self._make_flow()
         result = _run(flow.async_step_init(user_input={
-            "office_code": "SGX",
             "latitude": -91.0,
             "longitude": -181.0,
         }))
@@ -360,14 +466,13 @@ class TestAsyncStepInit(unittest.TestCase):
         self.assertIn("latitude", result["errors"])
         self.assertIn("longitude", result["errors"])
 
-    def test_edge_values_accepted(self):
+    def test_edge_values_advance_to_office(self):
         flow = self._make_flow()
         result = _run(flow.async_step_init(user_input={
-            "office_code": "SGX",
             "latitude": 90.0,
             "longitude": -180.0,
         }))
-        self.assertEqual(result["type"], "create_entry")
+        self.assertEqual(result["step_id"], "office")
 
 
 if __name__ == "__main__":

@@ -9,13 +9,16 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from datetime import timedelta, datetime
 
 from .const import (
-    CONF_OFFICE_CODE, DOMAIN, NWS_RADAR_BASE_URL, NWS_RADAR_LOOP_URL,
+    CONF_OFFICE_CODE, DEFAULT_SCAN_INTERVAL, DOMAIN,
+    HURRICANE_DEVICE_ID, HURRICANE_DEVICE_NAME,
+    HURRICANE_IMAGES_ADDED_KEY,
+    NWS_RADAR_BASE_URL, NWS_RADAR_LOOP_URL,
     OFFICE_RADAR_SITES, REQUEST_TIMEOUT,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
-SCAN_INTERVAL = timedelta(minutes=5)  # Update every 5 minutes
+SCAN_INTERVAL = timedelta(minutes=DEFAULT_SCAN_INTERVAL)
 
 BASE_IMAGE_URL = ('https://services.swpc.noaa.gov/images/animations/geoelectric/'
                   'InterMagEarthScope/EmapGraphics_1m/latest.png')
@@ -28,6 +31,20 @@ HURRICANE_OUTLOOK_URL = 'https://www.nhc.noaa.gov/xgtwo/two_atl_2d0.png'
 # NOAA GOES Satellite Image Sources
 GOES_AIRMASS_URL = 'https://cdn.star.nesdis.noaa.gov/GOES19/ABI/CONUS/AirMass/1250x750.jpg'
 GOES_GEOCOLOR_URL = 'https://cdn.star.nesdis.noaa.gov/GOES19/ABI/CONUS/GEOCOLOR/1250x750.jpg'
+
+
+def _hurricane_device_info() -> DeviceInfo:
+    """Return the shared device info for all NOAA Hurricane image entities.
+
+    Hurricane / NHC tropical-cyclone data is global and is not tied to any
+    configured NWS office, so all hurricane image entities share a single
+    dedicated device named ``NOAA Hurricane``.
+    """
+    return DeviceInfo(
+        identifiers={(DOMAIN, HURRICANE_DEVICE_ID)},
+        name=HURRICANE_DEVICE_NAME,
+        manufacturer="NOAA",
+    )
 
 
 def setup_platform(hass, config, add_entities, discovery_info=None):
@@ -51,20 +68,61 @@ async def async_setup_entry(
     # Global image entities (grouped under office device)
     geoelectric_image_entity = GeoelectricFieldImageEntity(hass, office_code)
     aurora_image_entity = AuroraForecastImageEntity(hass, office_code)
-    hurricane_outlook_image = HurricaneOutlookImageEntity(hass, office_code)
-    goes_airmass_image = GOESAirMassImageEntity(hass, office_code)
-    goes_geocolor_image = GOESGeoColorImageEntity(hass, office_code)
-
-    # Location-specific radar image entities
-    radar_site = OFFICE_RADAR_SITES.get(office_code)
 
     entities = [
         geoelectric_image_entity,
         aurora_image_entity,
-        hurricane_outlook_image,
-        goes_airmass_image,
-        goes_geocolor_image,
     ]
+
+    # Hurricane image entities are global (NHC) and must only be added
+    # once across all configured NWS offices, so they don't appear under
+    # every office-specific device. Track the owning config entry's
+    # entry_id so that if the owner is unloaded while other entries
+    # remain we can release ownership and trigger a remaining entry to
+    # re-create the entities.
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    if not domain_data.get(HURRICANE_IMAGES_ADDED_KEY):
+        entities.extend([
+            HurricaneOutlookImageEntity(hass),
+            GOESAirMassImageEntity(hass),
+            GOESGeoColorImageEntity(hass),
+        ])
+        domain_data[HURRICANE_IMAGES_ADDED_KEY] = config_entry.entry_id
+
+        def _release_hurricane_image_ownership() -> None:
+            """Release hurricane-image ownership and re-create on a remaining entry.
+
+            Fires when the owning config entry is unloaded. If other entries
+            remain, clear the flag and reload one of them so its
+            ``async_setup_entry`` re-adds the global hurricane images;
+            otherwise the entities would disappear until Home Assistant
+            restarts.
+            """
+            if domain_data.get(HURRICANE_IMAGES_ADDED_KEY) != config_entry.entry_id:
+                return
+            domain_data.pop(HURRICANE_IMAGES_ADDED_KEY, None)
+            remaining = [
+                e for e in hass.config_entries.async_entries(DOMAIN)
+                if e.entry_id != config_entry.entry_id
+            ]
+            if remaining:
+                target_entry_id = remaining[0].entry_id
+
+                async def _reload_for_hurricane_images() -> None:
+                    try:
+                        await hass.config_entries.async_reload(target_entry_id)
+                    except Exception:  # noqa: BLE001
+                        _LOGGER.exception(
+                            "Failed to reload entry %s to re-create global "
+                            "hurricane images", target_entry_id,
+                        )
+
+                hass.async_create_task(_reload_for_hurricane_images())
+
+        config_entry.async_on_unload(_release_hurricane_image_ownership)
+
+    # Location-specific radar image entities
+    radar_site = OFFICE_RADAR_SITES.get(office_code)
 
     if radar_site:
         # Add radar image entities for this location
@@ -229,11 +287,14 @@ class AuroraForecastImageEntity(ImageEntity):
 class HurricaneOutlookImageEntity(ImageEntity):
     """Representation of the Hurricane Outlook Image."""
 
-    def __init__(self, hass, office_code):
-        """Initialize the image entity."""
+    def __init__(self, hass, office_code=None):
+        """Initialize the image entity.
+
+        ``office_code`` is accepted for backward compatibility but is
+        unused: this entity is global (NHC).
+        """
         super().__init__(hass)
         self.hass = hass
-        self._office_code = office_code
         self._image_url = self.get_cache_busted_url()
 
     @property
@@ -249,16 +310,12 @@ class HurricaneOutlookImageEntity(ImageEntity):
     @property
     def unique_id(self):
         """Return a unique ID for this entity."""
-        return f'noaa_{self._office_code}_hurricane_outlook_image'
+        return 'noaa_hurricane_outlook_image'
 
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information."""
-        return DeviceInfo(
-            identifiers={(DOMAIN, f"noaa_{self._office_code}_weather")},
-            name=f"NOAA {self._office_code} Weather",
-            manufacturer="NOAA"
-        )
+        return _hurricane_device_info()
 
     def get_cache_busted_url(self):
         """Add a timestamp to the URL to prevent caching."""
@@ -462,11 +519,16 @@ class RadarLoopImageEntity(ImageEntity):
 class GOESAirMassImageEntity(ImageEntity):
     """Representation of the GOES-19 Air Mass RGB Satellite Image."""
 
-    def __init__(self, hass, office_code):
-        """Initialize the image entity."""
+    def __init__(self, hass, office_code=None):
+        """Initialize the image entity.
+
+        ``office_code`` is accepted for backward compatibility but is
+        unused: this satellite image is global and is grouped under the
+        NOAA Hurricane device alongside the other tropical-cyclone
+        tracking images.
+        """
         super().__init__(hass)
         self.hass = hass
-        self._office_code = office_code
         self._image_url = self.get_cache_busted_url()
 
     @property
@@ -482,16 +544,12 @@ class GOESAirMassImageEntity(ImageEntity):
     @property
     def unique_id(self):
         """Return a unique ID for this entity."""
-        return f'noaa_{self._office_code}_goes_airmass_image'
+        return 'noaa_goes_airmass_image'
 
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information."""
-        return DeviceInfo(
-            identifiers={(DOMAIN, f"noaa_{self._office_code}_weather")},
-            name=f"NOAA {self._office_code} Weather",
-            manufacturer="NOAA"
-        )
+        return _hurricane_device_info()
 
     def get_cache_busted_url(self):
         """Add a timestamp to the URL to prevent caching."""
@@ -536,11 +594,16 @@ class GOESAirMassImageEntity(ImageEntity):
 class GOESGeoColorImageEntity(ImageEntity):
     """Representation of the GOES-19 GeoColor Satellite Image."""
 
-    def __init__(self, hass, office_code):
-        """Initialize the image entity."""
+    def __init__(self, hass, office_code=None):
+        """Initialize the image entity.
+
+        ``office_code`` is accepted for backward compatibility but is
+        unused: this satellite image is global and is grouped under the
+        NOAA Hurricane device alongside the other tropical-cyclone
+        tracking images.
+        """
         super().__init__(hass)
         self.hass = hass
-        self._office_code = office_code
         self._image_url = self.get_cache_busted_url()
 
     @property
@@ -556,16 +619,12 @@ class GOESGeoColorImageEntity(ImageEntity):
     @property
     def unique_id(self):
         """Return a unique ID for this entity."""
-        return f'noaa_{self._office_code}_goes_geocolor_image'
+        return 'noaa_goes_geocolor_image'
 
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information."""
-        return DeviceInfo(
-            identifiers={(DOMAIN, f"noaa_{self._office_code}_weather")},
-            name=f"NOAA {self._office_code} Weather",
-            manufacturer="NOAA"
-        )
+        return _hurricane_device_info()
 
     def get_cache_busted_url(self):
         """Add a timestamp to the URL to prevent caching."""

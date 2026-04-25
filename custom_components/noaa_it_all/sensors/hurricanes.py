@@ -4,19 +4,37 @@ import logging
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from ..const import DOMAIN
+from ..const import DOMAIN, HURRICANE_DEVICE_ID, HURRICANE_DEVICE_NAME
 from ..parsers import classify_hurricane_activity
 
 _LOGGER = logging.getLogger(__name__)
 
 
+def _hurricane_device_info() -> "DeviceInfo":
+    """Return the shared device info for all NOAA Hurricane entities.
+
+    Hurricane data is global (NHC) and must not be attached to any
+    office-specific weather device.
+    """
+    return DeviceInfo(
+        identifiers={(DOMAIN, HURRICANE_DEVICE_ID)},
+        name=HURRICANE_DEVICE_NAME,
+        manufacturer="NOAA",
+    )
+
+
 class HurricaneAlertsSensor(CoordinatorEntity):
     """Representation of Hurricane Alerts sensor."""
 
-    def __init__(self, coordinator, office_code):
-        """Initialize the hurricane alerts sensor."""
+    def __init__(self, coordinator, office_code=None):
+        """Initialize the hurricane alerts sensor.
+
+        ``office_code`` is accepted for backward compatibility with
+        callers that still pass it, but is intentionally unused: the
+        hurricane alerts sensor is global (NHC) and not tied to a
+        specific NWS office.
+        """
         super().__init__(coordinator)
-        self._office_code = office_code
         self._state = None
         self._attributes = {}
 
@@ -57,25 +75,26 @@ class HurricaneAlertsSensor(CoordinatorEntity):
     @property
     def unique_id(self):
         """Return a unique ID for this entity."""
-        return f'noaa_{self._office_code}_hurricane_alerts'
+        return 'noaa_hurricane_alerts'
 
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information to group this entity."""
-        return DeviceInfo(
-            identifiers={(DOMAIN, f"noaa_{self._office_code}_weather")},
-            name=f"NOAA {self._office_code} Weather",
-            manufacturer="NOAA"
-        )
+        return _hurricane_device_info()
 
 
 class HurricaneActivitySensor(CoordinatorEntity):
     """Representation of Hurricane Activity sensor for general hurricane status."""
 
-    def __init__(self, coordinator, office_code):
-        """Initialize the hurricane activity sensor."""
+    def __init__(self, coordinator, office_code=None):
+        """Initialize the hurricane activity sensor.
+
+        ``office_code`` is accepted for backward compatibility with
+        callers that still pass it, but is intentionally unused: the
+        hurricane activity sensor is global (NHC) and not tied to a
+        specific NWS office.
+        """
         super().__init__(coordinator)
-        self._office_code = office_code
         self._state = None
         self._attributes = {}
 
@@ -111,13 +130,9 @@ class HurricaneActivitySensor(CoordinatorEntity):
     @property
     def unique_id(self):
         """Return a unique ID for this entity."""
-        return f'noaa_{self._office_code}_hurricane_activity'
+        return 'noaa_hurricane_activity'
 
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information to group this entity."""
-        return DeviceInfo(
-            identifiers={(DOMAIN, f"noaa_{self._office_code}_weather")},
-            name=f"NOAA {self._office_code} Weather",
-            manufacturer="NOAA"
-        )
+        return _hurricane_device_info()
