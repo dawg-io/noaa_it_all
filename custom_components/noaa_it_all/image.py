@@ -76,8 +76,10 @@ async def async_setup_entry(
 
     # Hurricane image entities are global (NHC) and must only be added
     # once across all configured NWS offices, so they don't appear under
-    # every office-specific device. Track whether they've already been
-    # added in hass.data so subsequent config entries skip them.
+    # every office-specific device. Track the owning config entry's
+    # entry_id so that if the owner is unloaded while other entries
+    # remain we can release ownership and trigger a remaining entry to
+    # re-create the entities.
     domain_data = hass.data.setdefault(DOMAIN, {})
     if not domain_data.get(HURRICANE_IMAGES_ADDED_KEY):
         entities.extend([
@@ -85,7 +87,39 @@ async def async_setup_entry(
             GOESAirMassImageEntity(hass),
             GOESGeoColorImageEntity(hass),
         ])
-        domain_data[HURRICANE_IMAGES_ADDED_KEY] = True
+        domain_data[HURRICANE_IMAGES_ADDED_KEY] = config_entry.entry_id
+
+        def _release_hurricane_image_ownership() -> None:
+            """Release hurricane-image ownership and re-create on a remaining entry.
+
+            Fires when the owning config entry is unloaded. If other entries
+            remain, clear the flag and reload one of them so its
+            ``async_setup_entry`` re-adds the global hurricane images;
+            otherwise the entities would disappear until Home Assistant
+            restarts.
+            """
+            if domain_data.get(HURRICANE_IMAGES_ADDED_KEY) != config_entry.entry_id:
+                return
+            domain_data.pop(HURRICANE_IMAGES_ADDED_KEY, None)
+            remaining = [
+                e for e in hass.config_entries.async_entries(DOMAIN)
+                if e.entry_id != config_entry.entry_id
+            ]
+            if remaining:
+                target_entry_id = remaining[0].entry_id
+
+                async def _reload_for_hurricane_images() -> None:
+                    try:
+                        await hass.config_entries.async_reload(target_entry_id)
+                    except Exception:  # noqa: BLE001
+                        _LOGGER.exception(
+                            "Failed to reload entry %s to re-create global "
+                            "hurricane images", target_entry_id,
+                        )
+
+                hass.async_create_task(_reload_for_hurricane_images())
+
+        config_entry.async_on_unload(_release_hurricane_image_ownership)
 
     # Location-specific radar image entities
     radar_site = OFFICE_RADAR_SITES.get(office_code)

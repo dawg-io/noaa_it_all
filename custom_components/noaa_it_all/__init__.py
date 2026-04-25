@@ -8,6 +8,7 @@ from homeassistant.helpers import discovery
 
 from .const import (
     DOMAIN, CONF_OFFICE_CODE, CONF_LATITUDE, CONF_LONGITUDE,
+    HURRICANE_COORDINATOR_KEY,
     HURRICANE_IMAGES_ADDED_KEY, HURRICANE_SENSORS_ADDED_KEY,
     OFFICE_RADAR_SITES, OFFICE_TIDE_STATIONS, OFFICE_BUOY_STATIONS,
 )
@@ -46,6 +47,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     _LOGGER.info("Setting up NOAA integration for %s", entry.data.get("office_code"))
 
     hass.data.setdefault(DOMAIN, {})
+    domain_data = hass.data[DOMAIN]
 
     office_code = entry.data[CONF_OFFICE_CODE]
     latitude = entry.data.get(CONF_LATITUDE)
@@ -55,7 +57,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     # Global coordinators (no location dependency)
     space_weather_coord = SpaceWeatherCoordinator(hass)
-    hurricane_coord = HurricaneCoordinator(hass)
+
+    # Hurricane data is global (NHC). Share a single HurricaneCoordinator
+    # across all configured config entries so we only schedule one set of
+    # polling tasks and only do one initial refresh on startup, regardless
+    # of how many NWS offices are configured.
+    hurricane_coord = domain_data.get(HURRICANE_COORDINATOR_KEY)
+    hurricane_coord_is_new = hurricane_coord is None
+    if hurricane_coord_is_new:
+        hurricane_coord = HurricaneCoordinator(hass)
+        domain_data[HURRICANE_COORDINATOR_KEY] = hurricane_coord
 
     # Office-specific coordinators
     tide_station = OFFICE_TIDE_STATIONS.get(office_code)
@@ -90,10 +101,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     # ---- Initial refresh (non-blocking, errors are logged) ----
     refresh_tasks = [
         space_weather_coord.async_refresh(),
-        hurricane_coord.async_refresh(),
         surf_coord.async_refresh(),
         discussion_coord.async_refresh(),
     ]
+    # Only refresh the shared hurricane coordinator on the entry that
+    # created it, to avoid redundant API calls when multiple offices
+    # are configured.
+    if hurricane_coord_is_new:
+        refresh_tasks.append(hurricane_coord.async_refresh())
     if radar_coord:
         refresh_tasks.append(radar_coord.async_refresh())
     if alerts_coord:
@@ -133,15 +148,17 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     if unload_ok:
         hass.data[DOMAIN].pop(entry.entry_id)
 
-        # If no per-entry data remains, also clear the global hurricane
-        # "added" flags so a fresh setup re-creates the global hurricane
-        # entities. (Keys starting with "_" are global flags, not entry data.)
+        # If no per-entry data remains, also clear the shared hurricane
+        # coordinator and any leftover "added" flags so a fresh setup
+        # re-creates the global hurricane entities. (Keys starting with
+        # "_" are global state, not per-entry data.)
         remaining_entries = [
             k for k in hass.data[DOMAIN] if not k.startswith("_")
         ]
         if not remaining_entries:
             hass.data[DOMAIN].pop(HURRICANE_SENSORS_ADDED_KEY, None)
             hass.data[DOMAIN].pop(HURRICANE_IMAGES_ADDED_KEY, None)
+            hass.data[DOMAIN].pop(HURRICANE_COORDINATOR_KEY, None)
 
     return unload_ok
 

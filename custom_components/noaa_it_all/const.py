@@ -11,9 +11,17 @@ HURRICANE_DEVICE_NAME = "NOAA Hurricane"
 
 # Key used in hass.data[DOMAIN] to track whether the global hurricane
 # entities have already been added by an earlier config entry, so they
-# are not duplicated when multiple offices are configured.
+# are not duplicated when multiple offices are configured. The value
+# stored is the ``entry_id`` of the *owning* config entry (not just a
+# boolean), so that if the owner is unloaded while other entries
+# remain we can detect ownership transfer and re-create the entities.
 HURRICANE_SENSORS_ADDED_KEY = "_hurricane_sensors_added"
 HURRICANE_IMAGES_ADDED_KEY = "_hurricane_images_added"
+
+# Key for the single shared HurricaneCoordinator. Hurricane data is
+# global (NHC) so all config entries share one coordinator instead of
+# each entry creating its own and triggering redundant API calls.
+HURRICANE_COORDINATOR_KEY = "_hurricane_coordinator"
 
 # Configuration keys
 CONF_OFFICE_CODE = "office_code"
