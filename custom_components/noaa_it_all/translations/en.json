@@ -4,17 +4,24 @@
     "step": {
       "user": {
         "title": "NOAA It All Setup",
-        "description": "Select your NWS Forecast Office and enter your coordinates to get location-specific NOAA data.",
+        "description": "Detected Home Assistant Home location: {ha_location}.\n\nIf a Home location is configured, latitude and longitude have been pre-filled from your Home Assistant Home zone; otherwise enter them manually. You may override the values to use a different location. The closest NWS forecast office will be suggested in the next step.",
         "data": {
-          "office_code": "NWS Forecast Office",
           "latitude": "Latitude",
           "longitude": "Longitude"
+        }
+      },
+      "office": {
+        "title": "Choose NWS Forecast Office",
+        "description": "Select the NOAA / NWS forecast office to use for {latitude}, {longitude}. The closest office is pre-selected.\n\n{warning}",
+        "data": {
+          "office_code": "NWS Forecast Office"
         }
       }
     },
     "error": {
       "invalid_latitude": "Latitude must be between -90 and 90.",
-      "invalid_longitude": "Longitude must be between -180 and 180."
+      "invalid_longitude": "Longitude must be between -180 and 180.",
+      "invalid_office": "Please choose a valid NWS forecast office."
     },
     "abort": {
       "already_configured": "This NOAA office and location is already configured."
@@ -24,17 +31,24 @@
     "step": {
       "init": {
         "title": "NOAA It All Options",
-        "description": "Update your NWS Forecast Office and coordinates.",
+        "description": "Detected Home Assistant Home location: {ha_location}.\n\nUpdate the latitude and longitude used for NOAA data. The closest NWS forecast office will be suggested in the next step.",
         "data": {
-          "office_code": "NWS Forecast Office",
           "latitude": "Latitude",
           "longitude": "Longitude"
+        }
+      },
+      "office": {
+        "title": "Choose NWS Forecast Office",
+        "description": "Select the NOAA / NWS forecast office to use for {latitude}, {longitude}. The closest office is pre-selected.\n\n{warning}",
+        "data": {
+          "office_code": "NWS Forecast Office"
         }
       }
     },
     "error": {
       "invalid_latitude": "Latitude must be between -90 and 90.",
-      "invalid_longitude": "Longitude must be between -180 and 180."
+      "invalid_longitude": "Longitude must be between -180 and 180.",
+      "invalid_office": "Please choose a valid NWS forecast office."
     }
   }
 }

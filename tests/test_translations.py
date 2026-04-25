@@ -55,9 +55,16 @@ class TestTranslationsValid(unittest.TestCase):
 
     def test_user_data_has_required_keys(self):
         data = self.en["config"]["step"]["user"]["data"]
-        self.assertIn("office_code", data)
         self.assertIn("latitude", data)
         self.assertIn("longitude", data)
+
+    def test_office_step_present(self):
+        self.assertIn("office", self.en["config"]["step"])
+        office = self.en["config"]["step"]["office"]
+        self.assertIn("title", office)
+        self.assertIn("description", office)
+        self.assertIn("data", office)
+        self.assertIn("office_code", office["data"])
 
     def test_error_section_present(self):
         self.assertIn("error", self.en["config"])
