@@ -8,6 +8,7 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from ..const import DOMAIN
+from ..entity_naming import normalize_noaa_entity_object_id
 from ..parsers import format_forecast_text, format_forecast_periods, format_hourly_periods
 
 _LOGGER = logging.getLogger(__name__)
@@ -46,6 +47,20 @@ class ForecastBaseSensor(CoordinatorEntity):
             name=f"NOAA {self._office_code} Weather",
             manufacturer="NOAA"
         )
+
+    @property
+    def suggested_object_id(self) -> str:
+        """Suggest a clean entity object_id without duplicated office prefixes.
+
+        Home Assistant uses ``suggested_object_id`` when first registering
+        an entity. Forecast sensors live under the ``noaa_{office}_weather``
+        device, so any future combination of ``has_entity_name=True`` plus a
+        pre-prefixed display name could produce IDs like
+        ``noaa_ilm_weather_noaa_ilm_extended_forecast``. We defensively
+        normalize here so duplicates can never reach Home Assistant.
+        """
+        slug = self.name.lower().replace(" ", "_").replace("-", "_")
+        return normalize_noaa_entity_object_id(slug, office_code=self._office_code)
 
 
 class ExtendedForecastSensor(ForecastBaseSensor):
