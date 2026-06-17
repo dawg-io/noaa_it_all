@@ -592,5 +592,178 @@ class TestDeviceInfoGrouping(unittest.TestCase):
             )
 
 
+# ---------------------------------------------------------------------------
+# Comprehensive suggested_object_id tests (format verification)
+# ---------------------------------------------------------------------------
+
+class TestSuggestedObjectIdFormat(unittest.TestCase):
+    """Verify all office-grouped sensors have correct suggested_object_id format.
+    
+    Format: noaa_[office]_[domain]_[entity_type]
+    """
+
+    # Weather observation sensors
+    def test_temperature_suggested_object_id(self):
+       from noaa_it_all.sensors.weather_observations import TemperatureSensor
+       s = TemperatureSensor(COORD, OFFICE, latitude=LAT, longitude=LON)
+       expected = f"noaa_{OFFICE.lower()}_weather_temperature"
+       self.assertEqual(s.suggested_object_id, expected)
+
+    def test_humidity_suggested_object_id(self):
+       from noaa_it_all.sensors.weather_observations import HumiditySensor
+       s = HumiditySensor(COORD, OFFICE, latitude=LAT, longitude=LON)
+       expected = f"noaa_{OFFICE.lower()}_weather_humidity"
+       self.assertEqual(s.suggested_object_id, expected)
+
+    def test_wind_speed_suggested_object_id(self):
+       from noaa_it_all.sensors.weather_observations import WindSpeedSensor
+       s = WindSpeedSensor(COORD, OFFICE, latitude=LAT, longitude=LON)
+       expected = f"noaa_{OFFICE.lower()}_weather_wind_speed"
+       self.assertEqual(s.suggested_object_id, expected)
+
+    def test_wind_direction_suggested_object_id(self):
+       from noaa_it_all.sensors.weather_observations import WindDirectionSensor
+       s = WindDirectionSensor(COORD, OFFICE, latitude=LAT, longitude=LON)
+       expected = f"noaa_{OFFICE.lower()}_weather_wind_direction"
+       self.assertEqual(s.suggested_object_id, expected)
+
+    def test_barometric_pressure_suggested_object_id(self):
+       from noaa_it_all.sensors.weather_observations import BarometricPressureSensor
+       s = BarometricPressureSensor(COORD, OFFICE, latitude=LAT, longitude=LON)
+       expected = f"noaa_{OFFICE.lower()}_weather_barometric_pressure"
+       self.assertEqual(s.suggested_object_id, expected)
+
+    def test_dewpoint_suggested_object_id(self):
+       from noaa_it_all.sensors.weather_observations import DewpointSensor
+       s = DewpointSensor(COORD, OFFICE, latitude=LAT, longitude=LON)
+       expected = f"noaa_{OFFICE.lower()}_weather_dewpoint"
+       self.assertEqual(s.suggested_object_id, expected)
+
+    def test_visibility_suggested_object_id(self):
+       from noaa_it_all.sensors.weather_observations import VisibilitySensor
+       s = VisibilitySensor(COORD, OFFICE, latitude=LAT, longitude=LON)
+       expected = f"noaa_{OFFICE.lower()}_weather_visibility"
+       self.assertEqual(s.suggested_object_id, expected)
+
+    def test_sky_conditions_suggested_object_id(self):
+       from noaa_it_all.sensors.weather_observations import SkyConditionsSensor
+       s = SkyConditionsSensor(COORD, OFFICE, latitude=LAT, longitude=LON)
+       expected = f"noaa_{OFFICE.lower()}_weather_sky_conditions"
+       self.assertEqual(s.suggested_object_id, expected)
+
+    def test_feels_like_suggested_object_id(self):
+       from noaa_it_all.sensors.weather_observations import FeelsLikeSensor
+       s = FeelsLikeSensor(COORD, OFFICE, latitude=LAT, longitude=LON)
+       expected = f"noaa_{OFFICE.lower()}_weather_feels_like"
+       self.assertEqual(s.suggested_object_id, expected)
+
+    # Forecast sensors (already tested elsewhere, but include for completeness)
+    def test_extended_forecast_suggested_object_id_complete(self):
+       from noaa_it_all.sensors.forecasts import ExtendedForecastSensor
+       s = ExtendedForecastSensor(COORD, OFFICE, LAT, LON)
+       expected = f"noaa_{OFFICE.lower()}_weather_extended_forecast"
+       self.assertEqual(s.suggested_object_id, expected)
+
+    def test_hourly_forecast_suggested_object_id_complete(self):
+       from noaa_it_all.sensors.forecasts import HourlyForecastSensor
+       s = HourlyForecastSensor(COORD, OFFICE, LAT, LON)
+       expected = f"noaa_{OFFICE.lower()}_weather_hourly_forecast"
+       self.assertEqual(s.suggested_object_id, expected)
+
+    # Surf sensors
+    def test_rip_current_risk_suggested_object_id(self):
+       from noaa_it_all.sensors.surf import RipCurrentRiskSensor
+       s = RipCurrentRiskSensor(COORD, OFFICE)
+       expected = f"noaa_{OFFICE.lower()}_surf_rip_current_risk"
+       self.assertEqual(s.suggested_object_id, expected)
+
+    def test_surf_height_suggested_object_id(self):
+       from noaa_it_all.sensors.surf import SurfHeightSensor
+       s = SurfHeightSensor(COORD, OFFICE)
+       expected = f"noaa_{OFFICE.lower()}_surf_surf_height"
+       self.assertEqual(s.suggested_object_id, expected)
+
+    def test_water_temperature_suggested_object_id(self):
+       from noaa_it_all.sensors.surf import WaterTemperatureSensor
+       s = WaterTemperatureSensor(COORD, OFFICE)
+       expected = f"noaa_{OFFICE.lower()}_surf_water_temperature"
+       self.assertEqual(s.suggested_object_id, expected)
+
+    # Space weather sensors
+    def test_geomagnetic_suggested_object_id(self):
+       from noaa_it_all.sensors.space_weather import GeomagneticSensor
+       s = GeomagneticSensor(COORD, OFFICE)
+       expected = f"noaa_{OFFICE.lower()}_space_geomagnetic_storm"
+       self.assertEqual(s.suggested_object_id, expected)
+
+    def test_geomagnetic_interpretation_suggested_object_id(self):
+       from noaa_it_all.sensors.space_weather import GeomagneticSensorInterpretation
+       s = GeomagneticSensorInterpretation(COORD, OFFICE)
+       expected = f"noaa_{OFFICE.lower()}_space_geomagnetic_storm_interpretation"
+       self.assertEqual(s.suggested_object_id, expected)
+
+    def test_planetary_k_index_suggested_object_id(self):
+       from noaa_it_all.sensors.space_weather import PlanetaryKIndexSensor
+       s = PlanetaryKIndexSensor(COORD, OFFICE)
+       expected = f"noaa_{OFFICE.lower()}_space_planetary_k_index"
+       self.assertEqual(s.suggested_object_id, expected)
+
+    def test_planetary_k_index_rating_suggested_object_id(self):
+       from noaa_it_all.sensors.space_weather import PlanetaryKIndexSensorRating
+       s = PlanetaryKIndexSensorRating(COORD, OFFICE)
+       expected = f"noaa_{OFFICE.lower()}_space_planetary_k_index_rating"
+       self.assertEqual(s.suggested_object_id, expected)
+
+    def test_aurora_next_time_suggested_object_id(self):
+       from noaa_it_all.sensors.space_weather import AuroraNextTimeSensor
+       s = AuroraNextTimeSensor(COORD, OFFICE)
+       expected = f"noaa_{OFFICE.lower()}_space_aurora_next_time"
+       self.assertEqual(s.suggested_object_id, expected)
+
+    def test_aurora_duration_suggested_object_id(self):
+       from noaa_it_all.sensors.space_weather import AuroraDurationSensor
+       s = AuroraDurationSensor(COORD, OFFICE)
+       expected = f"noaa_{OFFICE.lower()}_space_aurora_duration"
+       self.assertEqual(s.suggested_object_id, expected)
+
+    def test_aurora_visibility_probability_suggested_object_id(self):
+       from noaa_it_all.sensors.space_weather import AuroraVisibilityProbabilitySensor
+       s = AuroraVisibilityProbabilitySensor(COORD, OFFICE)
+       expected = f"noaa_{OFFICE.lower()}_space_aurora_visibility_probability"
+       self.assertEqual(s.suggested_object_id, expected)
+
+    def test_solar_radiation_storm_alerts_suggested_object_id(self):
+       from noaa_it_all.sensors.space_weather import SolarRadiationStormAlertsSensor
+       s = SolarRadiationStormAlertsSensor(COORD, OFFICE)
+       expected = f"noaa_{OFFICE.lower()}_space_solar_radiation_storm_alerts"
+       self.assertEqual(s.suggested_object_id, expected)
+
+    # Weather extra sensors
+    def test_cloud_cover_suggested_object_id(self):
+       from noaa_it_all.sensors.weather_extra import CloudCoverSensor
+       s = CloudCoverSensor(COORD, OFFICE, LAT, LON)
+       expected = f"noaa_{OFFICE.lower()}_weather_cloud_cover"
+       self.assertEqual(s.suggested_object_id, expected)
+
+    def test_radar_timestamp_suggested_object_id(self):
+       from noaa_it_all.sensors.weather_extra import RadarTimestampSensor
+       s = RadarTimestampSensor(COORD, OFFICE)
+       expected = f"noaa_{OFFICE.lower()}_weather_radar_timestamp"
+       self.assertEqual(s.suggested_object_id, expected)
+
+    def test_forecast_discussion_suggested_object_id(self):
+       from noaa_it_all.sensors.weather_extra import ForecastDiscussionSensor
+       s = ForecastDiscussionSensor(COORD, OFFICE)
+       expected = f"noaa_{OFFICE.lower()}_weather_forecast_discussion"
+       self.assertEqual(s.suggested_object_id, expected)
+
+    # Alerts sensors
+    def test_nws_alerts_suggested_object_id(self):
+       from noaa_it_all.sensors.alerts import NWSAlertsSensor
+       s = NWSAlertsSensor(COORD, OFFICE, LAT, LON)
+       expected = f"noaa_{OFFICE.lower()}_weather_alerts"
+       self.assertEqual(s.suggested_object_id, expected)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -48,7 +48,7 @@ class NWSAlertsSensor(CoordinatorEntity):
         obj_id = build_noaa_entity_object_id(
             self._office_code,
             "weather",
-            "nws_alerts",
+            "alerts",
         )
         # Defensive normalization in case of future changes
         return normalize_noaa_entity_object_id(obj_id)
