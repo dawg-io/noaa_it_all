@@ -110,8 +110,8 @@ class ExtendedForecastSensor(ForecastBaseSensor):
         """Return a unique ID for this entity."""
         coords = self._format_coordinates_for_id()
         if coords:
-            return f"noaa_{self._office_code}_{coords}_extended_forecast"
-        return f"noaa_{self._office_code}_extended_forecast"
+            return f"{coords}_extended_forecast"
+        return f"extended_forecast"
 
     @property
     def icon(self):
@@ -174,8 +174,8 @@ class HourlyForecastSensor(ForecastBaseSensor):
         """Return a unique ID for this entity."""
         coords = self._format_coordinates_for_id()
         if coords:
-            return f"noaa_{self._office_code}_{coords}_hourly_forecast"
-        return f"noaa_{self._office_code}_hourly_forecast"
+            return f"{coords}_hourly_forecast"
+        return f"hourly_forecast"
 
     @property
     def icon(self):
