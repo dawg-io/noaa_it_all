@@ -9,7 +9,6 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from ..const import DOMAIN
-from ..entity_naming import build_noaa_entity_object_id, normalize_noaa_entity_object_id
 from ..parsers import (
     parse_rip_current_risk, parse_surf_height, parse_water_temperature,
     normalize_numeric,
@@ -19,7 +18,14 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class RipCurrentRiskSensor(CoordinatorEntity):
-    """Representation of Rip Current Risk sensor for specific NWS office location."""
+    """Representation of Rip Current Risk sensor for specific NWS office location.
+
+    Uses ``_attr_has_entity_name = True`` so that Home Assistant
+    automatically combines the device name with the entity name to
+    create entity IDs like ``sensor.noaa_ilm_surf_rip_current_risk``.
+    """
+
+    _attr_has_entity_name = True
 
     def __init__(self, coordinator, office_code):
         """Initialize the sensor."""
@@ -28,7 +34,15 @@ class RipCurrentRiskSensor(CoordinatorEntity):
         self._state = None
         self._attributes = {}
         self._attr_unique_id = f"noaa_{office_code}_rip_current_risk"
-        self._attr_name = f"NOAA {office_code} Rip Current Risk"
+
+    @property
+    def name(self):
+        """Return the name of the sensor (local name only).
+
+        With ``_attr_has_entity_name = True``, Home Assistant combines
+        the device name with this local name to create the full entity name.
+        """
+        return "Rip Current Risk"
 
     @property
     def state(self):
@@ -37,23 +51,6 @@ class RipCurrentRiskSensor(CoordinatorEntity):
             return self._state
         text = self.coordinator.data.get("forecast_text", "")
         return parse_rip_current_risk(text)
-
-    @property
-    def suggested_object_id(self) -> str:
-        """Return the suggested object ID for this entity.
-
-        Home Assistant uses ``suggested_object_id`` when first registering
-        an entity. Sensors live under the ``noaa_{office}_surf`` device,
-        so to avoid duplicating the office prefix in the entity ID, we build
-        the ID directly from component parts and defensively normalize it.
-        """
-        obj_id = build_noaa_entity_object_id(
-            self._office_code,
-            "surf",
-            "rip_current_risk",
-        )
-        # Defensive normalization in case of future changes
-        return normalize_noaa_entity_object_id(obj_id)
 
     @property
     def icon(self):
@@ -82,7 +79,14 @@ class RipCurrentRiskSensor(CoordinatorEntity):
 
 
 class SurfHeightSensor(CoordinatorEntity):
-    """Representation of Surf Height sensor for specific NWS office location."""
+    """Representation of Surf Height sensor for specific NWS office location.
+
+    Uses ``_attr_has_entity_name = True`` so that Home Assistant
+    automatically combines the device name with the entity name to
+    create entity IDs like ``sensor.noaa_ilm_surf_surf_height``.
+    """
+
+    _attr_has_entity_name = True
 
     def __init__(self, coordinator, office_code):
         """Initialize the sensor."""
@@ -91,7 +95,15 @@ class SurfHeightSensor(CoordinatorEntity):
         self._state = None
         self._attributes = {}
         self._attr_unique_id = f"noaa_{office_code}_surf_height"
-        self._attr_name = f"NOAA {office_code} Surf Height"
+
+    @property
+    def name(self):
+        """Return the name of the sensor (local name only).
+
+        With ``_attr_has_entity_name = True``, Home Assistant combines
+        the device name with this local name to create the full entity name.
+        """
+        return "Surf Height"
 
     @property
     def state(self):
@@ -109,23 +121,6 @@ class SurfHeightSensor(CoordinatorEntity):
     def unit_of_measurement(self):
         """Return the unit of measurement."""
         return 'ft'
-
-    @property
-    def suggested_object_id(self) -> str:
-        """Return the suggested object ID for this entity.
-
-        Home Assistant uses ``suggested_object_id`` when first registering
-        an entity. Sensors live under the ``noaa_{office}_surf`` device,
-        so to avoid duplicating the office prefix in the entity ID, we build
-        the ID directly from component parts and defensively normalize it.
-        """
-        obj_id = build_noaa_entity_object_id(
-            self._office_code,
-            "surf",
-            "surf_height",
-        )
-        # Defensive normalization in case of future changes
-        return normalize_noaa_entity_object_id(obj_id)
 
     @property
     def icon(self):
@@ -158,7 +153,14 @@ class SurfHeightSensor(CoordinatorEntity):
 
 
 class WaterTemperatureSensor(CoordinatorEntity):
-    """Representation of Water Temperature sensor for specific NWS office location."""
+    """Representation of Water Temperature sensor for specific NWS office location.
+
+    Uses ``_attr_has_entity_name = True`` so that Home Assistant
+    automatically combines the device name with the entity name to
+    create entity IDs like ``sensor.noaa_ilm_surf_water_temperature``.
+    """
+
+    _attr_has_entity_name = True
 
     def __init__(self, coordinator, office_code):
         """Initialize the sensor."""
@@ -167,7 +169,15 @@ class WaterTemperatureSensor(CoordinatorEntity):
         self._state = None
         self._attributes = {}
         self._attr_unique_id = f"noaa_{office_code}_water_temperature"
-        self._attr_name = f"NOAA {office_code} Water Temperature"
+
+    @property
+    def name(self):
+        """Return the name of the sensor (local name only).
+
+        With ``_attr_has_entity_name = True``, Home Assistant combines
+        the device name with this local name to create the full entity name.
+        """
+        return "Water Temperature"
 
     @property
     def state(self):
@@ -185,23 +195,6 @@ class WaterTemperatureSensor(CoordinatorEntity):
     def unit_of_measurement(self):
         """Return the unit of measurement."""
         return '°F'
-
-    @property
-    def suggested_object_id(self) -> str:
-        """Return the suggested object ID for this entity.
-
-        Home Assistant uses ``suggested_object_id`` when first registering
-        an entity. Sensors live under the ``noaa_{office}_surf`` device,
-        so to avoid duplicating the office prefix in the entity ID, we build
-        the ID directly from component parts and defensively normalize it.
-        """
-        obj_id = build_noaa_entity_object_id(
-            self._office_code,
-            "surf",
-            "water_temperature",
-        )
-        # Defensive normalization in case of future changes
-        return normalize_noaa_entity_object_id(obj_id)
 
     @property
     def icon(self):

@@ -8,7 +8,6 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from ..const import DOMAIN
-from ..entity_naming import build_noaa_entity_object_id, normalize_noaa_entity_object_id
 from ..parsers import format_forecast_text, format_forecast_periods, format_hourly_periods
 
 _LOGGER = logging.getLogger(__name__)
@@ -19,7 +18,14 @@ MAX_HOURLY_PERIODS = 48  # 48 hours of hourly forecasts
 
 
 class ForecastBaseSensor(CoordinatorEntity):
-    """Base class for forecast sensors."""
+    """Base class for forecast sensors.
+
+    Uses ``_attr_has_entity_name = True`` so that Home Assistant
+    automatically combines the device name with the entity name to
+    create entity IDs like ``sensor.noaa_ilm_weather_extended_forecast``.
+    """
+
+    _attr_has_entity_name = True
 
     def __init__(self, coordinator, office_code, latitude, longitude, forecast_type):
         """Initialize the base forecast sensor."""
@@ -48,39 +54,6 @@ class ForecastBaseSensor(CoordinatorEntity):
             manufacturer="NOAA"
         )
 
-    @property
-    def suggested_object_id(self) -> str:
-        """Suggest a clean entity object_id without duplicated office prefixes.
-
-        Home Assistant uses ``suggested_object_id`` when first registering
-        an entity. Forecast sensors live under the ``noaa_{office}_weather``
-        device, so if the entity name includes the office code (as it does),
-        the combination could produce IDs like
-        ``noaa_ilm_weather_noaa_ilm_extended_forecast``. We build the ID
-        directly from component parts and then defensively normalize it to
-        ensure duplicates can never reach Home Assistant.
-        """
-        # Subclasses override sensor_slug property; base class returns None
-        slug = getattr(self, 'sensor_slug', None)
-        if not slug:
-            return None
-        obj_id = build_noaa_entity_object_id(
-            self._office_code,
-            "weather",
-            slug,
-        )
-        # Defensive normalization in case of future changes
-        return normalize_noaa_entity_object_id(obj_id)
-
-    @property
-    def sensor_slug(self) -> str | None:
-        """Return the sensor-specific slug for this entity.
-
-        Subclasses must override this to return the appropriate slug
-        (e.g., ``extended_forecast``, ``hourly_forecast``).
-        """
-        return None
-
 
 class ExtendedForecastSensor(ForecastBaseSensor):
     """Representation of Extended (7-day) Forecast sensor."""
@@ -92,8 +65,12 @@ class ExtendedForecastSensor(ForecastBaseSensor):
 
     @property
     def name(self):
-        """Return the name of the sensor."""
-        return f'NOAA {self._office_code} Extended Forecast'
+        """Return the name of the sensor (local name only).
+
+        With ``_attr_has_entity_name = True``, Home Assistant combines
+        the device name with this local name to create the full entity name.
+        """
+        return "Extended Forecast"
 
     @property
     def state(self):
@@ -133,11 +110,6 @@ class ExtendedForecastSensor(ForecastBaseSensor):
         return f"noaa_{self._office_code}_extended_forecast"
 
     @property
-    def sensor_slug(self) -> str:
-        """Return the sensor-specific slug for this entity."""
-        return "extended_forecast"
-
-    @property
     def icon(self):
         """Return the icon."""
         return 'mdi:weather-partly-cloudy'
@@ -153,8 +125,12 @@ class HourlyForecastSensor(ForecastBaseSensor):
 
     @property
     def name(self):
-        """Return the name of the sensor."""
-        return f'NOAA {self._office_code} Hourly Forecast'
+        """Return the name of the sensor (local name only).
+
+        With ``_attr_has_entity_name = True``, Home Assistant combines
+        the device name with this local name to create the full entity name.
+        """
+        return "Hourly Forecast"
 
     @property
     def state(self):
@@ -200,11 +176,6 @@ class HourlyForecastSensor(ForecastBaseSensor):
         if coords:
             return f"noaa_{self._office_code}_{coords}_hourly_forecast"
         return f"noaa_{self._office_code}_hourly_forecast"
-
-    @property
-    def sensor_slug(self) -> str:
-        """Return the sensor-specific slug for this entity."""
-        return "hourly_forecast"
 
     @property
     def icon(self):

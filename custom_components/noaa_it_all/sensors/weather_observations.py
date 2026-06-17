@@ -10,7 +10,6 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from ..const import DOMAIN
-from ..entity_naming import build_noaa_entity_object_id, normalize_noaa_entity_object_id
 from ..parsers import (
     celsius_to_fahrenheit,
     kmh_to_mph,
@@ -23,7 +22,14 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class WeatherObservationSensor(CoordinatorEntity):
-    """Base class for weather observation sensors."""
+    """Base class for weather observation sensors.
+
+    Uses ``_attr_has_entity_name = True`` so that Home Assistant
+    automatically combines the device name with the entity name to
+    create entity IDs like ``sensor.noaa_ilm_weather_temperature``.
+    """
+
+    _attr_has_entity_name = True
 
     def __init__(self, coordinator, office_code, observation_field, sensor_name,
                  latitude=None, longitude=None, unit=None, icon=None, device_class=None):
@@ -41,8 +47,12 @@ class WeatherObservationSensor(CoordinatorEntity):
 
     @property
     def name(self):
-        """Return the name of the sensor."""
-        return f'NOAA {self._office_code} {self._sensor_name}'
+        """Return the name of the sensor (local name only).
+
+        With ``_attr_has_entity_name = True``, Home Assistant combines
+        the device name with this local name to create the full entity name.
+        """
+        return self._sensor_name
 
     @property
     def state(self):
@@ -92,36 +102,6 @@ class WeatherObservationSensor(CoordinatorEntity):
             lon_str = f"{self._longitude:.4f}".replace('.', '_').replace('-', 'n')
             return f"noaa_{self._office_code}_{lat_str}_{lon_str}_{field_name}"
         return f"noaa_{self._office_code}_{field_name}"
-
-    @property
-    def suggested_object_id(self) -> str | None:
-        """Return the suggested object ID for this entity.
-
-        Home Assistant uses ``suggested_object_id`` when first registering
-        an entity. Sensors live under the ``noaa_{office}_weather`` device,
-        so to avoid duplicating the office prefix in the entity ID, we build
-        the ID directly from component parts and defensively normalize it.
-        """
-        # Subclasses override sensor_slug property; base class returns None
-        slug = getattr(self, 'sensor_slug', None)
-        if not slug:
-            return None
-        obj_id = build_noaa_entity_object_id(
-            self._office_code,
-            "weather",
-            slug,
-        )
-        # Defensive normalization in case of future changes
-        return normalize_noaa_entity_object_id(obj_id)
-
-    @property
-    def sensor_slug(self) -> str | None:
-        """Return the sensor-specific slug for this entity.
-
-        Subclasses must override this to return the appropriate slug
-        (e.g., ``temperature``, ``humidity``, ``wind_speed``).
-        """
-        return None
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -174,11 +154,6 @@ class TemperatureSensor(WeatherObservationSensor):
             device_class='temperature'
         )
 
-    @property
-    def sensor_slug(self) -> str:
-        """Return the sensor-specific slug for this entity."""
-        return "temperature"
-
     def _convert_value(self, value):
         """Convert Celsius to Fahrenheit."""
         return celsius_to_fahrenheit(value)
@@ -200,11 +175,6 @@ class HumiditySensor(WeatherObservationSensor):
             icon='mdi:water-percent',
             device_class='humidity'
         )
-
-    @property
-    def sensor_slug(self) -> str:
-        """Return the sensor-specific slug for this entity."""
-        return "humidity"
 
     def _convert_value(self, value):
         """Round humidity to integer."""
@@ -229,11 +199,6 @@ class WindSpeedSensor(WeatherObservationSensor):
             icon='mdi:weather-windy'
         )
 
-    @property
-    def sensor_slug(self) -> str:
-        """Return the sensor-specific slug for this entity."""
-        return "wind_speed"
-
     def _convert_value(self, value):
         """Convert km/h to mph."""
         return kmh_to_mph(value)
@@ -254,11 +219,6 @@ class WindDirectionSensor(WeatherObservationSensor):
             unit='°',
             icon='mdi:compass'
         )
-
-    @property
-    def sensor_slug(self) -> str:
-        """Return the sensor-specific slug for this entity."""
-        return "wind_direction"
 
     def _convert_value(self, value):
         """Convert wind direction to round integer."""
@@ -295,11 +255,6 @@ class BarometricPressureSensor(WeatherObservationSensor):
             device_class='pressure'
         )
 
-    @property
-    def sensor_slug(self) -> str:
-        """Return the sensor-specific slug for this entity."""
-        return "barometric_pressure"
-
     def _convert_value(self, value):
         """Convert Pascals to inches of mercury."""
         return pascals_to_inhg(value)
@@ -322,11 +277,6 @@ class DewpointSensor(WeatherObservationSensor):
             device_class='temperature'
         )
 
-    @property
-    def sensor_slug(self) -> str:
-        """Return the sensor-specific slug for this entity."""
-        return "dewpoint"
-
     def _convert_value(self, value):
         """Convert Celsius to Fahrenheit."""
         return celsius_to_fahrenheit(value)
@@ -348,11 +298,6 @@ class VisibilitySensor(WeatherObservationSensor):
             icon='mdi:eye'
         )
 
-    @property
-    def sensor_slug(self) -> str:
-        """Return the sensor-specific slug for this entity."""
-        return "visibility"
-
     def _convert_value(self, value):
         """Convert meters to miles."""
         return meters_to_miles(value)
@@ -372,11 +317,6 @@ class SkyConditionsSensor(WeatherObservationSensor):
             longitude=longitude,
             icon='mdi:weather-partly-cloudy'
         )
-
-    @property
-    def sensor_slug(self) -> str:
-        """Return the sensor-specific slug for this entity."""
-        return "sky_conditions"
 
     def _convert_value(self, value):
         """Return the text description as-is."""
@@ -399,11 +339,6 @@ class FeelsLikeSensor(WeatherObservationSensor):
             icon='mdi:thermometer-lines',
             device_class='temperature'
         )
-
-    @property
-    def sensor_slug(self) -> str:
-        """Return the sensor-specific slug for this entity."""
-        return "feels_like"
 
     def _extract_value(self, properties):
         """Extract wind chill or heat index depending on which is available."""
