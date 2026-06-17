@@ -20,7 +20,10 @@ if _PKG not in sys.path:
     sys.path.insert(0, _PKG)
 
 
-from entity_naming import normalize_noaa_entity_object_id  # noqa: E402
+from entity_naming import (  # noqa: E402
+    build_noaa_entity_object_id,
+    normalize_noaa_entity_object_id,
+)
 
 
 class TestNormalizeNoaaEntityObjectId(unittest.TestCase):
@@ -171,6 +174,41 @@ class TestNormalizeNoaaEntityObjectId(unittest.TestCase):
                 office_code="sgx",
             ),
             "noaa_ilm_weather_noaa_ilm_extended_forecast",
+        )
+
+
+class TestBuildNoaaEntityObjectId(unittest.TestCase):
+    """Verify the builder function creates correct object IDs."""
+
+    def test_extended_forecast_ilm(self):
+        self.assertEqual(
+            build_noaa_entity_object_id("ILM", "weather", "extended_forecast"),
+            "noaa_ilm_weather_extended_forecast",
+        )
+
+    def test_hourly_forecast_ilm(self):
+        self.assertEqual(
+            build_noaa_entity_object_id("ILM", "weather", "hourly_forecast"),
+            "noaa_ilm_weather_hourly_forecast",
+        )
+
+    def test_extended_forecast_sgx(self):
+        self.assertEqual(
+            build_noaa_entity_object_id("SGX", "weather", "extended_forecast"),
+            "noaa_sgx_weather_extended_forecast",
+        )
+
+    def test_rip_current_risk_sgx_surf(self):
+        self.assertEqual(
+            build_noaa_entity_object_id("SGX", "surf", "rip_current_risk"),
+            "noaa_sgx_surf_rip_current_risk",
+        )
+
+    def test_case_insensitive(self):
+        """Office code and group are lowercased."""
+        self.assertEqual(
+            build_noaa_entity_object_id("ILM", "WEATHER", "Extended_Forecast"),
+            "noaa_ilm_weather_extended_forecast",
         )
 
 

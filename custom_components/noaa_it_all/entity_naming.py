@@ -1,16 +1,20 @@
 """Entity naming helpers for NOAA Integration.
 
-This module centralizes entity object-ID generation so that NOAA
-entities never end up with duplicated office/device prefixes such as
-``noaa_ilm_weather_noaa_ilm_extended_forecast``.
+This module provides helpers for building and normalizing entity object IDs
+so that NOAA entities never end up with duplicated office/device prefixes
+such as ``noaa_ilm_weather_noaa_ilm_extended_forecast``.
 
-The helper is intentionally defensive: it works on whatever object_id
-string Home Assistant would otherwise assign and removes any duplicate
-``noaa_{office}_{group}_noaa_{office}_`` prefix that a combination of
-``has_entity_name`` plus an already-prefixed entity ``name`` could
-produce. It is safe to call on already-clean object_ids and on global
-entities (e.g. ``noaa_weather_hurricane_activity`` or
-``noaa_space_planetary_k_index``), which it leaves untouched.
+The helpers include:
+
+- ``build_noaa_entity_object_id()``: Constructs a clean entity object ID
+  from known parts (office code, device group, sensor slug).
+
+- ``normalize_noaa_entity_object_id()``: A defensive normalizer that removes
+  any duplicate ``noaa_{office}_{group}_noaa_{office}_`` prefix that a
+  combination of ``has_entity_name`` plus an already-prefixed entity ``name``
+  could produce. Safe to call on already-clean object_ids and on global
+  entities (e.g. ``noaa_weather_hurricane_activity`` or
+  ``noaa_space_planetary_k_index``), which it leaves untouched.
 """
 
 from __future__ import annotations
@@ -19,6 +23,39 @@ from __future__ import annotations
 # group names here if a future device groups office entities under a
 # different second segment (e.g. "noaa_{office}_marine_…").
 _OFFICE_DEVICE_GROUPS = ("weather", "surf", "space")
+
+
+def build_noaa_entity_object_id(
+    office_code: str,
+    group: str,
+    sensor_slug: str,
+) -> str:
+    """Build a clean entity object ID from component parts.
+
+    Combines office code, device group, and sensor slug into a single
+    object ID without any duplication or redundancy.
+
+    Args:
+        office_code: The NWS office code (e.g., ``ilm``, ``sgx``, ``lox``).
+        group: The device group identifier (e.g., ``weather``, ``surf``,
+            ``space``).
+        sensor_slug: The sensor-specific slug (e.g., ``extended_forecast``,
+            ``hourly_forecast``, ``rip_current_risk``).
+
+    Returns:
+        The combined object ID in the form ``noaa_{office}_{group}_{slug}``,
+        with all components lowercased.
+
+    Examples:
+        ``build_noaa_entity_object_id("ILM", "weather", "extended_forecast")``
+            -> ``noaa_ilm_weather_extended_forecast``
+        ``build_noaa_entity_object_id("SGX", "surf", "rip_current_risk")``
+            -> ``noaa_sgx_surf_rip_current_risk``
+    """
+    office_code_lower = office_code.lower() if office_code else ""
+    group_lower = group.lower() if group else ""
+    sensor_slug_lower = sensor_slug.lower() if sensor_slug else ""
+    return f"noaa_{office_code_lower}_{group_lower}_{sensor_slug_lower}"
 
 
 def normalize_noaa_entity_object_id(

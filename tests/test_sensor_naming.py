@@ -255,6 +255,18 @@ class TestForecastNaming(unittest.TestCase):
         s = HourlyForecastSensor(COORD, OFFICE, LAT, LON)
         self.assertEqual(s.name, f"NOAA {OFFICE} Hourly Forecast")
 
+    def test_extended_forecast_suggested_object_id(self):
+        from noaa_it_all.sensors.forecasts import ExtendedForecastSensor
+        s = ExtendedForecastSensor(COORD, OFFICE, LAT, LON)
+        expected = f"noaa_{OFFICE.lower()}_weather_extended_forecast"
+        self.assertEqual(s.suggested_object_id, expected)
+
+    def test_hourly_forecast_suggested_object_id(self):
+        from noaa_it_all.sensors.forecasts import HourlyForecastSensor
+        s = HourlyForecastSensor(COORD, OFFICE, LAT, LON)
+        expected = f"noaa_{OFFICE.lower()}_weather_hourly_forecast"
+        self.assertEqual(s.suggested_object_id, expected)
+
 
 # ---------------------------------------------------------------------------
 # Alerts sensor
