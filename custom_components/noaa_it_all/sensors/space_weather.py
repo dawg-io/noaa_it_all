@@ -14,6 +14,7 @@ from ..const import (
     AURORA_KP_THRESHOLDS, SOLAR_RADIATION_STORM_SCALES,
     SOLAR_RADIATION_KEYWORDS, DOMAIN,
 )
+from ..entity_naming import build_noaa_entity_object_id, normalize_noaa_entity_object_id
 from ..parsers import (
     interpret_dst_value,
     rate_kp_index,
@@ -62,6 +63,23 @@ class GeomagneticSensor(CoordinatorEntity):
         return None
 
     @property
+    def suggested_object_id(self) -> str:
+        """Return the suggested object ID for this entity.
+
+        Home Assistant uses ``suggested_object_id`` when first registering
+        an entity. Sensors live under the ``noaa_{office}_space`` device,
+        so to avoid duplicating the office prefix in the entity ID, we build
+        the ID directly from component parts and defensively normalize it.
+        """
+        obj_id = build_noaa_entity_object_id(
+            self._office_code,
+            "space",
+            "geomagnetic_storm",
+        )
+        # Defensive normalization in case of future changes
+        return normalize_noaa_entity_object_id(obj_id)
+
+    @property
     def device_info(self) -> DeviceInfo:
         """Return device information to group this entity."""
         return DeviceInfo(
@@ -90,6 +108,23 @@ class GeomagneticSensorInterpretation(CoordinatorEntity):
             if dst_value is not None:
                 return interpret_dst_value(dst_value)
         return None
+
+    @property
+    def suggested_object_id(self) -> str:
+        """Return the suggested object ID for this entity.
+
+        Home Assistant uses ``suggested_object_id`` when first registering
+        an entity. Sensors live under the ``noaa_{office}_space`` device,
+        so to avoid duplicating the office prefix in the entity ID, we build
+        the ID directly from component parts and defensively normalize it.
+        """
+        obj_id = build_noaa_entity_object_id(
+            self._office_code,
+            "space",
+            "geomagnetic_storm_interpretation",
+        )
+        # Defensive normalization in case of future changes
+        return normalize_noaa_entity_object_id(obj_id)
 
     @property
     def name(self):
@@ -140,6 +175,23 @@ class PlanetaryKIndexSensor(CoordinatorEntity):
         return None
 
     @property
+    def suggested_object_id(self) -> str:
+        """Return the suggested object ID for this entity.
+
+        Home Assistant uses ``suggested_object_id`` when first registering
+        an entity. Sensors live under the ``noaa_{office}_space`` device,
+        so to avoid duplicating the office prefix in the entity ID, we build
+        the ID directly from component parts and defensively normalize it.
+        """
+        obj_id = build_noaa_entity_object_id(
+            self._office_code,
+            "space",
+            "planetary_k_index",
+        )
+        # Defensive normalization in case of future changes
+        return normalize_noaa_entity_object_id(obj_id)
+
+    @property
     def device_info(self) -> DeviceInfo:
         """Return device information to group this entity."""
         return DeviceInfo(
@@ -168,6 +220,23 @@ class PlanetaryKIndexSensorRating(CoordinatorEntity):
             if kp_value is not None:
                 return rate_kp_index(kp_value)
         return None
+
+    @property
+    def suggested_object_id(self) -> str:
+        """Return the suggested object ID for this entity.
+
+        Home Assistant uses ``suggested_object_id`` when first registering
+        an entity. Sensors live under the ``noaa_{office}_space`` device,
+        so to avoid duplicating the office prefix in the entity ID, we build
+        the ID directly from component parts and defensively normalize it.
+        """
+        obj_id = build_noaa_entity_object_id(
+            self._office_code,
+            "space",
+            "planetary_k_index_rating",
+        )
+        # Defensive normalization in case of future changes
+        return normalize_noaa_entity_object_id(obj_id)
 
     @property
     def name(self):
@@ -266,6 +335,23 @@ class AuroraNextTimeSensor(CoordinatorEntity):
         return "mdi:weather-night"
 
     @property
+    def suggested_object_id(self) -> str:
+        """Return the suggested object ID for this entity.
+
+        Home Assistant uses ``suggested_object_id`` when first registering
+        an entity. Sensors live under the ``noaa_{office}_space`` device,
+        so to avoid duplicating the office prefix in the entity ID, we build
+        the ID directly from component parts and defensively normalize it.
+        """
+        obj_id = build_noaa_entity_object_id(
+            self._office_code,
+            "space",
+            "aurora_next_time",
+        )
+        # Defensive normalization in case of future changes
+        return normalize_noaa_entity_object_id(obj_id)
+
+    @property
     def device_info(self) -> DeviceInfo:
         """Return device information to group this entity."""
         return DeviceInfo(
@@ -306,6 +392,23 @@ class AuroraDurationSensor(CoordinatorEntity):
         if current_kp is None:
             return None
         return calculate_aurora_duration(current_kp, office_lat)
+
+    @property
+    def suggested_object_id(self) -> str:
+        """Return the suggested object ID for this entity.
+
+        Home Assistant uses ``suggested_object_id`` when first registering
+        an entity. Sensors live under the ``noaa_{office}_space`` device,
+        so to avoid duplicating the office prefix in the entity ID, we build
+        the ID directly from component parts and defensively normalize it.
+        """
+        obj_id = build_noaa_entity_object_id(
+            self._office_code,
+            "space",
+            "aurora_duration",
+        )
+        # Defensive normalization in case of future changes
+        return normalize_noaa_entity_object_id(obj_id)
 
     @property
     def extra_state_attributes(self):
@@ -389,6 +492,23 @@ class AuroraVisibilityProbabilitySensor(CoordinatorEntity):
         return probability
 
     @property
+    def suggested_object_id(self) -> str:
+        """Return the suggested object ID for this entity.
+
+        Home Assistant uses ``suggested_object_id`` when first registering
+        an entity. Sensors live under the ``noaa_{office}_space`` device,
+        so to avoid duplicating the office prefix in the entity ID, we build
+        the ID directly from component parts and defensively normalize it.
+        """
+        obj_id = build_noaa_entity_object_id(
+            self._office_code,
+            "space",
+            "aurora_visibility_probability",
+        )
+        # Defensive normalization in case of future changes
+        return normalize_noaa_entity_object_id(obj_id)
+
+    @property
     def extra_state_attributes(self):
         """Return the state attributes."""
         _, attributes = self._compute_probability()
@@ -462,6 +582,23 @@ class SolarRadiationStormAlertsSensor(CoordinatorEntity):
         if alerts is None:
             return None
         return len(alerts)
+
+    @property
+    def suggested_object_id(self) -> str:
+        """Return the suggested object ID for this entity.
+
+        Home Assistant uses ``suggested_object_id`` when first registering
+        an entity. Sensors live under the ``noaa_{office}_space`` device,
+        so to avoid duplicating the office prefix in the entity ID, we build
+        the ID directly from component parts and defensively normalize it.
+        """
+        obj_id = build_noaa_entity_object_id(
+            self._office_code,
+            "space",
+            "solar_radiation_storm_alerts",
+        )
+        # Defensive normalization in case of future changes
+        return normalize_noaa_entity_object_id(obj_id)
 
     @property
     def extra_state_attributes(self):

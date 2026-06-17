@@ -6,6 +6,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from datetime import datetime, timezone
 
 from ..const import DOMAIN
+from ..entity_naming import build_noaa_entity_object_id, normalize_noaa_entity_object_id
 from ..parsers import parse_nws_alert_features
 
 _LOGGER = logging.getLogger(__name__)
@@ -34,6 +35,23 @@ class NWSAlertsSensor(CoordinatorEntity):
         features = self.coordinator.data.get("features", [])
         active_alerts, _ = parse_nws_alert_features(features)
         return len(active_alerts)
+
+    @property
+    def suggested_object_id(self) -> str:
+        """Return the suggested object ID for this entity.
+
+        Home Assistant uses ``suggested_object_id`` when first registering
+        an entity. Sensors live under the ``noaa_{office}_weather`` device,
+        so to avoid duplicating the office prefix in the entity ID, we build
+        the ID directly from component parts and defensively normalize it.
+        """
+        obj_id = build_noaa_entity_object_id(
+            self._office_code,
+            "weather",
+            "nws_alerts",
+        )
+        # Defensive normalization in case of future changes
+        return normalize_noaa_entity_object_id(obj_id)
 
     @property
     def extra_state_attributes(self):

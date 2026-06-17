@@ -9,6 +9,7 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from ..const import DOMAIN
+from ..entity_naming import build_noaa_entity_object_id, normalize_noaa_entity_object_id
 from ..parsers import (
     parse_rip_current_risk, parse_surf_height, parse_water_temperature,
     normalize_numeric,
@@ -36,6 +37,23 @@ class RipCurrentRiskSensor(CoordinatorEntity):
             return self._state
         text = self.coordinator.data.get("forecast_text", "")
         return parse_rip_current_risk(text)
+
+    @property
+    def suggested_object_id(self) -> str:
+        """Return the suggested object ID for this entity.
+
+        Home Assistant uses ``suggested_object_id`` when first registering
+        an entity. Sensors live under the ``noaa_{office}_surf`` device,
+        so to avoid duplicating the office prefix in the entity ID, we build
+        the ID directly from component parts and defensively normalize it.
+        """
+        obj_id = build_noaa_entity_object_id(
+            self._office_code,
+            "surf",
+            "rip_current_risk",
+        )
+        # Defensive normalization in case of future changes
+        return normalize_noaa_entity_object_id(obj_id)
 
     @property
     def icon(self):
@@ -91,6 +109,23 @@ class SurfHeightSensor(CoordinatorEntity):
     def unit_of_measurement(self):
         """Return the unit of measurement."""
         return 'ft'
+
+    @property
+    def suggested_object_id(self) -> str:
+        """Return the suggested object ID for this entity.
+
+        Home Assistant uses ``suggested_object_id`` when first registering
+        an entity. Sensors live under the ``noaa_{office}_surf`` device,
+        so to avoid duplicating the office prefix in the entity ID, we build
+        the ID directly from component parts and defensively normalize it.
+        """
+        obj_id = build_noaa_entity_object_id(
+            self._office_code,
+            "surf",
+            "surf_height",
+        )
+        # Defensive normalization in case of future changes
+        return normalize_noaa_entity_object_id(obj_id)
 
     @property
     def icon(self):
@@ -150,6 +185,23 @@ class WaterTemperatureSensor(CoordinatorEntity):
     def unit_of_measurement(self):
         """Return the unit of measurement."""
         return '°F'
+
+    @property
+    def suggested_object_id(self) -> str:
+        """Return the suggested object ID for this entity.
+
+        Home Assistant uses ``suggested_object_id`` when first registering
+        an entity. Sensors live under the ``noaa_{office}_surf`` device,
+        so to avoid duplicating the office prefix in the entity ID, we build
+        the ID directly from component parts and defensively normalize it.
+        """
+        obj_id = build_noaa_entity_object_id(
+            self._office_code,
+            "surf",
+            "water_temperature",
+        )
+        # Defensive normalization in case of future changes
+        return normalize_noaa_entity_object_id(obj_id)
 
     @property
     def icon(self):

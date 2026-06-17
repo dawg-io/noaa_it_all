@@ -10,6 +10,7 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from ..const import DOMAIN
+from ..entity_naming import build_noaa_entity_object_id, normalize_noaa_entity_object_id
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -50,6 +51,23 @@ class CloudCoverSensor(CoordinatorEntity):
     def unit_of_measurement(self):
         """Return the unit of measurement."""
         return '%'
+
+    @property
+    def suggested_object_id(self) -> str:
+        """Return the suggested object ID for this entity.
+
+        Home Assistant uses ``suggested_object_id`` when first registering
+        an entity. Sensors live under the ``noaa_{office}_weather`` device,
+        so to avoid duplicating the office prefix in the entity ID, we build
+        the ID directly from component parts and defensively normalize it.
+        """
+        obj_id = build_noaa_entity_object_id(
+            self._office_code,
+            "weather",
+            "cloud_cover",
+        )
+        # Defensive normalization in case of future changes
+        return normalize_noaa_entity_object_id(obj_id)
 
     @property
     def icon(self):
@@ -122,6 +140,23 @@ class RadarTimestampSensor(CoordinatorEntity):
         return None
 
     @property
+    def suggested_object_id(self) -> str:
+        """Return the suggested object ID for this entity.
+
+        Home Assistant uses ``suggested_object_id`` when first registering
+        an entity. Sensors live under the ``noaa_{office}_weather`` device,
+        so to avoid duplicating the office prefix in the entity ID, we build
+        the ID directly from component parts and defensively normalize it.
+        """
+        obj_id = build_noaa_entity_object_id(
+            self._office_code,
+            "weather",
+            "radar_timestamp",
+        )
+        # Defensive normalization in case of future changes
+        return normalize_noaa_entity_object_id(obj_id)
+
+    @property
     def icon(self):
         """Return the icon."""
         return 'mdi:radar'
@@ -185,6 +220,23 @@ class ForecastDiscussionSensor(CoordinatorEntity):
             return self._state
         text = self.coordinator.data.get("discussion_text")
         return 'Available' if text else None
+
+    @property
+    def suggested_object_id(self) -> str:
+        """Return the suggested object ID for this entity.
+
+        Home Assistant uses ``suggested_object_id`` when first registering
+        an entity. Sensors live under the ``noaa_{office}_weather`` device,
+        so to avoid duplicating the office prefix in the entity ID, we build
+        the ID directly from component parts and defensively normalize it.
+        """
+        obj_id = build_noaa_entity_object_id(
+            self._office_code,
+            "weather",
+            "forecast_discussion",
+        )
+        # Defensive normalization in case of future changes
+        return normalize_noaa_entity_object_id(obj_id)
 
     @property
     def icon(self):
