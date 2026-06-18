@@ -90,7 +90,7 @@ class TestExtendedForecastSensor(unittest.TestCase):
 
     def test_name(self):
         sensor = self._make()
-        self.assertEqual(sensor.name, f"NOAA {OFFICE} Extended Forecast")
+        self.assertEqual(sensor.name, "Extended Forecast")
 
     def test_unique_id_contains_office(self):
         sensor = self._make()
@@ -143,7 +143,7 @@ class TestHourlyForecastSensor(unittest.TestCase):
 
     def test_name(self):
         sensor = self._make()
-        self.assertEqual(sensor.name, f"NOAA {OFFICE} Hourly Forecast")
+        self.assertEqual(sensor.name, "Hourly Forecast")
 
     def test_unique_id_contains_coords(self):
         sensor = self._make()
@@ -187,7 +187,7 @@ class TestNWSAlertsSensor(unittest.TestCase):
 
     def test_name(self):
         sensor = self._make()
-        self.assertEqual(sensor.name, f"NOAA {OFFICE} Active NWS Alerts")
+        self.assertEqual(sensor.name, "Active NWS Alerts")
 
     def test_unique_id_contains_office(self):
         sensor = self._make()
@@ -253,7 +253,7 @@ class TestCloudCoverSensor(unittest.TestCase):
 
     def test_name(self):
         sensor = self._make()
-        self.assertEqual(sensor.name, f"NOAA {OFFICE} Cloud Cover")
+        self.assertEqual(sensor.name, "Cloud Cover")
 
     def test_unique_id_contains_coords(self):
         sensor = self._make()
@@ -306,7 +306,7 @@ class TestRadarTimestampSensor(unittest.TestCase):
 
     def test_name(self):
         sensor = self._make()
-        self.assertEqual(sensor.name, f"NOAA {OFFICE} Radar Timestamp")
+        self.assertEqual(sensor.name, "Radar Timestamp")
 
     def test_unique_id(self):
         sensor = self._make()
@@ -354,7 +354,7 @@ class TestForecastDiscussionSensor(unittest.TestCase):
 
     def test_name(self):
         sensor = self._make()
-        self.assertEqual(sensor.name, f"NOAA {OFFICE} Forecast Discussion")
+        self.assertEqual(sensor.name, "Forecast Discussion")
 
     def test_unique_id(self):
         sensor = self._make()

@@ -82,6 +82,19 @@ LAT = 32.7157
 LON = -117.1611
 
 
+def _entity_id_slug(sensor):
+    """Derive the entity ID slug as HA does for _attr_has_entity_name=True entities.
+
+    HA combines slugify(device_name) + "_" + slugify(local_name), where slugify
+    lowercases and replaces spaces and hyphens with underscores.
+    """
+    import re
+    def _slug(s):
+        return re.sub(r'[^a-z0-9_]', '', s.lower().replace(' ', '_').replace('-', '_'))
+    dev_name = sensor.device_info.get('name', '') if isinstance(sensor.device_info, dict) else ''
+    return _slug(dev_name) + '_' + _slug(sensor.name)
+
+
 # ---------------------------------------------------------------------------
 # Weather observation sensors
 # ---------------------------------------------------------------------------
@@ -95,47 +108,47 @@ class TestWeatherObservationNaming(unittest.TestCase):
     def test_temperature_name(self):
         from noaa_it_all.sensors.weather_observations import TemperatureSensor
         s = self._make(TemperatureSensor)
-        self.assertEqual(s.name, f"NOAA {OFFICE} Temperature")
+        self.assertEqual(s.name, "Temperature")
 
     def test_humidity_name(self):
         from noaa_it_all.sensors.weather_observations import HumiditySensor
         s = self._make(HumiditySensor)
-        self.assertEqual(s.name, f"NOAA {OFFICE} Humidity")
+        self.assertEqual(s.name, "Humidity")
 
     def test_wind_speed_name(self):
         from noaa_it_all.sensors.weather_observations import WindSpeedSensor
         s = self._make(WindSpeedSensor)
-        self.assertEqual(s.name, f"NOAA {OFFICE} Wind Speed")
+        self.assertEqual(s.name, "Wind Speed")
 
     def test_wind_direction_name(self):
         from noaa_it_all.sensors.weather_observations import WindDirectionSensor
         s = self._make(WindDirectionSensor)
-        self.assertEqual(s.name, f"NOAA {OFFICE} Wind Direction")
+        self.assertEqual(s.name, "Wind Direction")
 
     def test_barometric_pressure_name(self):
         from noaa_it_all.sensors.weather_observations import BarometricPressureSensor
         s = self._make(BarometricPressureSensor)
-        self.assertEqual(s.name, f"NOAA {OFFICE} Barometric Pressure")
+        self.assertEqual(s.name, "Barometric Pressure")
 
     def test_dewpoint_name(self):
         from noaa_it_all.sensors.weather_observations import DewpointSensor
         s = self._make(DewpointSensor)
-        self.assertEqual(s.name, f"NOAA {OFFICE} Dewpoint")
+        self.assertEqual(s.name, "Dewpoint")
 
     def test_visibility_name(self):
         from noaa_it_all.sensors.weather_observations import VisibilitySensor
         s = self._make(VisibilitySensor)
-        self.assertEqual(s.name, f"NOAA {OFFICE} Visibility")
+        self.assertEqual(s.name, "Visibility")
 
     def test_sky_conditions_name(self):
         from noaa_it_all.sensors.weather_observations import SkyConditionsSensor
         s = self._make(SkyConditionsSensor)
-        self.assertEqual(s.name, f"NOAA {OFFICE} Sky Conditions")
+        self.assertEqual(s.name, "Sky Conditions")
 
     def test_feels_like_name(self):
         from noaa_it_all.sensors.weather_observations import FeelsLikeSensor
         s = self._make(FeelsLikeSensor)
-        self.assertEqual(s.name, f"NOAA {OFFICE} Feels Like")
+        self.assertEqual(s.name, "Feels Like")
 
     def test_unique_id_contains_office(self):
         from noaa_it_all.sensors.weather_observations import TemperatureSensor
@@ -155,7 +168,7 @@ class TestSpaceWeatherNaming(unittest.TestCase):
     def test_aurora_next_time_name(self):
         from noaa_it_all.sensors.space_weather import AuroraNextTimeSensor
         s = AuroraNextTimeSensor(COORD, OFFICE)
-        self.assertEqual(s.name, f"NOAA {OFFICE} Aurora Next Time")
+        self.assertEqual(s.name, "Aurora Next Time")
 
     def test_aurora_next_time_unique_id(self):
         from noaa_it_all.sensors.space_weather import AuroraNextTimeSensor
@@ -165,7 +178,7 @@ class TestSpaceWeatherNaming(unittest.TestCase):
     def test_aurora_duration_name(self):
         from noaa_it_all.sensors.space_weather import AuroraDurationSensor
         s = AuroraDurationSensor(COORD, OFFICE)
-        self.assertEqual(s.name, f"NOAA {OFFICE} Aurora Duration")
+        self.assertEqual(s.name, "Aurora Duration")
 
     def test_aurora_duration_unique_id(self):
         from noaa_it_all.sensors.space_weather import AuroraDurationSensor
@@ -175,7 +188,7 @@ class TestSpaceWeatherNaming(unittest.TestCase):
     def test_aurora_visibility_probability_name(self):
         from noaa_it_all.sensors.space_weather import AuroraVisibilityProbabilitySensor
         s = AuroraVisibilityProbabilitySensor(COORD, OFFICE)
-        self.assertEqual(s.name, f"NOAA {OFFICE} Aurora Visibility Probability")
+        self.assertEqual(s.name, "Aurora Visibility Probability")
 
     def test_aurora_visibility_probability_unique_id(self):
         from noaa_it_all.sensors.space_weather import AuroraVisibilityProbabilitySensor
@@ -185,7 +198,7 @@ class TestSpaceWeatherNaming(unittest.TestCase):
     def test_solar_radiation_name(self):
         from noaa_it_all.sensors.space_weather import SolarRadiationStormAlertsSensor
         s = SolarRadiationStormAlertsSensor(COORD, OFFICE)
-        self.assertEqual(s.name, f"NOAA {OFFICE} Solar Radiation Storm Alerts")
+        self.assertEqual(s.name, "Solar Radiation Storm Alerts")
 
     def test_solar_radiation_unique_id(self):
         from noaa_it_all.sensors.space_weather import SolarRadiationStormAlertsSensor
@@ -203,7 +216,7 @@ class TestSurfNaming(unittest.TestCase):
     def test_rip_current_name(self):
         from noaa_it_all.sensors.surf import RipCurrentRiskSensor
         s = RipCurrentRiskSensor(COORD, OFFICE)
-        self.assertEqual(s._attr_name, f"NOAA {OFFICE} Rip Current Risk")
+        self.assertEqual(s.name, "Rip Current Risk")
 
     def test_rip_current_unique_id(self):
         from noaa_it_all.sensors.surf import RipCurrentRiskSensor
@@ -213,7 +226,7 @@ class TestSurfNaming(unittest.TestCase):
     def test_surf_height_name(self):
         from noaa_it_all.sensors.surf import SurfHeightSensor
         s = SurfHeightSensor(COORD, OFFICE)
-        self.assertEqual(s._attr_name, f"NOAA {OFFICE} Surf Height")
+        self.assertEqual(s.name, "Surf Height")
 
     def test_surf_height_unique_id(self):
         from noaa_it_all.sensors.surf import SurfHeightSensor
@@ -223,7 +236,7 @@ class TestSurfNaming(unittest.TestCase):
     def test_water_temperature_name(self):
         from noaa_it_all.sensors.surf import WaterTemperatureSensor
         s = WaterTemperatureSensor(COORD, OFFICE)
-        self.assertEqual(s._attr_name, f"NOAA {OFFICE} Water Temperature")
+        self.assertEqual(s.name, "Water Temperature")
 
     def test_water_temperature_unique_id(self):
         from noaa_it_all.sensors.surf import WaterTemperatureSensor
@@ -241,7 +254,7 @@ class TestForecastNaming(unittest.TestCase):
     def test_extended_forecast_name(self):
         from noaa_it_all.sensors.forecasts import ExtendedForecastSensor
         s = ExtendedForecastSensor(COORD, OFFICE, LAT, LON)
-        self.assertEqual(s.name, f"NOAA {OFFICE} Extended Forecast")
+        self.assertEqual(s.name, "Extended Forecast")
 
     def test_extended_forecast_unique_id(self):
         from noaa_it_all.sensors.forecasts import ExtendedForecastSensor
@@ -253,19 +266,21 @@ class TestForecastNaming(unittest.TestCase):
     def test_hourly_forecast_name(self):
         from noaa_it_all.sensors.forecasts import HourlyForecastSensor
         s = HourlyForecastSensor(COORD, OFFICE, LAT, LON)
-        self.assertEqual(s.name, f"NOAA {OFFICE} Hourly Forecast")
+        self.assertEqual(s.name, "Hourly Forecast")
 
     def test_extended_forecast_suggested_object_id(self):
         from noaa_it_all.sensors.forecasts import ExtendedForecastSensor
         s = ExtendedForecastSensor(COORD, OFFICE, LAT, LON)
+        self.assertTrue(s._attr_has_entity_name)
         expected = f"noaa_{OFFICE.lower()}_weather_extended_forecast"
-        self.assertEqual(s.suggested_object_id, expected)
+        self.assertEqual(_entity_id_slug(s), expected)
 
     def test_hourly_forecast_suggested_object_id(self):
         from noaa_it_all.sensors.forecasts import HourlyForecastSensor
         s = HourlyForecastSensor(COORD, OFFICE, LAT, LON)
+        self.assertTrue(s._attr_has_entity_name)
         expected = f"noaa_{OFFICE.lower()}_weather_hourly_forecast"
-        self.assertEqual(s.suggested_object_id, expected)
+        self.assertEqual(_entity_id_slug(s), expected)
 
 
 # ---------------------------------------------------------------------------
@@ -278,7 +293,7 @@ class TestAlertsNaming(unittest.TestCase):
     def test_nws_alerts_name(self):
         from noaa_it_all.sensors.alerts import NWSAlertsSensor
         s = NWSAlertsSensor(COORD, OFFICE, LAT, LON)
-        self.assertEqual(s.name, f"NOAA {OFFICE} Active NWS Alerts")
+        self.assertEqual(s.name, "Active NWS Alerts")
 
     def test_nws_alerts_unique_id(self):
         from noaa_it_all.sensors.alerts import NWSAlertsSensor
@@ -298,7 +313,7 @@ class TestWeatherExtraNaming(unittest.TestCase):
     def test_cloud_cover_name(self):
         from noaa_it_all.sensors.weather_extra import CloudCoverSensor
         s = CloudCoverSensor(COORD, OFFICE, LAT, LON)
-        self.assertEqual(s.name, f"NOAA {OFFICE} Cloud Cover")
+        self.assertEqual(s.name, "Cloud Cover")
 
     def test_cloud_cover_unique_id(self):
         from noaa_it_all.sensors.weather_extra import CloudCoverSensor
@@ -310,7 +325,7 @@ class TestWeatherExtraNaming(unittest.TestCase):
     def test_radar_timestamp_name(self):
         from noaa_it_all.sensors.weather_extra import RadarTimestampSensor
         s = RadarTimestampSensor(COORD, OFFICE)
-        self.assertEqual(s.name, f"NOAA {OFFICE} Radar Timestamp")
+        self.assertEqual(s.name, "Radar Timestamp")
 
     def test_radar_timestamp_unique_id(self):
         from noaa_it_all.sensors.weather_extra import RadarTimestampSensor
@@ -320,7 +335,7 @@ class TestWeatherExtraNaming(unittest.TestCase):
     def test_forecast_discussion_name(self):
         from noaa_it_all.sensors.weather_extra import ForecastDiscussionSensor
         s = ForecastDiscussionSensor(COORD, OFFICE)
-        self.assertEqual(s.name, f"NOAA {OFFICE} Forecast Discussion")
+        self.assertEqual(s.name, "Forecast Discussion")
 
     def test_forecast_discussion_unique_id(self):
         from noaa_it_all.sensors.weather_extra import ForecastDiscussionSensor
@@ -333,14 +348,11 @@ class TestWeatherExtraNaming(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 class TestNamingConventionFormat(unittest.TestCase):
-    """Verify all sensor names follow the NOAA {OFFICE} {Metric} pattern."""
-
-    def _slug(self, name):
-        """Simple slugify matching HA behavior for entity_id."""
-        return name.lower().replace(" ", "_").replace("-", "_")
+    """Verify all office-grouped sensors produce entity IDs prefixed noaa_{office}_."""
 
     def test_all_names_produce_correct_entity_prefix(self):
-        """Every location sensor name must start with 'NOAA {OFFICE}'."""
+        """Every location sensor's device+name combination must produce an entity ID
+        starting with 'noaa_{office}_' when combined using HA's has_entity_name logic."""
         from noaa_it_all.sensors.weather_observations import (
             TemperatureSensor, HumiditySensor, WindSpeedSensor,
             WindDirectionSensor, BarometricPressureSensor, DewpointSensor,
@@ -359,7 +371,6 @@ class TestNamingConventionFormat(unittest.TestCase):
             CloudCoverSensor, RadarTimestampSensor, ForecastDiscussionSensor,
         )
 
-        # Build sensors with OFFICE code
         obs = [cls(COORD, OFFICE, latitude=LAT, longitude=LON)
                for cls in (TemperatureSensor, HumiditySensor, WindSpeedSensor,
                            WindDirectionSensor, BarometricPressureSensor,
@@ -383,12 +394,10 @@ class TestNamingConventionFormat(unittest.TestCase):
 
         expected_prefix = f"noaa_{OFFICE.lower()}_"
         for sensor in all_sensors:
-            name = getattr(sensor, '_attr_name', None) or sensor.name
-            slug = self._slug(name)
+            slug = _entity_id_slug(sensor)
             self.assertTrue(
                 slug.startswith(expected_prefix),
-                f"Sensor name '{name}' slugifies to '{slug}' — "
-                f"expected prefix '{expected_prefix}'"
+                f"{type(sensor).__name__}: entity slug '{slug}' does not start with '{expected_prefix}'"
             )
 
 
@@ -597,172 +606,176 @@ class TestDeviceInfoGrouping(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 class TestSuggestedObjectIdFormat(unittest.TestCase):
-    """Verify all office-grouped sensors have correct suggested_object_id format.
-    
-    Format: noaa_[office]_[domain]_[entity_type]
+    """Verify all office-grouped sensors produce the correct entity ID via has_entity_name.
+
+    With _attr_has_entity_name=True, HA derives the entity ID as:
+        slugify(device_name) + "_" + slugify(local_name)
+
+    These tests verify that combination matches the expected noaa_[office]_[domain]_[metric]
+    pattern for every sensor type.
     """
 
     # Weather observation sensors
     def test_temperature_suggested_object_id(self):
-       from noaa_it_all.sensors.weather_observations import TemperatureSensor
-       s = TemperatureSensor(COORD, OFFICE, latitude=LAT, longitude=LON)
-       expected = f"noaa_{OFFICE.lower()}_weather_temperature"
-       self.assertEqual(s.suggested_object_id, expected)
+        from noaa_it_all.sensors.weather_observations import TemperatureSensor
+        s = TemperatureSensor(COORD, OFFICE, latitude=LAT, longitude=LON)
+        self.assertTrue(s._attr_has_entity_name)
+        self.assertEqual(_entity_id_slug(s), f"noaa_{OFFICE.lower()}_weather_temperature")
 
     def test_humidity_suggested_object_id(self):
-       from noaa_it_all.sensors.weather_observations import HumiditySensor
-       s = HumiditySensor(COORD, OFFICE, latitude=LAT, longitude=LON)
-       expected = f"noaa_{OFFICE.lower()}_weather_humidity"
-       self.assertEqual(s.suggested_object_id, expected)
+        from noaa_it_all.sensors.weather_observations import HumiditySensor
+        s = HumiditySensor(COORD, OFFICE, latitude=LAT, longitude=LON)
+        self.assertTrue(s._attr_has_entity_name)
+        self.assertEqual(_entity_id_slug(s), f"noaa_{OFFICE.lower()}_weather_humidity")
 
     def test_wind_speed_suggested_object_id(self):
-       from noaa_it_all.sensors.weather_observations import WindSpeedSensor
-       s = WindSpeedSensor(COORD, OFFICE, latitude=LAT, longitude=LON)
-       expected = f"noaa_{OFFICE.lower()}_weather_wind_speed"
-       self.assertEqual(s.suggested_object_id, expected)
+        from noaa_it_all.sensors.weather_observations import WindSpeedSensor
+        s = WindSpeedSensor(COORD, OFFICE, latitude=LAT, longitude=LON)
+        self.assertTrue(s._attr_has_entity_name)
+        self.assertEqual(_entity_id_slug(s), f"noaa_{OFFICE.lower()}_weather_wind_speed")
 
     def test_wind_direction_suggested_object_id(self):
-       from noaa_it_all.sensors.weather_observations import WindDirectionSensor
-       s = WindDirectionSensor(COORD, OFFICE, latitude=LAT, longitude=LON)
-       expected = f"noaa_{OFFICE.lower()}_weather_wind_direction"
-       self.assertEqual(s.suggested_object_id, expected)
+        from noaa_it_all.sensors.weather_observations import WindDirectionSensor
+        s = WindDirectionSensor(COORD, OFFICE, latitude=LAT, longitude=LON)
+        self.assertTrue(s._attr_has_entity_name)
+        self.assertEqual(_entity_id_slug(s), f"noaa_{OFFICE.lower()}_weather_wind_direction")
 
     def test_barometric_pressure_suggested_object_id(self):
-       from noaa_it_all.sensors.weather_observations import BarometricPressureSensor
-       s = BarometricPressureSensor(COORD, OFFICE, latitude=LAT, longitude=LON)
-       expected = f"noaa_{OFFICE.lower()}_weather_barometric_pressure"
-       self.assertEqual(s.suggested_object_id, expected)
+        from noaa_it_all.sensors.weather_observations import BarometricPressureSensor
+        s = BarometricPressureSensor(COORD, OFFICE, latitude=LAT, longitude=LON)
+        self.assertTrue(s._attr_has_entity_name)
+        self.assertEqual(_entity_id_slug(s), f"noaa_{OFFICE.lower()}_weather_barometric_pressure")
 
     def test_dewpoint_suggested_object_id(self):
-       from noaa_it_all.sensors.weather_observations import DewpointSensor
-       s = DewpointSensor(COORD, OFFICE, latitude=LAT, longitude=LON)
-       expected = f"noaa_{OFFICE.lower()}_weather_dewpoint"
-       self.assertEqual(s.suggested_object_id, expected)
+        from noaa_it_all.sensors.weather_observations import DewpointSensor
+        s = DewpointSensor(COORD, OFFICE, latitude=LAT, longitude=LON)
+        self.assertTrue(s._attr_has_entity_name)
+        self.assertEqual(_entity_id_slug(s), f"noaa_{OFFICE.lower()}_weather_dewpoint")
 
     def test_visibility_suggested_object_id(self):
-       from noaa_it_all.sensors.weather_observations import VisibilitySensor
-       s = VisibilitySensor(COORD, OFFICE, latitude=LAT, longitude=LON)
-       expected = f"noaa_{OFFICE.lower()}_weather_visibility"
-       self.assertEqual(s.suggested_object_id, expected)
+        from noaa_it_all.sensors.weather_observations import VisibilitySensor
+        s = VisibilitySensor(COORD, OFFICE, latitude=LAT, longitude=LON)
+        self.assertTrue(s._attr_has_entity_name)
+        self.assertEqual(_entity_id_slug(s), f"noaa_{OFFICE.lower()}_weather_visibility")
 
     def test_sky_conditions_suggested_object_id(self):
-       from noaa_it_all.sensors.weather_observations import SkyConditionsSensor
-       s = SkyConditionsSensor(COORD, OFFICE, latitude=LAT, longitude=LON)
-       expected = f"noaa_{OFFICE.lower()}_weather_sky_conditions"
-       self.assertEqual(s.suggested_object_id, expected)
+        from noaa_it_all.sensors.weather_observations import SkyConditionsSensor
+        s = SkyConditionsSensor(COORD, OFFICE, latitude=LAT, longitude=LON)
+        self.assertTrue(s._attr_has_entity_name)
+        self.assertEqual(_entity_id_slug(s), f"noaa_{OFFICE.lower()}_weather_sky_conditions")
 
     def test_feels_like_suggested_object_id(self):
-       from noaa_it_all.sensors.weather_observations import FeelsLikeSensor
-       s = FeelsLikeSensor(COORD, OFFICE, latitude=LAT, longitude=LON)
-       expected = f"noaa_{OFFICE.lower()}_weather_feels_like"
-       self.assertEqual(s.suggested_object_id, expected)
+        from noaa_it_all.sensors.weather_observations import FeelsLikeSensor
+        s = FeelsLikeSensor(COORD, OFFICE, latitude=LAT, longitude=LON)
+        self.assertTrue(s._attr_has_entity_name)
+        self.assertEqual(_entity_id_slug(s), f"noaa_{OFFICE.lower()}_weather_feels_like")
 
-    # Forecast sensors (already tested elsewhere, but include for completeness)
+    # Forecast sensors
     def test_extended_forecast_suggested_object_id_complete(self):
-       from noaa_it_all.sensors.forecasts import ExtendedForecastSensor
-       s = ExtendedForecastSensor(COORD, OFFICE, LAT, LON)
-       expected = f"noaa_{OFFICE.lower()}_weather_extended_forecast"
-       self.assertEqual(s.suggested_object_id, expected)
+        from noaa_it_all.sensors.forecasts import ExtendedForecastSensor
+        s = ExtendedForecastSensor(COORD, OFFICE, LAT, LON)
+        self.assertTrue(s._attr_has_entity_name)
+        self.assertEqual(_entity_id_slug(s), f"noaa_{OFFICE.lower()}_weather_extended_forecast")
 
     def test_hourly_forecast_suggested_object_id_complete(self):
-       from noaa_it_all.sensors.forecasts import HourlyForecastSensor
-       s = HourlyForecastSensor(COORD, OFFICE, LAT, LON)
-       expected = f"noaa_{OFFICE.lower()}_weather_hourly_forecast"
-       self.assertEqual(s.suggested_object_id, expected)
+        from noaa_it_all.sensors.forecasts import HourlyForecastSensor
+        s = HourlyForecastSensor(COORD, OFFICE, LAT, LON)
+        self.assertTrue(s._attr_has_entity_name)
+        self.assertEqual(_entity_id_slug(s), f"noaa_{OFFICE.lower()}_weather_hourly_forecast")
 
     # Surf sensors
     def test_rip_current_risk_suggested_object_id(self):
-       from noaa_it_all.sensors.surf import RipCurrentRiskSensor
-       s = RipCurrentRiskSensor(COORD, OFFICE)
-       expected = f"noaa_{OFFICE.lower()}_surf_rip_current_risk"
-       self.assertEqual(s.suggested_object_id, expected)
+        from noaa_it_all.sensors.surf import RipCurrentRiskSensor
+        s = RipCurrentRiskSensor(COORD, OFFICE)
+        self.assertTrue(s._attr_has_entity_name)
+        self.assertEqual(_entity_id_slug(s), f"noaa_{OFFICE.lower()}_surf_rip_current_risk")
 
     def test_surf_height_suggested_object_id(self):
-       from noaa_it_all.sensors.surf import SurfHeightSensor
-       s = SurfHeightSensor(COORD, OFFICE)
-       expected = f"noaa_{OFFICE.lower()}_surf_surf_height"
-       self.assertEqual(s.suggested_object_id, expected)
+        from noaa_it_all.sensors.surf import SurfHeightSensor
+        s = SurfHeightSensor(COORD, OFFICE)
+        self.assertTrue(s._attr_has_entity_name)
+        self.assertEqual(_entity_id_slug(s), f"noaa_{OFFICE.lower()}_surf_surf_height")
 
     def test_water_temperature_suggested_object_id(self):
-       from noaa_it_all.sensors.surf import WaterTemperatureSensor
-       s = WaterTemperatureSensor(COORD, OFFICE)
-       expected = f"noaa_{OFFICE.lower()}_surf_water_temperature"
-       self.assertEqual(s.suggested_object_id, expected)
+        from noaa_it_all.sensors.surf import WaterTemperatureSensor
+        s = WaterTemperatureSensor(COORD, OFFICE)
+        self.assertTrue(s._attr_has_entity_name)
+        self.assertEqual(_entity_id_slug(s), f"noaa_{OFFICE.lower()}_surf_water_temperature")
 
     # Space weather sensors
     def test_geomagnetic_suggested_object_id(self):
-       from noaa_it_all.sensors.space_weather import GeomagneticSensor
-       s = GeomagneticSensor(COORD, OFFICE)
-       expected = f"noaa_{OFFICE.lower()}_space_geomagnetic_storm"
-       self.assertEqual(s.suggested_object_id, expected)
+        from noaa_it_all.sensors.space_weather import GeomagneticSensor
+        s = GeomagneticSensor(COORD, OFFICE)
+        self.assertTrue(s._attr_has_entity_name)
+        self.assertEqual(_entity_id_slug(s), f"noaa_{OFFICE.lower()}_space_geomagnetic_storm")
 
     def test_geomagnetic_interpretation_suggested_object_id(self):
-       from noaa_it_all.sensors.space_weather import GeomagneticSensorInterpretation
-       s = GeomagneticSensorInterpretation(COORD, OFFICE)
-       expected = f"noaa_{OFFICE.lower()}_space_geomagnetic_storm_interpretation"
-       self.assertEqual(s.suggested_object_id, expected)
+        from noaa_it_all.sensors.space_weather import GeomagneticSensorInterpretation
+        s = GeomagneticSensorInterpretation(COORD, OFFICE)
+        self.assertTrue(s._attr_has_entity_name)
+        self.assertEqual(_entity_id_slug(s), f"noaa_{OFFICE.lower()}_space_geomagnetic_storm_interpretation")
 
     def test_planetary_k_index_suggested_object_id(self):
-       from noaa_it_all.sensors.space_weather import PlanetaryKIndexSensor
-       s = PlanetaryKIndexSensor(COORD, OFFICE)
-       expected = f"noaa_{OFFICE.lower()}_space_planetary_k_index"
-       self.assertEqual(s.suggested_object_id, expected)
+        from noaa_it_all.sensors.space_weather import PlanetaryKIndexSensor
+        s = PlanetaryKIndexSensor(COORD, OFFICE)
+        self.assertTrue(s._attr_has_entity_name)
+        self.assertEqual(_entity_id_slug(s), f"noaa_{OFFICE.lower()}_space_planetary_k_index")
 
     def test_planetary_k_index_rating_suggested_object_id(self):
-       from noaa_it_all.sensors.space_weather import PlanetaryKIndexSensorRating
-       s = PlanetaryKIndexSensorRating(COORD, OFFICE)
-       expected = f"noaa_{OFFICE.lower()}_space_planetary_k_index_rating"
-       self.assertEqual(s.suggested_object_id, expected)
+        from noaa_it_all.sensors.space_weather import PlanetaryKIndexSensorRating
+        s = PlanetaryKIndexSensorRating(COORD, OFFICE)
+        self.assertTrue(s._attr_has_entity_name)
+        self.assertEqual(_entity_id_slug(s), f"noaa_{OFFICE.lower()}_space_planetary_k_index_rating")
 
     def test_aurora_next_time_suggested_object_id(self):
-       from noaa_it_all.sensors.space_weather import AuroraNextTimeSensor
-       s = AuroraNextTimeSensor(COORD, OFFICE)
-       expected = f"noaa_{OFFICE.lower()}_space_aurora_next_time"
-       self.assertEqual(s.suggested_object_id, expected)
+        from noaa_it_all.sensors.space_weather import AuroraNextTimeSensor
+        s = AuroraNextTimeSensor(COORD, OFFICE)
+        self.assertTrue(s._attr_has_entity_name)
+        self.assertEqual(_entity_id_slug(s), f"noaa_{OFFICE.lower()}_space_aurora_next_time")
 
     def test_aurora_duration_suggested_object_id(self):
-       from noaa_it_all.sensors.space_weather import AuroraDurationSensor
-       s = AuroraDurationSensor(COORD, OFFICE)
-       expected = f"noaa_{OFFICE.lower()}_space_aurora_duration"
-       self.assertEqual(s.suggested_object_id, expected)
+        from noaa_it_all.sensors.space_weather import AuroraDurationSensor
+        s = AuroraDurationSensor(COORD, OFFICE)
+        self.assertTrue(s._attr_has_entity_name)
+        self.assertEqual(_entity_id_slug(s), f"noaa_{OFFICE.lower()}_space_aurora_duration")
 
     def test_aurora_visibility_probability_suggested_object_id(self):
-       from noaa_it_all.sensors.space_weather import AuroraVisibilityProbabilitySensor
-       s = AuroraVisibilityProbabilitySensor(COORD, OFFICE)
-       expected = f"noaa_{OFFICE.lower()}_space_aurora_visibility_probability"
-       self.assertEqual(s.suggested_object_id, expected)
+        from noaa_it_all.sensors.space_weather import AuroraVisibilityProbabilitySensor
+        s = AuroraVisibilityProbabilitySensor(COORD, OFFICE)
+        self.assertTrue(s._attr_has_entity_name)
+        self.assertEqual(_entity_id_slug(s), f"noaa_{OFFICE.lower()}_space_aurora_visibility_probability")
 
     def test_solar_radiation_storm_alerts_suggested_object_id(self):
-       from noaa_it_all.sensors.space_weather import SolarRadiationStormAlertsSensor
-       s = SolarRadiationStormAlertsSensor(COORD, OFFICE)
-       expected = f"noaa_{OFFICE.lower()}_space_solar_radiation_storm_alerts"
-       self.assertEqual(s.suggested_object_id, expected)
+        from noaa_it_all.sensors.space_weather import SolarRadiationStormAlertsSensor
+        s = SolarRadiationStormAlertsSensor(COORD, OFFICE)
+        self.assertTrue(s._attr_has_entity_name)
+        self.assertEqual(_entity_id_slug(s), f"noaa_{OFFICE.lower()}_space_solar_radiation_storm_alerts")
 
     # Weather extra sensors
     def test_cloud_cover_suggested_object_id(self):
-       from noaa_it_all.sensors.weather_extra import CloudCoverSensor
-       s = CloudCoverSensor(COORD, OFFICE, LAT, LON)
-       expected = f"noaa_{OFFICE.lower()}_weather_cloud_cover"
-       self.assertEqual(s.suggested_object_id, expected)
+        from noaa_it_all.sensors.weather_extra import CloudCoverSensor
+        s = CloudCoverSensor(COORD, OFFICE, LAT, LON)
+        self.assertTrue(s._attr_has_entity_name)
+        self.assertEqual(_entity_id_slug(s), f"noaa_{OFFICE.lower()}_weather_cloud_cover")
 
     def test_radar_timestamp_suggested_object_id(self):
-       from noaa_it_all.sensors.weather_extra import RadarTimestampSensor
-       s = RadarTimestampSensor(COORD, OFFICE)
-       expected = f"noaa_{OFFICE.lower()}_weather_radar_timestamp"
-       self.assertEqual(s.suggested_object_id, expected)
+        from noaa_it_all.sensors.weather_extra import RadarTimestampSensor
+        s = RadarTimestampSensor(COORD, OFFICE)
+        self.assertTrue(s._attr_has_entity_name)
+        self.assertEqual(_entity_id_slug(s), f"noaa_{OFFICE.lower()}_weather_radar_timestamp")
 
     def test_forecast_discussion_suggested_object_id(self):
-       from noaa_it_all.sensors.weather_extra import ForecastDiscussionSensor
-       s = ForecastDiscussionSensor(COORD, OFFICE)
-       expected = f"noaa_{OFFICE.lower()}_weather_forecast_discussion"
-       self.assertEqual(s.suggested_object_id, expected)
+        from noaa_it_all.sensors.weather_extra import ForecastDiscussionSensor
+        s = ForecastDiscussionSensor(COORD, OFFICE)
+        self.assertTrue(s._attr_has_entity_name)
+        self.assertEqual(_entity_id_slug(s), f"noaa_{OFFICE.lower()}_weather_forecast_discussion")
 
-    # Alerts sensors
+    # Alerts sensor
     def test_nws_alerts_suggested_object_id(self):
-       from noaa_it_all.sensors.alerts import NWSAlertsSensor
-       s = NWSAlertsSensor(COORD, OFFICE, LAT, LON)
-       expected = f"noaa_{OFFICE.lower()}_weather_alerts"
-       self.assertEqual(s.suggested_object_id, expected)
+        from noaa_it_all.sensors.alerts import NWSAlertsSensor
+        s = NWSAlertsSensor(COORD, OFFICE, LAT, LON)
+        self.assertTrue(s._attr_has_entity_name)
+        self.assertEqual(_entity_id_slug(s), f"noaa_{OFFICE.lower()}_weather_active_nws_alerts")
 
 
 if __name__ == "__main__":

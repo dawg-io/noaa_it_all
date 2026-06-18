@@ -13,6 +13,7 @@ import re
 import aiohttp
 from datetime import timedelta
 from email.utils import parsedate_to_datetime
+from typing import Optional
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -192,8 +193,8 @@ class ObservationsCoordinator(DataUpdateCoordinator):
         self,
         hass: HomeAssistant,
         office_code: str,
-        latitude: float | None,
-        longitude: float | None,
+        latitude: Optional[float],
+        longitude: Optional[float],
     ) -> None:
         super().__init__(
             hass,
@@ -204,7 +205,7 @@ class ObservationsCoordinator(DataUpdateCoordinator):
         self.office_code = office_code
         self.latitude = latitude
         self.longitude = longitude
-        self.station_id: str | None = OFFICE_STATION_IDS.get(office_code)
+        self.station_id: Optional[str] = OFFICE_STATION_IDS.get(office_code)
         # If latitude/longitude are provided, always attempt to resolve the nearest
         # station via the NWS Points API on first update, using OFFICE_STATION_IDS
         # only as a fallback if resolution fails.
@@ -312,8 +313,8 @@ class SurfCoordinator(DataUpdateCoordinator):
         self,
         hass: HomeAssistant,
         office_code: str,
-        tide_station: str | None = None,
-        buoy_station: str | None = None,
+        tide_station: Optional[str] = None,
+        buoy_station: Optional[str] = None,
     ) -> None:
         super().__init__(
             hass,
@@ -416,8 +417,8 @@ class ForecastCoordinator(DataUpdateCoordinator):
         self.office_code = office_code
         self.latitude = latitude
         self.longitude = longitude
-        self._forecast_url: str | None = None
-        self._hourly_forecast_url: str | None = None
+        self._forecast_url: Optional[str] = None
+        self._hourly_forecast_url: Optional[str] = None
         self._urls_fetched: bool = False
 
     async def _async_update_data(self) -> dict:
@@ -521,7 +522,7 @@ class CloudCoverCoordinator(DataUpdateCoordinator):
         self.office_code = office_code
         self.latitude = latitude
         self.longitude = longitude
-        self._gridpoint_url: str | None = None
+        self._gridpoint_url: Optional[str] = None
         self._grid_fetched: bool = False
 
     async def _async_update_data(self) -> dict:

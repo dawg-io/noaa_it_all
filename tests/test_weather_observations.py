@@ -89,7 +89,7 @@ class TestTemperatureSensor(unittest.TestCase):
 
     def test_name(self):
         sensor = self._make()
-        self.assertEqual(sensor.name, f"NOAA {OFFICE} Temperature")
+        self.assertEqual(sensor.name, "Temperature")
 
     def test_unique_id_contains_office(self):
         sensor = self._make()
@@ -146,7 +146,7 @@ class TestHumiditySensor(unittest.TestCase):
 
     def test_name(self):
         sensor = self._make()
-        self.assertEqual(sensor.name, f"NOAA {OFFICE} Humidity")
+        self.assertEqual(sensor.name, "Humidity")
 
     def test_unit(self):
         sensor = self._make()
@@ -186,7 +186,7 @@ class TestWindSpeedSensor(unittest.TestCase):
 
     def test_name(self):
         sensor = self._make()
-        self.assertEqual(sensor.name, f"NOAA {OFFICE} Wind Speed")
+        self.assertEqual(sensor.name, "Wind Speed")
 
     def test_unit(self):
         sensor = self._make()
@@ -222,7 +222,7 @@ class TestWindDirectionSensor(unittest.TestCase):
 
     def test_name(self):
         sensor = self._make()
-        self.assertEqual(sensor.name, f"NOAA {OFFICE} Wind Direction")
+        self.assertEqual(sensor.name, "Wind Direction")
 
     def test_unit(self):
         sensor = self._make()
@@ -263,7 +263,7 @@ class TestBarometricPressureSensor(unittest.TestCase):
 
     def test_name(self):
         sensor = self._make()
-        self.assertEqual(sensor.name, f"NOAA {OFFICE} Barometric Pressure")
+        self.assertEqual(sensor.name, "Barometric Pressure")
 
     def test_unit(self):
         sensor = self._make()
@@ -303,7 +303,7 @@ class TestDewpointSensor(unittest.TestCase):
 
     def test_name(self):
         sensor = self._make()
-        self.assertEqual(sensor.name, f"NOAA {OFFICE} Dewpoint")
+        self.assertEqual(sensor.name, "Dewpoint")
 
     def test_unit(self):
         sensor = self._make()
@@ -339,7 +339,7 @@ class TestVisibilitySensor(unittest.TestCase):
 
     def test_name(self):
         sensor = self._make()
-        self.assertEqual(sensor.name, f"NOAA {OFFICE} Visibility")
+        self.assertEqual(sensor.name, "Visibility")
 
     def test_unit(self):
         sensor = self._make()
@@ -375,7 +375,7 @@ class TestSkyConditionsSensor(unittest.TestCase):
 
     def test_name(self):
         sensor = self._make()
-        self.assertEqual(sensor.name, f"NOAA {OFFICE} Sky Conditions")
+        self.assertEqual(sensor.name, "Sky Conditions")
 
     def test_state_returns_text(self):
         obs = _load_fixture("observations.json")
@@ -405,7 +405,7 @@ class TestFeelsLikeSensor(unittest.TestCase):
 
     def test_name(self):
         sensor = self._make()
-        self.assertEqual(sensor.name, f"NOAA {OFFICE} Feels Like")
+        self.assertEqual(sensor.name, "Feels Like")
 
     def test_unit(self):
         sensor = self._make()

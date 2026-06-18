@@ -102,7 +102,7 @@ class TestGeomagneticSensor(unittest.TestCase):
 
     def test_name(self):
         sensor = self._make()
-        self.assertEqual(sensor.name, "NOAA Space - Geomagnetic Storm")
+        self.assertEqual(sensor.name, "Geomagnetic Storm")
 
     def test_unique_id(self):
         sensor = self._make()
@@ -137,7 +137,7 @@ class TestGeomagneticSensorInterpretation(unittest.TestCase):
 
     def test_name(self):
         sensor = self._make()
-        self.assertEqual(sensor.name, "NOAA Space - Geomagnetic Storm Interpretation")
+        self.assertEqual(sensor.name, "Geomagnetic Storm Interpretation")
 
     def test_unique_id(self):
         sensor = self._make()
@@ -173,7 +173,7 @@ class TestPlanetaryKIndexSensor(unittest.TestCase):
 
     def test_name(self):
         sensor = self._make()
-        self.assertEqual(sensor.name, "NOAA Space - Planetary K-index")
+        self.assertEqual(sensor.name, "Planetary K-index")
 
     def test_unique_id(self):
         sensor = self._make()
@@ -205,7 +205,7 @@ class TestPlanetaryKIndexSensorRating(unittest.TestCase):
 
     def test_name(self):
         sensor = self._make()
-        self.assertEqual(sensor.name, "NOAA Space - Planetary K-index Rating")
+        self.assertEqual(sensor.name, "Planetary K-index Rating")
 
     def test_unique_id(self):
         sensor = self._make()
@@ -381,7 +381,7 @@ class TestAuroraDurationSensor(unittest.TestCase):
 
     def test_name(self):
         sensor = self._make()
-        self.assertEqual(sensor.name, f"NOAA {OFFICE} Aurora Duration")
+        self.assertEqual(sensor.name, "Aurora Duration")
 
 
 class TestAuroraVisibilityProbabilitySensor(unittest.TestCase):
@@ -418,7 +418,7 @@ class TestAuroraVisibilityProbabilitySensor(unittest.TestCase):
 
     def test_name(self):
         sensor = self._make()
-        self.assertEqual(sensor.name, f"NOAA {OFFICE} Aurora Visibility Probability")
+        self.assertEqual(sensor.name, "Aurora Visibility Probability")
 
     def test_extra_attrs_with_data(self):
         sensor = self._make([{"kp_index": 5.0}])
@@ -461,7 +461,7 @@ class TestSolarRadiationStormAlertsSensor(unittest.TestCase):
 
     def test_name(self):
         sensor = self._make()
-        self.assertEqual(sensor.name, f"NOAA {OFFICE} Solar Radiation Storm Alerts")
+        self.assertEqual(sensor.name, "Solar Radiation Storm Alerts")
 
     def test_device_info_space_group(self):
         sensor = self._make()
