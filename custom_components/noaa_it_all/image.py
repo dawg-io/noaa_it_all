@@ -3,22 +3,27 @@ import logging
 from homeassistant.components.image import ImageEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from datetime import timedelta, datetime
 
-from .const import CONF_OFFICE_CODE, OFFICE_RADAR_SITES, NWS_RADAR_BASE_URL, NWS_RADAR_LOOP_URL
+from .const import (
+    CONF_OFFICE_CODE, DEFAULT_SCAN_INTERVAL, DOMAIN,
+    HURRICANE_DEVICE_ID, HURRICANE_DEVICE_NAME,
+    HURRICANE_IMAGES_ADDED_KEY,
+    NWS_RADAR_BASE_URL, NWS_RADAR_LOOP_URL,
+    OFFICE_RADAR_SITES, REQUEST_TIMEOUT,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
-DOMAIN = 'noaa_it_all'
-SCAN_INTERVAL = timedelta(minutes=5)  # Update every 5 minutes
-REQUEST_TIMEOUT = 30  # 30 second timeout for HTTP requests
+SCAN_INTERVAL = timedelta(minutes=DEFAULT_SCAN_INTERVAL)
 
 BASE_IMAGE_URL = ('https://services.swpc.noaa.gov/images/animations/geoelectric/'
                   'InterMagEarthScope/EmapGraphics_1m/latest.png')
-AURORA_URL = ('https://services.swpc.noaa.gov/experimental/images/aurora_dashboard/'
-              'tonights_static_viewline_forecast.png')
+AURORA_URL = ('https://services.swpc.noaa.gov/images/animations/ovation/'
+              'north/latest.jpg')
 
 # NOAA Hurricane Image Sources
 HURRICANE_OUTLOOK_URL = 'https://www.nhc.noaa.gov/xgtwo/two_atl_2d0.png'
@@ -28,17 +33,28 @@ GOES_AIRMASS_URL = 'https://cdn.star.nesdis.noaa.gov/GOES19/ABI/CONUS/AirMass/12
 GOES_GEOCOLOR_URL = 'https://cdn.star.nesdis.noaa.gov/GOES19/ABI/CONUS/GEOCOLOR/1250x750.jpg'
 
 
-def setup_platform(hass, config, add_entities, discovery_info=None):
-    """Set up the Geoelectric Field Image entity."""
-    geoelectric_image_entity = GeoelectricFieldImageEntity(hass)
-    aurora_image_entity = AuroraForecastImageEntity(hass)
-    hurricane_outlook_image = HurricaneOutlookImageEntity(hass)
-    goes_airmass_image = GOESAirMassImageEntity(hass)
-    goes_geocolor_image = GOESGeoColorImageEntity(hass)
+def _hurricane_device_info() -> DeviceInfo:
+    """Return the shared device info for all NOAA Hurricane image entities.
 
-    # Add all image entities
-    add_entities([geoelectric_image_entity, aurora_image_entity, hurricane_outlook_image,
-                  goes_airmass_image, goes_geocolor_image])
+    Hurricane / NHC tropical-cyclone data is global and is not tied to any
+    configured NWS office, so all hurricane image entities share a single
+    dedicated device named ``NOAA Hurricane``.
+    """
+    return DeviceInfo(
+        identifiers={(DOMAIN, HURRICANE_DEVICE_ID)},
+        name=HURRICANE_DEVICE_NAME,
+        manufacturer="NOAA",
+    )
+
+
+def setup_platform(hass, config, add_entities, discovery_info=None):
+    """Set up the Geoelectric Field Image entity (legacy YAML support)."""
+    _LOGGER.error(
+        "Legacy YAML configuration for NOAA images is no longer supported. "
+        "Please remove the YAML configuration and re-add the integration "
+        "via the Home Assistant UI config flow."
+    )
+    return
 
 
 async def async_setup_entry(
@@ -49,23 +65,64 @@ async def async_setup_entry(
     """Set up NOAA image entities from config entry."""
     office_code = config_entry.data[CONF_OFFICE_CODE]
 
-    # Global image entities (not location-specific)
-    geoelectric_image_entity = GeoelectricFieldImageEntity(hass)
-    aurora_image_entity = AuroraForecastImageEntity(hass)
-    hurricane_outlook_image = HurricaneOutlookImageEntity(hass)
-    goes_airmass_image = GOESAirMassImageEntity(hass)
-    goes_geocolor_image = GOESGeoColorImageEntity(hass)
-
-    # Location-specific radar image entities
-    radar_site = OFFICE_RADAR_SITES.get(office_code)
+    # Global image entities (grouped under office device)
+    geoelectric_image_entity = GeoelectricFieldImageEntity(hass, office_code)
+    aurora_image_entity = AuroraForecastImageEntity(hass, office_code)
 
     entities = [
         geoelectric_image_entity,
         aurora_image_entity,
-        hurricane_outlook_image,
-        goes_airmass_image,
-        goes_geocolor_image,
     ]
+
+    # Hurricane image entities are global (NHC) and must only be added
+    # once across all configured NWS offices, so they don't appear under
+    # every office-specific device. Track the owning config entry's
+    # entry_id so that if the owner is unloaded while other entries
+    # remain we can release ownership and trigger a remaining entry to
+    # re-create the entities.
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    if not domain_data.get(HURRICANE_IMAGES_ADDED_KEY):
+        entities.extend([
+            HurricaneOutlookImageEntity(hass),
+            GOESAirMassImageEntity(hass),
+            GOESGeoColorImageEntity(hass),
+        ])
+        domain_data[HURRICANE_IMAGES_ADDED_KEY] = config_entry.entry_id
+
+        def _release_hurricane_image_ownership() -> None:
+            """Release hurricane-image ownership and re-create on a remaining entry.
+
+            Fires when the owning config entry is unloaded. If other entries
+            remain, clear the flag and reload one of them so its
+            ``async_setup_entry`` re-adds the global hurricane images;
+            otherwise the entities would disappear until Home Assistant
+            restarts.
+            """
+            if domain_data.get(HURRICANE_IMAGES_ADDED_KEY) != config_entry.entry_id:
+                return
+            domain_data.pop(HURRICANE_IMAGES_ADDED_KEY, None)
+            remaining = [
+                e for e in hass.config_entries.async_entries(DOMAIN)
+                if e.entry_id != config_entry.entry_id
+            ]
+            if remaining:
+                target_entry_id = remaining[0].entry_id
+
+                async def _reload_for_hurricane_images() -> None:
+                    try:
+                        await hass.config_entries.async_reload(target_entry_id)
+                    except Exception:  # noqa: BLE001
+                        _LOGGER.exception(
+                            "Failed to reload entry %s to re-create global "
+                            "hurricane images", target_entry_id,
+                        )
+
+                hass.async_create_task(_reload_for_hurricane_images())
+
+        config_entry.async_on_unload(_release_hurricane_image_ownership)
+
+    # Location-specific radar image entities
+    radar_site = OFFICE_RADAR_SITES.get(office_code)
 
     if radar_site:
         # Add radar image entities for this location
@@ -82,10 +139,11 @@ async def async_setup_entry(
 class GeoelectricFieldImageEntity(ImageEntity):
     """Representation of the Geoelectric Field Image."""
 
-    def __init__(self, hass):
+    def __init__(self, hass, office_code):
         """Initialize the image entity."""
         super().__init__(hass)
         self.hass = hass
+        self._office_code = office_code
         self._image_url = self.get_cache_busted_url()
 
     @property
@@ -101,14 +159,14 @@ class GeoelectricFieldImageEntity(ImageEntity):
     @property
     def unique_id(self):
         """Return a unique ID for this entity."""
-        return 'noaa_geoelectric_image'
+        return f'noaa_{self._office_code}_geoelectric_image'
 
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information."""
         return DeviceInfo(
-            identifiers={(DOMAIN, "noaa_space")},
-            name="NOAA Space",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}_space")},
+            name=f"NOAA {self._office_code} Space",
             manufacturer="NOAA"
         )
 
@@ -132,21 +190,19 @@ class GeoelectricFieldImageEntity(ImageEntity):
     async def async_image(self) -> bytes:
         """Return the bytes of the latest image."""
         try:
+            session = async_get_clientsession(self.hass)
             timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(self._image_url) as response:
-                    if response.status == 200:
-                        # Validate content type
-                        content_type = response.headers.get('content-type', '').lower()
-                        if 'image' not in content_type:
-                            _LOGGER.warning("Expected image content but got: %s", content_type)
-                            return b""
-
-                        content = await response.read()
-                        _LOGGER.debug("Successfully fetched geoelectric field image (%d bytes)", len(content))
-                        return content
-                    else:
-                        _LOGGER.warning("Failed to fetch geoelectric field image: HTTP %d", response.status)
+            async with session.get(self._image_url, timeout=timeout) as response:
+                if response.status == 200:
+                    content_type = response.headers.get('content-type', '').lower()
+                    if 'image' not in content_type:
+                        _LOGGER.warning("Expected image content but got: %s", content_type)
+                        return b""
+                    content = await response.read()
+                    _LOGGER.debug("Successfully fetched geoelectric field image (%d bytes)", len(content))
+                    return content
+                else:
+                    _LOGGER.warning("Failed to fetch geoelectric field image: HTTP %d", response.status)
         except aiohttp.ClientError as e:
             _LOGGER.error("Error fetching geoelectric field image: %s", e)
         except Exception as e:
@@ -157,10 +213,11 @@ class GeoelectricFieldImageEntity(ImageEntity):
 class AuroraForecastImageEntity(ImageEntity):
     """Representation of the aurora Field Image."""
 
-    def __init__(self, hass):
+    def __init__(self, hass, office_code):
         """Initialize the image entity."""
         super().__init__(hass)
         self.hass = hass
+        self._office_code = office_code
         self._image_url = self.get_cache_busted_url()
 
     @property
@@ -176,14 +233,14 @@ class AuroraForecastImageEntity(ImageEntity):
     @property
     def unique_id(self):
         """Return a unique ID for this entity."""
-        return 'noaa_aurora_image'
+        return f'noaa_{self._office_code}_aurora_image'
 
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information."""
         return DeviceInfo(
-            identifiers={(DOMAIN, "noaa_space")},
-            name="NOAA Space",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}_space")},
+            name=f"NOAA {self._office_code} Space",
             manufacturer="NOAA"
         )
 
@@ -207,21 +264,19 @@ class AuroraForecastImageEntity(ImageEntity):
     async def async_image(self) -> bytes:
         """Return the bytes of the latest image."""
         try:
+            session = async_get_clientsession(self.hass)
             timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(self._image_url) as response:
-                    if response.status == 200:
-                        # Validate content type
-                        content_type = response.headers.get('content-type', '').lower()
-                        if 'image' not in content_type:
-                            _LOGGER.warning("Expected image content but got: %s", content_type)
-                            return b""
-
-                        content = await response.read()
-                        _LOGGER.debug("Successfully fetched aurora forecast image (%d bytes)", len(content))
-                        return content
-                    else:
-                        _LOGGER.warning("Failed to fetch aurora forecast image: HTTP %d", response.status)
+            async with session.get(self._image_url, timeout=timeout) as response:
+                if response.status == 200:
+                    content_type = response.headers.get('content-type', '').lower()
+                    if 'image' not in content_type:
+                        _LOGGER.warning("Expected image content but got: %s", content_type)
+                        return b""
+                    content = await response.read()
+                    _LOGGER.debug("Successfully fetched aurora forecast image (%d bytes)", len(content))
+                    return content
+                else:
+                    _LOGGER.warning("Failed to fetch aurora forecast image: HTTP %d", response.status)
         except aiohttp.ClientError as e:
             _LOGGER.error("Error fetching aurora forecast image: %s", e)
         except Exception as e:
@@ -230,18 +285,30 @@ class AuroraForecastImageEntity(ImageEntity):
 
 
 class HurricaneOutlookImageEntity(ImageEntity):
-    """Representation of the Hurricane Outlook Image."""
+    """Representation of the Hurricane Outlook Image.
 
-    def __init__(self, hass):
-        """Initialize the image entity."""
+    Uses ``_attr_has_entity_name = True`` so that Home Assistant
+    automatically combines the device name ("NOAA Hurricane") with the
+    local entity name ("Outlook Image") to produce the entity ID
+    ``image.noaa_hurricane_outlook_image``.
+    """
+
+    _attr_has_entity_name = True
+
+    def __init__(self, hass, office_code=None):
+        """Initialize the image entity.
+
+        ``office_code`` is accepted for backward compatibility but is
+        unused: this entity is global (NHC).
+        """
         super().__init__(hass)
         self.hass = hass
         self._image_url = self.get_cache_busted_url()
 
     @property
     def name(self):
-        """Return the name of the entity."""
-        return 'Hurricane Outlook Image'
+        """Return the local entity name."""
+        return 'Outlook Image'
 
     @property
     def entity_picture(self):
@@ -256,11 +323,7 @@ class HurricaneOutlookImageEntity(ImageEntity):
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information."""
-        return DeviceInfo(
-            identifiers={(DOMAIN, "noaa_weather")},
-            name="NOAA Weather",
-            manufacturer="NOAA"
-        )
+        return _hurricane_device_info()
 
     def get_cache_busted_url(self):
         """Add a timestamp to the URL to prevent caching."""
@@ -280,20 +343,19 @@ class HurricaneOutlookImageEntity(ImageEntity):
     async def async_image(self) -> bytes:
         """Return the bytes of the latest image."""
         try:
+            session = async_get_clientsession(self.hass)
             timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(self._image_url) as response:
-                    if response.status == 200:
-                        content_type = response.headers.get('content-type', '').lower()
-                        if 'image' not in content_type:
-                            _LOGGER.warning("Expected image content but got: %s", content_type)
-                            return b""
-
-                        content = await response.read()
-                        _LOGGER.debug("Successfully fetched hurricane outlook image (%d bytes)", len(content))
-                        return content
-                    else:
-                        _LOGGER.warning("Failed to fetch hurricane outlook image: HTTP %d", response.status)
+            async with session.get(self._image_url, timeout=timeout) as response:
+                if response.status == 200:
+                    content_type = response.headers.get('content-type', '').lower()
+                    if 'image' not in content_type:
+                        _LOGGER.warning("Expected image content but got: %s", content_type)
+                        return b""
+                    content = await response.read()
+                    _LOGGER.debug("Successfully fetched hurricane outlook image (%d bytes)", len(content))
+                    return content
+                else:
+                    _LOGGER.warning("Failed to fetch hurricane outlook image: HTTP %d", response.status)
         except aiohttp.ClientError as e:
             _LOGGER.error("Error fetching hurricane outlook image: %s", e)
         except Exception as e:
@@ -302,7 +364,16 @@ class HurricaneOutlookImageEntity(ImageEntity):
 
 
 class RadarBaseReflectivityImageEntity(ImageEntity):
-    """Representation of the Radar Base Reflectivity Image for a specific location."""
+    """Representation of the Radar Base Reflectivity Image for a specific location.
+
+    Uses ``_attr_has_entity_name = True`` so that Home Assistant
+    automatically combines the office weather device name (e.g.
+    "NOAA ILM Weather") with the local entity name ("Radar Base
+    Reflectivity") to produce the entity ID
+    ``image.noaa_ilm_weather_radar_base_reflectivity``.
+    """
+
+    _attr_has_entity_name = True
 
     def __init__(self, hass, office_code, radar_site):
         """Initialize the radar image entity."""
@@ -314,8 +385,8 @@ class RadarBaseReflectivityImageEntity(ImageEntity):
 
     @property
     def name(self):
-        """Return the name of the entity."""
-        return f'NOAA Weather - Radar Base Reflectivity ({self._office_code})'
+        """Return the local entity name."""
+        return 'Radar Base Reflectivity'
 
     @property
     def entity_picture(self):
@@ -325,14 +396,14 @@ class RadarBaseReflectivityImageEntity(ImageEntity):
     @property
     def unique_id(self):
         """Return a unique ID for this entity."""
-        return f'noaa_{self._office_code}_radar_base_reflectivity'
+        return f'noaa_{self._office_code.lower()}_weather_radar_base_reflectivity'
 
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information."""
         return DeviceInfo(
-            identifiers={(DOMAIN, "noaa_weather")},
-            name="NOAA Weather",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}_weather")},
+            name=f"NOAA {self._office_code} Weather",
             manufacturer="NOAA"
         )
 
@@ -357,24 +428,22 @@ class RadarBaseReflectivityImageEntity(ImageEntity):
     async def async_image(self) -> bytes:
         """Return the bytes of the latest image."""
         try:
+            session = async_get_clientsession(self.hass)
             timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(self._image_url) as response:
-                    if response.status == 200:
-                        # Validate content type
-                        content_type = response.headers.get('content-type', '').lower()
-                        if 'image' not in content_type:
-                            _LOGGER.warning("Expected image content but got: %s for radar %s",
-                                            content_type, self._radar_site)
-                            return b""
-
-                        content = await response.read()
-                        _LOGGER.debug("Successfully fetched radar base reflectivity image for %s (%d bytes)",
-                                      self._office_code, len(content))
-                        return content
-                    else:
-                        _LOGGER.warning("Failed to fetch radar base reflectivity image for %s: HTTP %d",
-                                        self._office_code, response.status)
+            async with session.get(self._image_url, timeout=timeout) as response:
+                if response.status == 200:
+                    content_type = response.headers.get('content-type', '').lower()
+                    if 'image' not in content_type:
+                        _LOGGER.warning("Expected image content but got: %s for radar %s",
+                                        content_type, self._radar_site)
+                        return b""
+                    content = await response.read()
+                    _LOGGER.debug("Successfully fetched radar base reflectivity image for %s (%d bytes)",
+                                  self._office_code, len(content))
+                    return content
+                else:
+                    _LOGGER.warning("Failed to fetch radar base reflectivity image for %s: HTTP %d",
+                                    self._office_code, response.status)
         except aiohttp.ClientError as e:
             _LOGGER.error("Error fetching radar base reflectivity image for %s: %s", self._office_code, e)
         except Exception as e:
@@ -384,7 +453,15 @@ class RadarBaseReflectivityImageEntity(ImageEntity):
 
 
 class RadarLoopImageEntity(ImageEntity):
-    """Representation of the Radar Loop Image (animated) for a specific location."""
+    """Representation of the Radar Loop Image (animated) for a specific location.
+
+    Uses ``_attr_has_entity_name = True`` so that Home Assistant
+    automatically combines the office weather device name (e.g.
+    "NOAA ILM Weather") with the local entity name ("Radar Loop") to
+    produce the entity ID ``image.noaa_ilm_weather_radar_loop``.
+    """
+
+    _attr_has_entity_name = True
 
     def __init__(self, hass, office_code, radar_site):
         """Initialize the radar loop image entity."""
@@ -396,8 +473,8 @@ class RadarLoopImageEntity(ImageEntity):
 
     @property
     def name(self):
-        """Return the name of the entity."""
-        return f'NOAA Weather - Radar Loop ({self._office_code})'
+        """Return the local entity name."""
+        return 'Radar Loop'
 
     @property
     def entity_picture(self):
@@ -407,14 +484,14 @@ class RadarLoopImageEntity(ImageEntity):
     @property
     def unique_id(self):
         """Return a unique ID for this entity."""
-        return f'noaa_{self._office_code}_radar_loop'
+        return f'noaa_{self._office_code.lower()}_weather_radar_loop'
 
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information."""
         return DeviceInfo(
-            identifiers={(DOMAIN, "noaa_weather")},
-            name="NOAA Weather",
+            identifiers={(DOMAIN, f"noaa_{self._office_code}_weather")},
+            name=f"NOAA {self._office_code} Weather",
             manufacturer="NOAA"
         )
 
@@ -440,24 +517,22 @@ class RadarLoopImageEntity(ImageEntity):
     async def async_image(self) -> bytes:
         """Return the bytes of the latest image."""
         try:
+            session = async_get_clientsession(self.hass)
             timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(self._image_url) as response:
-                    if response.status == 200:
-                        # Validate content type
-                        content_type = response.headers.get('content-type', '').lower()
-                        if 'image' not in content_type:
-                            _LOGGER.warning("Expected image content but got: %s for radar %s",
-                                            content_type, self._radar_site)
-                            return b""
-
-                        content = await response.read()
-                        _LOGGER.debug("Successfully fetched radar loop image for %s (%d bytes)",
-                                      self._office_code, len(content))
-                        return content
-                    else:
-                        _LOGGER.warning("Failed to fetch radar loop image for %s: HTTP %d",
-                                        self._office_code, response.status)
+            async with session.get(self._image_url, timeout=timeout) as response:
+                if response.status == 200:
+                    content_type = response.headers.get('content-type', '').lower()
+                    if 'image' not in content_type:
+                        _LOGGER.warning("Expected image content but got: %s for radar %s",
+                                        content_type, self._radar_site)
+                        return b""
+                    content = await response.read()
+                    _LOGGER.debug("Successfully fetched radar loop image for %s (%d bytes)",
+                                  self._office_code, len(content))
+                    return content
+                else:
+                    _LOGGER.warning("Failed to fetch radar loop image for %s: HTTP %d",
+                                    self._office_code, response.status)
         except aiohttp.ClientError as e:
             _LOGGER.error("Error fetching radar loop image for %s: %s", self._office_code, e)
         except Exception as e:
@@ -467,18 +542,32 @@ class RadarLoopImageEntity(ImageEntity):
 
 
 class GOESAirMassImageEntity(ImageEntity):
-    """Representation of the GOES-19 Air Mass RGB Satellite Image."""
+    """Representation of the GOES-19 Air Mass RGB Satellite Image.
 
-    def __init__(self, hass):
-        """Initialize the image entity."""
+    Uses ``_attr_has_entity_name = True`` so that Home Assistant
+    automatically combines the device name ("NOAA Hurricane") with the
+    local entity name ("GOES Air Mass") to produce the entity ID
+    ``image.noaa_hurricane_goes_air_mass``.
+    """
+
+    _attr_has_entity_name = True
+
+    def __init__(self, hass, office_code=None):
+        """Initialize the image entity.
+
+        ``office_code`` is accepted for backward compatibility but is
+        unused: this satellite image is global and is grouped under the
+        NOAA Hurricane device alongside the other tropical-cyclone
+        tracking images.
+        """
         super().__init__(hass)
         self.hass = hass
         self._image_url = self.get_cache_busted_url()
 
     @property
     def name(self):
-        """Return the name of the entity."""
-        return 'NOAA Satellite - GOES Air Mass'
+        """Return the local entity name."""
+        return 'GOES Air Mass'
 
     @property
     def entity_picture(self):
@@ -488,16 +577,12 @@ class GOESAirMassImageEntity(ImageEntity):
     @property
     def unique_id(self):
         """Return a unique ID for this entity."""
-        return 'noaa_goes_airmass_image'
+        return 'noaa_hurricane_goes_air_mass'
 
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information."""
-        return DeviceInfo(
-            identifiers={(DOMAIN, "noaa_weather")},
-            name="NOAA Weather",
-            manufacturer="NOAA"
-        )
+        return _hurricane_device_info()
 
     def get_cache_busted_url(self):
         """Add a timestamp to the URL to prevent caching."""
@@ -519,21 +604,19 @@ class GOESAirMassImageEntity(ImageEntity):
     async def async_image(self) -> bytes:
         """Return the bytes of the latest image."""
         try:
+            session = async_get_clientsession(self.hass)
             timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(self._image_url) as response:
-                    if response.status == 200:
-                        # Validate content type
-                        content_type = response.headers.get('content-type', '').lower()
-                        if 'image' not in content_type:
-                            _LOGGER.warning("Expected image content but got: %s", content_type)
-                            return b""
-
-                        content = await response.read()
-                        _LOGGER.debug("Successfully fetched GOES Air Mass image (%d bytes)", len(content))
-                        return content
-                    else:
-                        _LOGGER.warning("Failed to fetch GOES Air Mass image: HTTP %d", response.status)
+            async with session.get(self._image_url, timeout=timeout) as response:
+                if response.status == 200:
+                    content_type = response.headers.get('content-type', '').lower()
+                    if 'image' not in content_type:
+                        _LOGGER.warning("Expected image content but got: %s", content_type)
+                        return b""
+                    content = await response.read()
+                    _LOGGER.debug("Successfully fetched GOES Air Mass image (%d bytes)", len(content))
+                    return content
+                else:
+                    _LOGGER.warning("Failed to fetch GOES Air Mass image: HTTP %d", response.status)
         except aiohttp.ClientError as e:
             _LOGGER.error("Error fetching GOES Air Mass image: %s", e)
         except Exception as e:
@@ -542,18 +625,32 @@ class GOESAirMassImageEntity(ImageEntity):
 
 
 class GOESGeoColorImageEntity(ImageEntity):
-    """Representation of the GOES-19 GeoColor Satellite Image."""
+    """Representation of the GOES-19 GeoColor Satellite Image.
 
-    def __init__(self, hass):
-        """Initialize the image entity."""
+    Uses ``_attr_has_entity_name = True`` so that Home Assistant
+    automatically combines the device name ("NOAA Hurricane") with the
+    local entity name ("GOES Geocolor") to produce the entity ID
+    ``image.noaa_hurricane_goes_geocolor``.
+    """
+
+    _attr_has_entity_name = True
+
+    def __init__(self, hass, office_code=None):
+        """Initialize the image entity.
+
+        ``office_code`` is accepted for backward compatibility but is
+        unused: this satellite image is global and is grouped under the
+        NOAA Hurricane device alongside the other tropical-cyclone
+        tracking images.
+        """
         super().__init__(hass)
         self.hass = hass
         self._image_url = self.get_cache_busted_url()
 
     @property
     def name(self):
-        """Return the name of the entity."""
-        return 'NOAA Satellite - GOES GeoColor'
+        """Return the local entity name."""
+        return 'GOES Geocolor'
 
     @property
     def entity_picture(self):
@@ -563,16 +660,12 @@ class GOESGeoColorImageEntity(ImageEntity):
     @property
     def unique_id(self):
         """Return a unique ID for this entity."""
-        return 'noaa_goes_geocolor_image'
+        return 'noaa_hurricane_goes_geocolor'
 
     @property
     def device_info(self) -> DeviceInfo:
         """Return device information."""
-        return DeviceInfo(
-            identifiers={(DOMAIN, "noaa_weather")},
-            name="NOAA Weather",
-            manufacturer="NOAA"
-        )
+        return _hurricane_device_info()
 
     def get_cache_busted_url(self):
         """Add a timestamp to the URL to prevent caching."""
@@ -594,21 +687,19 @@ class GOESGeoColorImageEntity(ImageEntity):
     async def async_image(self) -> bytes:
         """Return the bytes of the latest image."""
         try:
+            session = async_get_clientsession(self.hass)
             timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
-            async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(self._image_url) as response:
-                    if response.status == 200:
-                        # Validate content type
-                        content_type = response.headers.get('content-type', '').lower()
-                        if 'image' not in content_type:
-                            _LOGGER.warning("Expected image content but got: %s", content_type)
-                            return b""
-
-                        content = await response.read()
-                        _LOGGER.debug("Successfully fetched GOES GeoColor image (%d bytes)", len(content))
-                        return content
-                    else:
-                        _LOGGER.warning("Failed to fetch GOES GeoColor image: HTTP %d", response.status)
+            async with session.get(self._image_url, timeout=timeout) as response:
+                if response.status == 200:
+                    content_type = response.headers.get('content-type', '').lower()
+                    if 'image' not in content_type:
+                        _LOGGER.warning("Expected image content but got: %s", content_type)
+                        return b""
+                    content = await response.read()
+                    _LOGGER.debug("Successfully fetched GOES GeoColor image (%d bytes)", len(content))
+                    return content
+                else:
+                    _LOGGER.warning("Failed to fetch GOES GeoColor image: HTTP %d", response.status)
         except aiohttp.ClientError as e:
             _LOGGER.error("Error fetching GOES GeoColor image: %s", e)
         except Exception as e:
