@@ -22,7 +22,14 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class WeatherObservationSensor(CoordinatorEntity):
-    """Base class for weather observation sensors."""
+    """Base class for weather observation sensors.
+
+    Uses ``_attr_has_entity_name = True`` so that Home Assistant
+    automatically combines the device name with the entity name to
+    create entity IDs like ``sensor.noaa_ilm_weather_temperature``.
+    """
+
+    _attr_has_entity_name = True
 
     def __init__(self, coordinator, office_code, observation_field, sensor_name,
                  latitude=None, longitude=None, unit=None, icon=None, device_class=None):
@@ -40,8 +47,12 @@ class WeatherObservationSensor(CoordinatorEntity):
 
     @property
     def name(self):
-        """Return the name of the sensor."""
-        return f'NOAA {self._office_code} {self._sensor_name}'
+        """Return the name of the sensor (local name only).
+
+        With ``_attr_has_entity_name = True``, Home Assistant combines
+        the device name with this local name to create the full entity name.
+        """
+        return self._sensor_name
 
     @property
     def state(self):

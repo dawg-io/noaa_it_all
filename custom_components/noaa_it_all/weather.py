@@ -2,6 +2,7 @@
 import logging
 import re
 from datetime import datetime, timedelta
+from typing import List, Optional
 
 from homeassistant.components.weather import (
     WeatherEntity,
@@ -204,7 +205,7 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
 
         super()._handle_coordinator_update()
 
-    async def async_forecast_daily(self) -> list[Forecast] | None:
+    async def async_forecast_daily(self) -> Optional[List[Forecast]]:
         """Return the daily forecast."""
         if not self._forecast_coordinator or not self._forecast_coordinator.data:
             return None
@@ -356,7 +357,7 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
             _LOGGER.error("Error parsing daily forecast data: %s", e)
             return None
 
-    async def async_forecast_hourly(self) -> list[Forecast] | None:
+    async def async_forecast_hourly(self) -> Optional[List[Forecast]]:
         """Return the hourly forecast."""
         if not self._forecast_coordinator or not self._forecast_coordinator.data:
             return None
@@ -399,7 +400,7 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
             return None
 
     @staticmethod
-    def _get_value(properties: dict, *keys) -> float | None:
+    def _get_value(properties: dict, *keys) -> Optional[float]:
         """Safely get a nested value from properties."""
         value = properties
         for key in keys:
@@ -410,14 +411,14 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
         return value
 
     @staticmethod
-    def _celsius_to_fahrenheit(celsius: float | None) -> float | None:
+    def _celsius_to_fahrenheit(celsius: Optional[float]) -> Optional[float]:
         """Convert Celsius to Fahrenheit."""
         if celsius is None:
             return None
         return round((celsius * 9 / 5) + 32, 1)
 
     @staticmethod
-    def _map_condition(description: str | None, timestamp: str | None = None) -> str | None:
+    def _map_condition(description: Optional[str], timestamp: Optional[str] = None) -> Optional[str]:
         """Map NOAA weather description to Home Assistant condition."""
         if not description:
             return None
@@ -472,7 +473,7 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
         return "partlycloudy"
 
     @staticmethod
-    def _extract_precipitation_probability(period: dict) -> int | None:
+    def _extract_precipitation_probability(period: dict) -> Optional[int]:
         """Extract precipitation probability from forecast period."""
         # Extract from the probabilityOfPrecipitation field in the API response
         prob_data = period.get("probabilityOfPrecipitation")
@@ -497,7 +498,7 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
         return None
 
     @staticmethod
-    def _parse_wind_speed(wind_speed_str: str | None) -> float | None:
+    def _parse_wind_speed(wind_speed_str: Optional[str]) -> Optional[float]:
         """Parse wind speed from string like '5 to 10 mph' to average value."""
         if not wind_speed_str:
             return None
@@ -514,7 +515,7 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
         return None
 
     @staticmethod
-    def _parse_wind_direction(direction_str: str | None) -> int | None:
+    def _parse_wind_direction(direction_str: Optional[str]) -> Optional[int]:
         """Parse wind direction from cardinal direction to degrees."""
         if not direction_str:
             return None
@@ -531,7 +532,7 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
         return direction_map.get(direction_upper)
 
     @staticmethod
-    def _adjust_forecast_date(timestamp: str | None) -> str | None:
+    def _adjust_forecast_date(timestamp: Optional[str]) -> Optional[str]:
         """Adjust forecast date to use 3 AM cutoff instead of midnight.
 
         If a forecast period's start time is before 3 AM, adjust to previous day.

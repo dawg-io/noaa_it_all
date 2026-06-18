@@ -18,7 +18,14 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class RipCurrentRiskSensor(CoordinatorEntity):
-    """Representation of Rip Current Risk sensor for specific NWS office location."""
+    """Representation of Rip Current Risk sensor for specific NWS office location.
+
+    Uses ``_attr_has_entity_name = True`` so that Home Assistant
+    automatically combines the device name with the entity name to
+    create entity IDs like ``sensor.noaa_ilm_surf_rip_current_risk``.
+    """
+
+    _attr_has_entity_name = True
 
     def __init__(self, coordinator, office_code):
         """Initialize the sensor."""
@@ -27,7 +34,15 @@ class RipCurrentRiskSensor(CoordinatorEntity):
         self._state = None
         self._attributes = {}
         self._attr_unique_id = f"noaa_{office_code}_rip_current_risk"
-        self._attr_name = f"NOAA {office_code} Rip Current Risk"
+
+    @property
+    def name(self):
+        """Return the name of the sensor (local name only).
+
+        With ``_attr_has_entity_name = True``, Home Assistant combines
+        the device name with this local name to create the full entity name.
+        """
+        return "Rip Current Risk"
 
     @property
     def state(self):
@@ -64,7 +79,14 @@ class RipCurrentRiskSensor(CoordinatorEntity):
 
 
 class SurfHeightSensor(CoordinatorEntity):
-    """Representation of Surf Height sensor for specific NWS office location."""
+    """Representation of Surf Height sensor for specific NWS office location.
+
+    Uses ``_attr_has_entity_name = True`` so that Home Assistant
+    automatically combines the device name with the entity name to
+    create entity IDs like ``sensor.noaa_ilm_surf_surf_height``.
+    """
+
+    _attr_has_entity_name = True
 
     def __init__(self, coordinator, office_code):
         """Initialize the sensor."""
@@ -73,7 +95,15 @@ class SurfHeightSensor(CoordinatorEntity):
         self._state = None
         self._attributes = {}
         self._attr_unique_id = f"noaa_{office_code}_surf_height"
-        self._attr_name = f"NOAA {office_code} Surf Height"
+
+    @property
+    def name(self):
+        """Return the name of the sensor (local name only).
+
+        With ``_attr_has_entity_name = True``, Home Assistant combines
+        the device name with this local name to create the full entity name.
+        """
+        return "Surf Height"
 
     @property
     def state(self):
@@ -123,7 +153,14 @@ class SurfHeightSensor(CoordinatorEntity):
 
 
 class WaterTemperatureSensor(CoordinatorEntity):
-    """Representation of Water Temperature sensor for specific NWS office location."""
+    """Representation of Water Temperature sensor for specific NWS office location.
+
+    Uses ``_attr_has_entity_name = True`` so that Home Assistant
+    automatically combines the device name with the entity name to
+    create entity IDs like ``sensor.noaa_ilm_surf_water_temperature``.
+    """
+
+    _attr_has_entity_name = True
 
     def __init__(self, coordinator, office_code):
         """Initialize the sensor."""
@@ -132,7 +169,15 @@ class WaterTemperatureSensor(CoordinatorEntity):
         self._state = None
         self._attributes = {}
         self._attr_unique_id = f"noaa_{office_code}_water_temperature"
-        self._attr_name = f"NOAA {office_code} Water Temperature"
+
+    @property
+    def name(self):
+        """Return the name of the sensor (local name only).
+
+        With ``_attr_has_entity_name = True``, Home Assistant combines
+        the device name with this local name to create the full entity name.
+        """
+        return "Water Temperature"
 
     @property
     def state(self):

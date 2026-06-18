@@ -86,7 +86,7 @@ class TestHurricaneAlertsSensor(unittest.TestCase):
 
     def test_name(self):
         sensor = self._make()
-        self.assertEqual(sensor.name, "NOAA Weather - Hurricane Alerts")
+        self.assertEqual(sensor.name, "Alerts")
 
     def test_unique_id(self):
         sensor = self._make()
@@ -134,7 +134,7 @@ class TestHurricaneActivitySensor(unittest.TestCase):
 
     def test_name(self):
         sensor = self._make()
-        self.assertEqual(sensor.name, "NOAA Weather - Hurricane Activity")
+        self.assertEqual(sensor.name, "Activity")
 
     def test_unique_id(self):
         sensor = self._make()

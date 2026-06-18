@@ -12,7 +12,14 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class NWSAlertsSensor(CoordinatorEntity):
-    """Representation of NWS Active Alerts sensor for specific location."""
+    """Representation of NWS Active Alerts sensor for specific location.
+
+    Uses ``_attr_has_entity_name = True`` so that Home Assistant
+    automatically combines the device name with the entity name to
+    create entity IDs like ``sensor.noaa_ilm_weather_alerts``.
+    """
+
+    _attr_has_entity_name = True
 
     def __init__(self, coordinator, office_code, latitude, longitude):
         """Initialize the sensor."""
@@ -23,8 +30,12 @@ class NWSAlertsSensor(CoordinatorEntity):
 
     @property
     def name(self):
-        """Return the name of the sensor."""
-        return f'NOAA {self._office_code} Active NWS Alerts'
+        """Return the name of the sensor (local name only).
+
+        With ``_attr_has_entity_name = True``, Home Assistant combines
+        the device name with this local name to create the full entity name.
+        """
+        return "Active NWS Alerts"
 
     @property
     def state(self):

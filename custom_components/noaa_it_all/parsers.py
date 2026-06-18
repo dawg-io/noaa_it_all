@@ -509,7 +509,7 @@ def parse_ndbc_wave_height(text: str) -> Optional[float]:
     return None
 
 
-def normalize_numeric(value) -> float | None:
+def normalize_numeric(value) -> Optional[float]:
     """Normalize a parsed value to a numeric float.
 
     Handles direct numbers, numeric strings, and range strings like

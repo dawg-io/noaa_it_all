@@ -34,7 +34,14 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class GeomagneticSensor(CoordinatorEntity):
-    """Representation of the Geomagnetic Storm sensor."""
+    """Representation of the Geomagnetic Storm sensor.
+
+    Uses ``_attr_has_entity_name = True`` so that Home Assistant
+    automatically combines the device name with the entity name to
+    create entity IDs like ``sensor.noaa_ilm_space_geomagnetic_storm``.
+    """
+
+    _attr_has_entity_name = True
 
     def __init__(self, coordinator, office_code):
         """Initialize the sensor."""
@@ -43,8 +50,12 @@ class GeomagneticSensor(CoordinatorEntity):
 
     @property
     def name(self):
-        """Return the name of the sensor."""
-        return 'NOAA Space - Geomagnetic Storm'
+        """Return the name of the sensor (local name only).
+
+        With ``_attr_has_entity_name = True``, Home Assistant combines
+        the device name with this local name to create the full entity name.
+        """
+        return "Geomagnetic Storm"
 
     @property
     def unique_id(self):
@@ -72,7 +83,14 @@ class GeomagneticSensor(CoordinatorEntity):
 
 
 class GeomagneticSensorInterpretation(CoordinatorEntity):
-    """Representation of the Geomagnetic Storm Interpretation sensor."""
+    """Representation of the Geomagnetic Storm Interpretation sensor.
+
+    Uses ``_attr_has_entity_name = True`` so that Home Assistant
+    automatically combines the device name with the entity name to
+    create entity IDs like ``sensor.noaa_ilm_space_geomagnetic_storm_interpretation``.
+    """
+
+    _attr_has_entity_name = True
 
     def __init__(self, coordinator, office_code):
         """Initialize the interpretation sensor."""
@@ -93,8 +111,12 @@ class GeomagneticSensorInterpretation(CoordinatorEntity):
 
     @property
     def name(self):
-        """Return the name of the interpretation sensor."""
-        return 'NOAA Space - Geomagnetic Storm Interpretation'
+        """Return the name of the sensor (local name only).
+
+        With ``_attr_has_entity_name = True``, Home Assistant combines
+        the device name with this local name to create the full entity name.
+        """
+        return "Geomagnetic Storm Interpretation"
 
     @property
     def unique_id(self):
@@ -112,7 +134,14 @@ class GeomagneticSensorInterpretation(CoordinatorEntity):
 
 
 class PlanetaryKIndexSensor(CoordinatorEntity):
-    """Representation of the Planetary K-index sensor."""
+    """Representation of the Planetary K-index sensor.
+
+    Uses ``_attr_has_entity_name = True`` so that Home Assistant
+    automatically combines the device name with the entity name to
+    create entity IDs like ``sensor.noaa_ilm_space_planetary_k_index``.
+    """
+
+    _attr_has_entity_name = True
 
     def __init__(self, coordinator, office_code):
         """Initialize the Planetary K-index sensor."""
@@ -121,8 +150,12 @@ class PlanetaryKIndexSensor(CoordinatorEntity):
 
     @property
     def name(self):
-        """Return the name of the sensor."""
-        return 'NOAA Space - Planetary K-index'
+        """Return the name of the sensor (local name only).
+
+        With ``_attr_has_entity_name = True``, Home Assistant combines
+        the device name with this local name to create the full entity name.
+        """
+        return "Planetary K-index"
 
     @property
     def unique_id(self):
@@ -150,7 +183,14 @@ class PlanetaryKIndexSensor(CoordinatorEntity):
 
 
 class PlanetaryKIndexSensorRating(CoordinatorEntity):
-    """Representation of the Planetary K-index Rating sensor."""
+    """Representation of the Planetary K-index Rating sensor.
+
+    Uses ``_attr_has_entity_name = True`` so that Home Assistant
+    automatically combines the device name with the entity name to
+    create entity IDs like ``sensor.noaa_ilm_space_planetary_k_index_rating``.
+    """
+
+    _attr_has_entity_name = True
 
     def __init__(self, coordinator, office_code):
         """Initialize the Planetary K-index Rating."""
@@ -171,8 +211,12 @@ class PlanetaryKIndexSensorRating(CoordinatorEntity):
 
     @property
     def name(self):
-        """Return the name of the sensor."""
-        return 'NOAA Space - Planetary K-index Rating'
+        """Return the name of the sensor (local name only).
+
+        With ``_attr_has_entity_name = True``, Home Assistant combines
+        the device name with this local name to create the full entity name.
+        """
+        return "Planetary K-index Rating"
 
     @property
     def unique_id(self):
@@ -190,7 +234,14 @@ class PlanetaryKIndexSensorRating(CoordinatorEntity):
 
 
 class AuroraNextTimeSensor(CoordinatorEntity):
-    """Representation of Aurora Next Time sensor for specific location."""
+    """Representation of Aurora Next Time sensor for specific location.
+
+    Uses ``_attr_has_entity_name = True`` so that Home Assistant
+    automatically combines the device name with the entity name to
+    create entity IDs like ``sensor.noaa_ilm_space_aurora_next_time``.
+    """
+
+    _attr_has_entity_name = True
 
     def __init__(self, coordinator, office_code):
         """Initialize the sensor."""
@@ -199,8 +250,12 @@ class AuroraNextTimeSensor(CoordinatorEntity):
 
     @property
     def name(self):
-        """Return the name of the sensor."""
-        return f'NOAA {self._office_code} Aurora Next Time'
+        """Return the name of the sensor (local name only).
+
+        With ``_attr_has_entity_name = True``, Home Assistant combines
+        the device name with this local name to create the full entity name.
+        """
+        return "Aurora Next Time"
 
     def _compute_aurora_timing(self):
         """Compute aurora timing state and attributes from coordinator data."""
@@ -276,7 +331,14 @@ class AuroraNextTimeSensor(CoordinatorEntity):
 
 
 class AuroraDurationSensor(CoordinatorEntity):
-    """Representation of Aurora Duration sensor for specific location."""
+    """Representation of Aurora Duration sensor for specific location.
+
+    Uses ``_attr_has_entity_name = True`` so that Home Assistant
+    automatically combines the device name with the entity name to
+    create entity IDs like ``sensor.noaa_ilm_space_aurora_duration``.
+    """
+
+    _attr_has_entity_name = True
 
     def __init__(self, coordinator, office_code):
         """Initialize the sensor."""
@@ -285,11 +347,15 @@ class AuroraDurationSensor(CoordinatorEntity):
 
     @property
     def name(self):
-        """Return the name of the sensor."""
-        return f'NOAA {self._office_code} Aurora Duration'
+        """Return the name of the sensor (local name only).
+
+        With ``_attr_has_entity_name = True``, Home Assistant combines
+        the device name with this local name to create the full entity name.
+        """
+        return "Aurora Duration"
 
     def _get_kp_and_lat(self):
-        """Extract current Kp index and office magnetic latitude from coordinator data."""
+        """Extract current Kp index and office magnetic latitude."""
         if self.coordinator.data is None:
             return None, None
         kp_data = self.coordinator.data.get("kp_index", [])
@@ -345,7 +411,14 @@ class AuroraDurationSensor(CoordinatorEntity):
 
 
 class AuroraVisibilityProbabilitySensor(CoordinatorEntity):
-    """Representation of Aurora Visibility Probability sensor for specific location."""
+    """Representation of Aurora Visibility Probability sensor for specific location.
+
+    Uses ``_attr_has_entity_name = True`` so that Home Assistant
+    automatically combines the device name with the entity name to
+    create entity IDs like ``sensor.noaa_ilm_space_aurora_visibility_probability``.
+    """
+
+    _attr_has_entity_name = True
 
     def __init__(self, coordinator, office_code):
         """Initialize the sensor."""
@@ -354,11 +427,15 @@ class AuroraVisibilityProbabilitySensor(CoordinatorEntity):
 
     @property
     def name(self):
-        """Return the name of the sensor."""
-        return f'NOAA {self._office_code} Aurora Visibility Probability'
+        """Return the name of the sensor (local name only).
+
+        With ``_attr_has_entity_name = True``, Home Assistant combines
+        the device name with this local name to create the full entity name.
+        """
+        return "Aurora Visibility Probability"
 
     def _get_kp_and_lat(self):
-        """Extract current Kp index and office magnetic latitude from coordinator data."""
+        """Extract current Kp index and office magnetic latitude."""
         if self.coordinator.data is None:
             return None, None
         kp_data = self.coordinator.data.get("kp_index", [])
@@ -369,7 +446,7 @@ class AuroraVisibilityProbabilitySensor(CoordinatorEntity):
         return current_kp, office_lat
 
     def _compute_probability(self):
-        """Compute aurora probability and related attributes from coordinator data."""
+        """Compute aurora probability and related attributes."""
         current_kp, office_lat = self._get_kp_and_lat()
         if current_kp is None:
             return None, {}
@@ -420,7 +497,14 @@ class AuroraVisibilityProbabilitySensor(CoordinatorEntity):
 
 
 class SolarRadiationStormAlertsSensor(CoordinatorEntity):
-    """Representation of Solar Radiation Storm Alerts sensor for specific location."""
+    """Representation of Solar Radiation Storm Alerts sensor for specific location.
+
+    Uses ``_attr_has_entity_name = True`` so that Home Assistant
+    automatically combines the device name with the entity name to
+    create entity IDs like ``sensor.noaa_ilm_space_solar_radiation_storm_alerts``.
+    """
+
+    _attr_has_entity_name = True
 
     def __init__(self, coordinator, office_code):
         """Initialize the sensor."""
@@ -429,8 +513,12 @@ class SolarRadiationStormAlertsSensor(CoordinatorEntity):
 
     @property
     def name(self):
-        """Return the name of the sensor."""
-        return f'NOAA {self._office_code} Solar Radiation Storm Alerts'
+        """Return the name of the sensor (local name only).
+
+        With ``_attr_has_entity_name = True``, Home Assistant combines
+        the device name with this local name to create the full entity name.
+        """
+        return "Solar Radiation Storm Alerts"
 
     def _get_solar_radiation_alerts(self):
         """Filter and parse solar radiation alerts from coordinator data."""
@@ -445,8 +533,12 @@ class SolarRadiationStormAlertsSensor(CoordinatorEntity):
             message = alert.get('message', '').lower()
             product_id = alert.get('product_id', '')
 
-            is_solar_radiation = any(keyword in message for keyword in SOLAR_RADIATION_KEYWORDS)
-            is_solar_product = product_id.startswith(('S1', 'S2', 'S3', 'S4', 'S5', 'TIVA', 'EF3'))
+            is_solar_radiation = any(
+                keyword in message for keyword in SOLAR_RADIATION_KEYWORDS
+            )
+            is_solar_product = product_id.startswith(
+                ('S1', 'S2', 'S3', 'S4', 'S5', 'TIVA', 'EF3')
+            )
 
             if is_solar_radiation or is_solar_product:
                 alert_info = self._parse_solar_radiation_alert(alert)
@@ -519,14 +611,18 @@ class SolarRadiationStormAlertsSensor(CoordinatorEntity):
             alert_info = {
                 'product_id': product_id,
                 'scale': scale,
-                'scale_description': SOLAR_RADIATION_STORM_SCALES.get(scale, {}).get('name', 'Unknown'),
+                'scale_description': SOLAR_RADIATION_STORM_SCALES.get(
+                    scale, {}
+                ).get('name', 'Unknown'),
                 'begin_time': begin_time,
                 'end_time': end_time,
                 'duration_hours': duration,
                 'impacts': impacts,
                 'issue_time': issue_datetime,
                 'severity': get_severity_level(scale),
-                'message_summary': message[:200] + '...' if len(message) > 200 else message
+                'message_summary': (
+                    message[:200] + '...' if len(message) > 200 else message
+                )
             }
 
             return alert_info

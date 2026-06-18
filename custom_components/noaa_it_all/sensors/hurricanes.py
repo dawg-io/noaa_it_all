@@ -24,7 +24,14 @@ def _hurricane_device_info() -> "DeviceInfo":
 
 
 class HurricaneAlertsSensor(CoordinatorEntity):
-    """Representation of Hurricane Alerts sensor."""
+    """Representation of Hurricane Alerts sensor.
+
+    Uses ``_attr_has_entity_name = True`` so that Home Assistant
+    automatically combines the device name with the entity name to
+    create entity IDs like ``sensor.noaa_hurricane_alerts``.
+    """
+
+    _attr_has_entity_name = True
 
     def __init__(self, coordinator, office_code=None):
         """Initialize the hurricane alerts sensor.
@@ -40,8 +47,12 @@ class HurricaneAlertsSensor(CoordinatorEntity):
 
     @property
     def name(self):
-        """Return the name of the sensor."""
-        return 'NOAA Weather - Hurricane Alerts'
+        """Return the name of the sensor (local name only).
+
+        With ``_attr_has_entity_name = True``, Home Assistant combines
+        the device name with this local name to create the full entity name.
+        """
+        return "Alerts"
 
     @property
     def state(self):
@@ -84,7 +95,14 @@ class HurricaneAlertsSensor(CoordinatorEntity):
 
 
 class HurricaneActivitySensor(CoordinatorEntity):
-    """Representation of Hurricane Activity sensor for general hurricane status."""
+    """Representation of Hurricane Activity sensor for general hurricane status.
+
+    Uses ``_attr_has_entity_name = True`` so that Home Assistant
+    automatically combines the device name with the entity name to
+    create entity IDs like ``sensor.noaa_hurricane_activity``.
+    """
+
+    _attr_has_entity_name = True
 
     def __init__(self, coordinator, office_code=None):
         """Initialize the hurricane activity sensor.
@@ -100,8 +118,12 @@ class HurricaneActivitySensor(CoordinatorEntity):
 
     @property
     def name(self):
-        """Return the name of the sensor."""
-        return 'NOAA Weather - Hurricane Activity'
+        """Return the name of the sensor (local name only).
+
+        With ``_attr_has_entity_name = True``, Home Assistant combines
+        the device name with this local name to create the full entity name.
+        """
+        return "Activity"
 
     @property
     def state(self):

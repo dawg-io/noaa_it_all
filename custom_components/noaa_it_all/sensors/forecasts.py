@@ -18,7 +18,14 @@ MAX_HOURLY_PERIODS = 48  # 48 hours of hourly forecasts
 
 
 class ForecastBaseSensor(CoordinatorEntity):
-    """Base class for forecast sensors."""
+    """Base class for forecast sensors.
+
+    Uses ``_attr_has_entity_name = True`` so that Home Assistant
+    automatically combines the device name with the entity name to
+    create entity IDs like ``sensor.noaa_ilm_weather_extended_forecast``.
+    """
+
+    _attr_has_entity_name = True
 
     def __init__(self, coordinator, office_code, latitude, longitude, forecast_type):
         """Initialize the base forecast sensor."""
@@ -58,8 +65,12 @@ class ExtendedForecastSensor(ForecastBaseSensor):
 
     @property
     def name(self):
-        """Return the name of the sensor."""
-        return f'NOAA {self._office_code} Extended Forecast'
+        """Return the name of the sensor (local name only).
+
+        With ``_attr_has_entity_name = True``, Home Assistant combines
+        the device name with this local name to create the full entity name.
+        """
+        return "Extended Forecast"
 
     @property
     def state(self):
@@ -114,8 +125,12 @@ class HourlyForecastSensor(ForecastBaseSensor):
 
     @property
     def name(self):
-        """Return the name of the sensor."""
-        return f'NOAA {self._office_code} Hourly Forecast'
+        """Return the name of the sensor (local name only).
+
+        With ``_attr_has_entity_name = True``, Home Assistant combines
+        the device name with this local name to create the full entity name.
+        """
+        return "Hourly Forecast"
 
     @property
     def state(self):

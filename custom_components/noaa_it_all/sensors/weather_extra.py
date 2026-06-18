@@ -15,7 +15,14 @@ _LOGGER = logging.getLogger(__name__)
 
 
 class CloudCoverSensor(CoordinatorEntity):
-    """Representation of Cloud Cover sensor for specific location."""
+    """Representation of Cloud Cover sensor for specific location.
+
+    Uses ``_attr_has_entity_name = True`` so that Home Assistant
+    automatically combines the device name with the entity name to
+    create entity IDs like ``sensor.noaa_ilm_weather_cloud_cover``.
+    """
+
+    _attr_has_entity_name = True
 
     def __init__(self, coordinator, office_code, latitude, longitude):
         """Initialize the sensor."""
@@ -28,8 +35,12 @@ class CloudCoverSensor(CoordinatorEntity):
 
     @property
     def name(self):
-        """Return the name of the sensor."""
-        return f'NOAA {self._office_code} Cloud Cover'
+        """Return the name of the sensor (local name only).
+
+        With ``_attr_has_entity_name = True``, Home Assistant combines
+        the device name with this local name to create the full entity name.
+        """
+        return "Cloud Cover"
 
     @property
     def state(self):
@@ -97,7 +108,14 @@ class CloudCoverSensor(CoordinatorEntity):
 
 
 class RadarTimestampSensor(CoordinatorEntity):
-    """Representation of Radar Timestamp sensor for specific location."""
+    """Representation of Radar Timestamp sensor for specific location.
+
+    Uses ``_attr_has_entity_name = True`` so that Home Assistant
+    automatically combines the device name with the entity name to
+    create entity IDs like ``sensor.noaa_ilm_weather_radar_timestamp``.
+    """
+
+    _attr_has_entity_name = True
 
     def __init__(self, coordinator, office_code):
         """Initialize the sensor."""
@@ -108,8 +126,12 @@ class RadarTimestampSensor(CoordinatorEntity):
 
     @property
     def name(self):
-        """Return the name of the sensor."""
-        return f'NOAA {self._office_code} Radar Timestamp'
+        """Return the name of the sensor (local name only).
+
+        With ``_attr_has_entity_name = True``, Home Assistant combines
+        the device name with this local name to create the full entity name.
+        """
+        return "Radar Timestamp"
 
     @property
     def state(self):
@@ -164,7 +186,14 @@ class RadarTimestampSensor(CoordinatorEntity):
 
 
 class ForecastDiscussionSensor(CoordinatorEntity):
-    """Representation of Forecast Discussion sensor for specific location."""
+    """Representation of Forecast Discussion sensor for specific location.
+
+    Uses ``_attr_has_entity_name = True`` so that Home Assistant
+    automatically combines the device name with the entity name to
+    create entity IDs like ``sensor.noaa_ilm_weather_forecast_discussion``.
+    """
+
+    _attr_has_entity_name = True
 
     def __init__(self, coordinator, office_code):
         """Initialize the sensor."""
@@ -175,8 +204,12 @@ class ForecastDiscussionSensor(CoordinatorEntity):
 
     @property
     def name(self):
-        """Return the name of the sensor."""
-        return f'NOAA {self._office_code} Forecast Discussion'
+        """Return the name of the sensor (local name only).
+
+        With ``_attr_has_entity_name = True``, Home Assistant combines
+        the device name with this local name to create the full entity name.
+        """
+        return "Forecast Discussion"
 
     @property
     def state(self):
