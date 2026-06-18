@@ -15,6 +15,15 @@
 
 This Home Assistant integration provides comprehensive NOAA data through sensors and images, with the latest addition of location-specific rip current and surf zone forecasts.
 
+## 
+> example using mushroom-template-card
+
+<p align="center">
+<img width="429" height="221" alt="image" src="https://github.com/user-attachments/assets/9ba0e041-afbc-4dcd-8457-5a09dc33814d" />
+
+
+</p>
+
 ## Installation & Configuration
 
 ### HACS Installation (Recommended)
@@ -44,10 +53,18 @@ This Home Assistant integration provides comprehensive NOAA data through sensors
 For location-specific rip current, surf zone, and weather data:
 1. Go to **Settings** → **Integrations** → **Add Integration**
 2. Search for "NOAA Integration"
-3. Select your **NWS Forecast Office** from the dropdown (e.g., SGX for San Diego, LOX for Los Angeles)
-4. **Enter your Latitude and Longitude** (required) - Weather observations will be fetched from the nearest station to this location
-5. Complete the setup
-
+3. **Enter your Latitude and Longitude** (required) - Weather observations will be fetched from the nearest station to this location
+<p align="left">
+<img width="485" height="409" alt="image" src="https://github.com/user-attachments/assets/556faa39-2eee-45e7-8ba0-6771a334ef0a" />
+</p>
+5. Select your **NWS Forecast Office** from the dropdown (e.g., SGX for San Diego, LOX for Los Angeles)
+<p align="left">
+<img width="490" height="222" alt="image" src="https://github.com/user-attachments/assets/0c9711bc-9c7b-428d-b7de-a405e07299e8" />
+</p>
+6. Complete the setup
+<p align="left">
+<img width="480" height="794" alt="image" src="https://github.com/user-attachments/assets/2688c4dd-b6c6-4449-9ce2-37f5552335a8" />
+</p>
 **Important:** Starting with version 1.0.20, latitude and longitude are required fields for proper weather entity setup. Weather data is now fetched from the nearest observation station to your specified coordinates using the weather.gov API, rather than defaulting to the Home Assistant location or using a predefined office-to-station mapping.
 
 #### Legacy YAML Configuration
@@ -68,12 +85,20 @@ Global space weather monitoring - aurora visibility, geomagnetic storms, and sol
 - **Location**: Independent (global data)
 - **Update Frequency**: 5 minutes
 
+<p align="left">
+<img width="330" height="620" alt="image" src="https://github.com/user-attachments/assets/50d6d649-dec7-4a52-a6db-d53488b7bbc3" />
+</p>
+
 #### 🌀 NOAA Hurricane
 Global hurricane tracking and GOES satellite imagery — **created once**, shared across all configured NWS offices
 - **Device ID**: `noaa_hurricane`
 - **Location**: Independent (global NHC/GOES data)
 - **Update Frequency**: 5 minutes
 - **Entities**: `sensor.noaa_hurricane_activity`, `sensor.noaa_hurricane_alerts`, `image.noaa_hurricane_outlook_image`, `image.noaa_hurricane_goes_air_mass`, `image.noaa_hurricane_goes_geocolor`
+
+<p align="left">
+  <img width="327" height="380" alt="image" src="https://github.com/user-attachments/assets/7b484039-abe9-4c14-ab37-91b41d084411" />
+</p>
 
 > **Important**: Hurricane and GOES satellite entities live under **NOAA Hurricane** only. They are never duplicated under office-specific devices, even if multiple NWS offices are configured.
 
@@ -83,12 +108,20 @@ Location-specific surf conditions, rip currents, and water temperature
 - **Location**: Specific to configured NWS office
 - **Update Frequency**: 5 minutes
 
+<p align="left">
+  <img width="331" height="330" alt="image" src="https://github.com/user-attachments/assets/10961ad3-b813-4f82-9af4-ca02ad2682bf" />
+</p>
+
 #### 📍 NOAA {OFFICE} Weather
 Location-specific weather observations, forecasts, alerts, and radar — **one device per configured NWS office** (e.g., "NOAA ILM Weather" for Wilmington NC, "NOAA SGX Weather" for San Diego)
 - **Device ID**: `noaa_{office}_weather` (e.g., `noaa_ilm_weather`, `noaa_sgx_weather`)
 - **Location**: Specific to configured NWS office and coordinates
 - **Update Frequency**: 5 minutes
 - **Radar image**: `image.noaa_{office}_weather_radar_base_reflectivity` (e.g., `image.noaa_ilm_weather_radar_base_reflectivity`)
+
+<p align="left">
+  <img width="263" height="910" alt="image" src="https://github.com/user-attachments/assets/63d814c0-832c-485f-9317-f16dba72b6c0" />
+</p>
 
 > **Tip**: In Home Assistant's device view (Settings → Devices & Services), click on any NOAA device to see all related entities grouped together. This makes it easy to create dashboard cards and automations for specific categories of data.
 
