@@ -285,7 +285,15 @@ class AuroraForecastImageEntity(ImageEntity):
 
 
 class HurricaneOutlookImageEntity(ImageEntity):
-    """Representation of the Hurricane Outlook Image."""
+    """Representation of the Hurricane Outlook Image.
+
+    Uses ``_attr_has_entity_name = True`` so that Home Assistant
+    automatically combines the device name ("NOAA Hurricane") with the
+    local entity name ("Outlook Image") to produce the entity ID
+    ``image.noaa_hurricane_outlook_image``.
+    """
+
+    _attr_has_entity_name = True
 
     def __init__(self, hass, office_code=None):
         """Initialize the image entity.
@@ -299,8 +307,8 @@ class HurricaneOutlookImageEntity(ImageEntity):
 
     @property
     def name(self):
-        """Return the name of the entity."""
-        return 'Hurricane Outlook Image'
+        """Return the local entity name."""
+        return 'Outlook Image'
 
     @property
     def entity_picture(self):
@@ -356,7 +364,16 @@ class HurricaneOutlookImageEntity(ImageEntity):
 
 
 class RadarBaseReflectivityImageEntity(ImageEntity):
-    """Representation of the Radar Base Reflectivity Image for a specific location."""
+    """Representation of the Radar Base Reflectivity Image for a specific location.
+
+    Uses ``_attr_has_entity_name = True`` so that Home Assistant
+    automatically combines the office weather device name (e.g.
+    "NOAA ILM Weather") with the local entity name ("Radar Base
+    Reflectivity") to produce the entity ID
+    ``image.noaa_ilm_weather_radar_base_reflectivity``.
+    """
+
+    _attr_has_entity_name = True
 
     def __init__(self, hass, office_code, radar_site):
         """Initialize the radar image entity."""
@@ -368,8 +385,8 @@ class RadarBaseReflectivityImageEntity(ImageEntity):
 
     @property
     def name(self):
-        """Return the name of the entity."""
-        return f'NOAA Weather - Radar Base Reflectivity ({self._office_code})'
+        """Return the local entity name."""
+        return 'Radar Base Reflectivity'
 
     @property
     def entity_picture(self):
@@ -379,7 +396,7 @@ class RadarBaseReflectivityImageEntity(ImageEntity):
     @property
     def unique_id(self):
         """Return a unique ID for this entity."""
-        return f'noaa_{self._office_code}_radar_base_reflectivity'
+        return f'noaa_{self._office_code.lower()}_weather_radar_base_reflectivity'
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -436,7 +453,15 @@ class RadarBaseReflectivityImageEntity(ImageEntity):
 
 
 class RadarLoopImageEntity(ImageEntity):
-    """Representation of the Radar Loop Image (animated) for a specific location."""
+    """Representation of the Radar Loop Image (animated) for a specific location.
+
+    Uses ``_attr_has_entity_name = True`` so that Home Assistant
+    automatically combines the office weather device name (e.g.
+    "NOAA ILM Weather") with the local entity name ("Radar Loop") to
+    produce the entity ID ``image.noaa_ilm_weather_radar_loop``.
+    """
+
+    _attr_has_entity_name = True
 
     def __init__(self, hass, office_code, radar_site):
         """Initialize the radar loop image entity."""
@@ -448,8 +473,8 @@ class RadarLoopImageEntity(ImageEntity):
 
     @property
     def name(self):
-        """Return the name of the entity."""
-        return f'NOAA Weather - Radar Loop ({self._office_code})'
+        """Return the local entity name."""
+        return 'Radar Loop'
 
     @property
     def entity_picture(self):
@@ -459,7 +484,7 @@ class RadarLoopImageEntity(ImageEntity):
     @property
     def unique_id(self):
         """Return a unique ID for this entity."""
-        return f'noaa_{self._office_code}_radar_loop'
+        return f'noaa_{self._office_code.lower()}_weather_radar_loop'
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -517,7 +542,15 @@ class RadarLoopImageEntity(ImageEntity):
 
 
 class GOESAirMassImageEntity(ImageEntity):
-    """Representation of the GOES-19 Air Mass RGB Satellite Image."""
+    """Representation of the GOES-19 Air Mass RGB Satellite Image.
+
+    Uses ``_attr_has_entity_name = True`` so that Home Assistant
+    automatically combines the device name ("NOAA Hurricane") with the
+    local entity name ("GOES Air Mass") to produce the entity ID
+    ``image.noaa_hurricane_goes_air_mass``.
+    """
+
+    _attr_has_entity_name = True
 
     def __init__(self, hass, office_code=None):
         """Initialize the image entity.
@@ -533,8 +566,8 @@ class GOESAirMassImageEntity(ImageEntity):
 
     @property
     def name(self):
-        """Return the name of the entity."""
-        return 'NOAA Satellite - GOES Air Mass'
+        """Return the local entity name."""
+        return 'GOES Air Mass'
 
     @property
     def entity_picture(self):
@@ -544,7 +577,7 @@ class GOESAirMassImageEntity(ImageEntity):
     @property
     def unique_id(self):
         """Return a unique ID for this entity."""
-        return 'noaa_goes_airmass_image'
+        return 'noaa_hurricane_goes_air_mass'
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -592,7 +625,15 @@ class GOESAirMassImageEntity(ImageEntity):
 
 
 class GOESGeoColorImageEntity(ImageEntity):
-    """Representation of the GOES-19 GeoColor Satellite Image."""
+    """Representation of the GOES-19 GeoColor Satellite Image.
+
+    Uses ``_attr_has_entity_name = True`` so that Home Assistant
+    automatically combines the device name ("NOAA Hurricane") with the
+    local entity name ("GOES Geocolor") to produce the entity ID
+    ``image.noaa_hurricane_goes_geocolor``.
+    """
+
+    _attr_has_entity_name = True
 
     def __init__(self, hass, office_code=None):
         """Initialize the image entity.
@@ -608,8 +649,8 @@ class GOESGeoColorImageEntity(ImageEntity):
 
     @property
     def name(self):
-        """Return the name of the entity."""
-        return 'NOAA Satellite - GOES GeoColor'
+        """Return the local entity name."""
+        return 'GOES Geocolor'
 
     @property
     def entity_picture(self):
@@ -619,7 +660,7 @@ class GOESGeoColorImageEntity(ImageEntity):
     @property
     def unique_id(self):
         """Return a unique ID for this entity."""
-        return 'noaa_goes_geocolor_image'
+        return 'noaa_hurricane_goes_geocolor'
 
     @property
     def device_info(self) -> DeviceInfo:
