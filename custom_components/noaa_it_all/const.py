@@ -2,13 +2,34 @@
 
 DOMAIN = "noaa_it_all"
 
+# Global (non office-specific) device identifiers.
+# Hurricane data comes from the National Hurricane Center and is global,
+# not tied to any single NWS forecast office, so all hurricane entities
+# are grouped under a single dedicated device.
+HURRICANE_DEVICE_ID = "noaa_hurricane"
+HURRICANE_DEVICE_NAME = "NOAA Hurricane"
+
+# Key used in hass.data[DOMAIN] to track whether the global hurricane
+# entities have already been added by an earlier config entry, so they
+# are not duplicated when multiple offices are configured. The value
+# stored is the ``entry_id`` of the *owning* config entry (not just a
+# boolean), so that if the owner is unloaded while other entries
+# remain we can detect ownership transfer and re-create the entities.
+HURRICANE_SENSORS_ADDED_KEY = "_hurricane_sensors_added"
+HURRICANE_IMAGES_ADDED_KEY = "_hurricane_images_added"
+
+# Key for the single shared HurricaneCoordinator. Hurricane data is
+# global (NHC) so all config entries share one coordinator instead of
+# each entry creating its own and triggering redundant API calls.
+HURRICANE_COORDINATOR_KEY = "_hurricane_coordinator"
+
 # Configuration keys
 CONF_OFFICE_CODE = "office_code"
 CONF_LATITUDE = "latitude"
 CONF_LONGITUDE = "longitude"
 
 # Default values
-DEFAULT_SCAN_INTERVAL = 5  # minutes
+DEFAULT_SCAN_INTERVAL = 10  # minutes
 REQUEST_TIMEOUT = 30  # seconds
 USER_AGENT = "HomeAssistant/NOAA-Integration"
 
@@ -23,6 +44,16 @@ NWS_ALERTS_URL = "https://api.weather.gov/alerts/active?point={lat},{lon}"
 NWS_ALERTS_ZONE_URL = "https://api.weather.gov/alerts/active?zone={zone}"
 NWS_GRIDPOINT_URL = "https://api.weather.gov/gridpoints/{office}/{gridX},{gridY}"
 NWS_AFD_URL = "https://forecast.weather.gov/product.php?site={office}&issuedby={office}&product=AFD&format=TXT"
+
+# NOAA CO-OPS API for water temperature (Tides and Currents)
+COOPS_WATER_TEMP_URL = (
+    "https://api.tidesandcurrents.noaa.gov/api/prod/datagetter"
+    "?station={station}&product=water_temperature&units=english"
+    "&time_zone=lst_ldt&format=json&date=latest&application=HomeAssistant"
+)
+
+# NDBC real-time buoy data for wave height
+NDBC_REALTIME_URL = "https://www.ndbc.noaa.gov/data/realtime2/{station}.txt"
 
 # NWS office to observation station mapping
 # Each office uses the primary weather observation station in their area
@@ -65,6 +96,68 @@ OFFICE_STATION_IDS = {
     "TBW": "KTPA",  # Tampa International Airport
 }
 
+# NWS office to CO-OPS tide station mapping (water temperature)
+# Station IDs from https://tidesandcurrents.noaa.gov
+OFFICE_TIDE_STATIONS = {
+    "AKQ": "8638610",   # Sewells Point, VA
+    "BOX": "8443970",   # Boston, MA
+    "BRO": "8779770",   # Port Isabel, TX
+    "CAR": "8413320",   # Bar Harbor, ME
+    "CHS": "8665530",   # Charleston, SC
+    "CLE": "9063063",   # Cleveland, OH
+    "CRP": "8775870",   # Bob Hall Pier, TX
+    "DLH": "9099064",   # Duluth, MN
+    "EKA": "9418767",   # North Spit, CA
+    "GRB": "9087068",   # Sturgeon Bay, WI
+    "GUM": "1630000",   # Apra Harbor, Guam
+    "GYX": "8418150",   # Portland, ME
+    "HFO": "1612340",   # Honolulu, HI
+    "ILM": "8658163",   # Wrightsville Beach, NC
+    "JAX": "8720218",   # Mayport, FL
+    "LOX": "9410660",   # Los Angeles, CA
+    "MFL": "8723214",   # Virginia Key, FL
+    "MHX": "8656483",   # Beaufort, NC
+    "MKX": "9087044",   # Milwaukee, WI
+    "MLB": "8721604",   # Trident Pier, FL
+    "MOB": "8737048",   # Mobile State Docks, AL
+    "MQT": "9099018",   # Marquette, MI
+    "MTR": "9414290",   # San Francisco, CA
+    "OKX": "8518750",   # The Battery, NY
+    "PHI": "8545240",   # Philadelphia, PA
+    "PQR": "9439040",   # Astoria, OR
+    "SGX": "9410170",   # San Diego, CA
+    "SJU": "9755371",   # San Juan, PR
+    "TAE": "8728690",   # Apalachicola, FL
+    "TBW": "8726520",   # St. Petersburg, FL
+}
+
+# NWS office to NDBC buoy station mapping (wave height)
+# Station IDs from https://www.ndbc.noaa.gov
+OFFICE_BUOY_STATIONS = {
+    "AKQ": "44014",   # Virginia Beach, VA
+    "BOX": "44013",   # Boston 16 NM east of Boston, MA
+    "BRO": "42020",   # Corpus Christi area
+    "CHS": "41004",   # EDISTO - 41 NM southeast of Charleston, SC
+    "CRP": "42020",   # Corpus Christi, TX
+    "EKA": "46022",   # Eel River, CA
+    "GYX": "44007",   # Portland, ME
+    "HFO": "51202",   # Waimea Bay, HI
+    "ILM": "41110",   # Wrightsville Beach Nearshore, NC
+    "JAX": "41112",   # St. Augustine, FL
+    "LOX": "46222",   # San Pedro, CA
+    "MFL": "41047",   # Canaveral East, FL
+    "MHX": "41159",   # Cape Lookout Nearshore, NC
+    "MLB": "41113",   # Cape Canaveral Nearshore, FL
+    "MOB": "42040",   # Mobile South, AL
+    "MTR": "46026",   # San Francisco, CA
+    "OKX": "44025",   # Long Island, NY
+    "PQR": "46029",   # Columbia River Bar, OR
+    "SGX": "46235",   # Point Loma South, CA
+    "SJU": "41053",   # San Juan, PR
+    "TAE": "42039",   # Pensacola, FL
+    "TBW": "42036",   # West Tampa, FL
+}
+
 # NWS office to radar site mapping
 # Each office maps to the primary NEXRAD radar station covering their area
 OFFICE_RADAR_SITES = {
@@ -104,6 +197,48 @@ OFFICE_RADAR_SITES = {
     "SJU": "TJUA",  # San Juan, PR - Cayey
     "TAE": "KTLH",  # Tallahassee, FL
     "TBW": "KTBW",  # Tampa, FL - Ruskin
+}
+
+# NWS forecast office approximate geographic coordinates (lat, lon).
+# Used by the config flow to suggest the closest office to the user's
+# Home Assistant Home zone via a haversine distance calculation.
+OFFICE_COORDINATES = {
+    "AKQ": (36.9840, -77.0072),    # Wakefield, VA (Norfolk/Richmond)
+    "APX": (44.9075, -84.7197),    # Gaylord, MI
+    "BOX": (41.9559, -71.1314),    # Taunton, MA (Boston)
+    "BRO": (25.9140, -97.4220),    # Brownsville, TX
+    "CAR": (46.8714, -68.0142),    # Caribou, ME
+    "CHS": (32.8986, -80.0408),    # Charleston, SC
+    "CLE": (41.4117, -81.8497),    # Cleveland, OH
+    "CRP": (27.7700, -97.5067),    # Corpus Christi, TX
+    "DLH": (46.8369, -92.1833),    # Duluth, MN
+    "DTX": (42.6997, -83.4716),    # White Lake, MI (Detroit)
+    "EKA": (40.9789, -124.1085),   # Eureka, CA
+    "GRB": (44.4983, -88.1114),    # Green Bay, WI
+    "GRR": (42.8939, -85.5447),    # Grand Rapids, MI
+    "GUM": (13.4828, 144.7997),    # Guam
+    "GYX": (43.8915, -70.2569),    # Gray, ME (Portland)
+    "HFO": (21.3245, -158.0250),   # Honolulu, HI
+    "ILM": (34.2675, -77.9011),    # Wilmington, NC
+    "IWX": (41.3589, -85.7000),    # North Webster, IN (Northern Indiana)
+    "JAX": (30.4842, -81.7019),    # Jacksonville, FL
+    "LOT": (41.6042, -88.0842),    # Romeoville, IL (Chicago)
+    "LOX": (34.2475, -119.1842),   # Oxnard, CA (Los Angeles)
+    "MFL": (25.7547, -80.3839),    # Miami, FL
+    "MFR": (42.3650, -122.8722),   # Medford, OR
+    "MHX": (34.7758, -76.8783),    # Newport/Morehead City, NC
+    "MKX": (42.9669, -88.5506),    # Sullivan, WI (Milwaukee)
+    "MLB": (28.1131, -80.6539),    # Melbourne, FL
+    "MOB": (30.6797, -88.2400),    # Mobile, AL
+    "MQT": (46.5311, -87.5489),    # Negaunee, MI (Marquette)
+    "MTR": (36.5950, -121.8480),   # Monterey, CA (San Francisco)
+    "OKX": (40.8656, -72.8639),    # Upton, NY (New York)
+    "PHI": (39.9942, -74.8336),    # Mount Holly, NJ (Philadelphia)
+    "PQR": (45.5503, -122.5667),   # Portland, OR
+    "SGX": (32.8331, -117.2756),   # San Diego, CA
+    "SJU": (18.4314, -66.0042),    # San Juan, PR
+    "TAE": (30.4072, -84.3500),    # Tallahassee, FL
+    "TBW": (27.7053, -82.4014),    # Ruskin, FL (Tampa Bay)
 }
 
 # Aurora visibility mapping - approximate magnetic latitudes for NWS offices
