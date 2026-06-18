@@ -89,6 +89,7 @@ def _entity_id_slug(sensor):
     lowercases and replaces spaces and hyphens with underscores.
     """
     import re
+
     def _slug(s):
         return re.sub(r'[^a-z0-9_]', '', s.lower().replace(' ', '_').replace('-', '_'))
     dev_name = sensor.device_info.get('name', '') if isinstance(sensor.device_info, dict) else ''
