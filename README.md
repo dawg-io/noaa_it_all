@@ -57,15 +57,15 @@ For location-specific rip current, surf zone, and weather data:
 <p align="left">
 <img width="485" height="409" alt="image" src="https://github.com/user-attachments/assets/556faa39-2eee-45e7-8ba0-6771a334ef0a" />
 </p>
-5. Select your **NWS Forecast Office** from the dropdown (e.g., SGX for San Diego, LOX for Los Angeles)
+4. Select your **NWS Forecast Office** from the dropdown (e.g., SGX for San Diego, LOX for Los Angeles)
 <p align="left">
 <img width="490" height="222" alt="image" src="https://github.com/user-attachments/assets/0c9711bc-9c7b-428d-b7de-a405e07299e8" />
 </p>
-6. Complete the setup
+5. Complete the setup
 <p align="left">
 <img width="480" height="794" alt="image" src="https://github.com/user-attachments/assets/2688c4dd-b6c6-4449-9ce2-37f5552335a8" />
 </p>
-**Important:** Starting with version 1.0.20, latitude and longitude are required fields for proper weather entity setup. Weather data is now fetched from the nearest observation station to your specified coordinates using the weather.gov API, rather than defaulting to the Home Assistant location or using a predefined office-to-station mapping.
+**Important:** Starting with version 0.4.0, latitude and longitude are required fields for proper weather entity setup. Weather data is now fetched from the nearest observation station to your specified coordinates using the weather.gov API, rather than defaulting to the Home Assistant location or using a predefined office-to-station mapping.
 
 #### Legacy YAML Configuration
 For basic sensors without location-specific data:
