@@ -6,7 +6,7 @@
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
 [![GitHub Release](https://img.shields.io/github/release/dawg-io/noaa_it_all.svg)](https://github.com/dawg-io/noaa_it_all/releases)
-[![License](https://img.shields.io/github/license/dawg-io/noaa_it_all.svg)](LICENSE)
+[![License](https://img.shields.io/github/license/turbo5000c/dev-noaa_it_all.svg)](LICENSE)
 
 
 <p align="center">
