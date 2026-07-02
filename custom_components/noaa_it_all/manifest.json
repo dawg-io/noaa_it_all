@@ -1,12 +1,17 @@
 {
   "domain": "noaa_it_all",
   "name": "NOAA It All",
-  "codeowners": ["@turbo5000c"],
+  "codeowners": [
+    "@turbo5000c"
+  ],
   "config_flow": true,
   "dependencies": [],
   "documentation": "https://github.com/dawg-io/noaa_it_all",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/dawg-io/noaa_it_all/issues",
-  "requirements": ["aiohttp", "voluptuous"],
-  "version": "0.4.2"
+  "requirements": [
+    "aiohttp",
+    "voluptuous"
+  ],
+  "version": "0.4.3"
 }
