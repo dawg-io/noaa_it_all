@@ -1,4 +1,4 @@
-# NOAA Integration for Home Assistant
+# NOAA It All for Home Assistant
 
 Comprehensive NOAA data integration providing real-time space weather, hurricane tracking, surf conditions, weather alerts, and aurora predictions.
 
@@ -34,7 +34,7 @@ Comprehensive NOAA data integration providing real-time space weather, hurricane
 
 ### Via HACS (Recommended)
 1. Open HACS in Home Assistant
-2. Search for "NOAA Integration"
+2. Search for "NOAA It All"
 3. Click Install
 4. Restart Home Assistant
 
@@ -43,7 +43,7 @@ Comprehensive NOAA data integration providing real-time space weather, hurricane
 #### Config Flow (Recommended)
 For full functionality including location-specific data:
 1. Go to **Settings** → **Integrations** → **Add Integration**
-2. Search for "NOAA Integration"
+2. Search for "NOAA It All"
 3. Select your **NWS Forecast Office** (e.g., SGX for San Diego, LOX for Los Angeles)
 4. Enter your **Latitude and Longitude** (required for weather observations)
 5. Complete setup

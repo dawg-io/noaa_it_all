@@ -1,4 +1,4 @@
-# NOAA IT ALL HACS Integration for Solar Data, Hurricane Tracking, and Location-Specific Rip Current Forecasts
+# NOAA It All - Solar Data, Hurricane Tracking, and Location-Specific Rip Current Forecasts
 
 > [!NOTE]
 > This integration and its developer are independent and are not affiliated, endorsed, or sponsored by NOAA in any way.
@@ -31,7 +31,7 @@ This Home Assistant integration provides comprehensive NOAA data through sensors
 #### Option 1: HACS Default Store (after acceptance)
 1. Open HACS in Home Assistant
 2. Click **Integrations**
-3. Search for "NOAA Integration"
+3. Search for "NOAA It All"
 4. Click **Download**
 5. Restart Home Assistant
 
@@ -39,7 +39,7 @@ This Home Assistant integration provides comprehensive NOAA data through sensors
 1. Open HACS in Home Assistant
 2. Click the three-dot menu (⋮) → **Custom repositories**
 3. Add `https://github.com/dawg-io/noaa_it_all` with category **Integration**
-4. Click **Download** on the NOAA Integration card
+4. Click **Download** on the NOAA It All card
 5. Restart Home Assistant
 
 ### Manual Installation
@@ -52,7 +52,7 @@ This Home Assistant integration provides comprehensive NOAA data through sensors
 #### Config Flow (Recommended - New!)
 For location-specific rip current, surf zone, and weather data:
 1. Go to **Settings** → **Integrations** → **Add Integration**
-2. Search for "NOAA Integration"
+2. Search for "NOAA It All"
 3. **Enter your Latitude and Longitude** (required) - Weather observations will be fetched from the nearest station to this location
 <p align="left">
 <img width="485" height="409" alt="image" src="https://github.com/user-attachments/assets/556faa39-2eee-45e7-8ba0-6771a334ef0a" />
@@ -75,7 +75,7 @@ noaa_it_all:
 
 ## Device Grouping and Organization
 
-The NOAA Integration organizes entities into logical device groups for better organization in Home Assistant. All entities are automatically grouped under one of the following devices:
+NOAA It All organizes entities into logical device groups for better organization in Home Assistant. All entities are automatically grouped under one of the following devices:
 
 ### Device Groups Overview
 
@@ -283,7 +283,7 @@ All entities use `_attr_has_entity_name = True`, which means Home Assistant deri
 
 ### Best Practices
 
-1. **Use Device Views**: Access entities by device (Settings → Devices & Services → NOAA Integration) for organized browsing
+1. **Use Device Views**: Access entities by device (Settings → Devices & Services → NOAA It All) for organized browsing
 2. **Create Groups**: Use Home Assistant groups to combine related entities across device boundaries
 3. **Label Your Location**: In automations, use friendly names in messages (e.g., "San Diego" instead of "SGX")
 4. **Check Availability**: Sensors return `unknown` or `None` when data is unavailable - use conditions to verify state
@@ -943,7 +943,7 @@ content: |
 
 ### Incorrect or Missing Weather Data
 - Weather observations are pulled from the nearest NWS station to your configured coordinates
-- Confirm your latitude and longitude are accurate (you can reconfigure via **Settings** → **Integrations** → **NOAA Integration** → **Configure**)
+- Confirm your latitude and longitude are accurate (you can reconfigure via **Settings** → **Integrations** → **NOAA It All** → **Configure**)
 - Some NWS offices may not have nearby observation stations; in that case observations will show `unknown`
 
 ### Binary Sensors Always Off

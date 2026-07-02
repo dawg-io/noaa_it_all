@@ -1,6 +1,6 @@
-# NOAA Integration - Configuration Guide
+# NOAA It All - Configuration Guide
 
-This guide provides detailed configuration examples for the NOAA Integration, including entity setup, device grouping, dashboard cards, and automation patterns.
+This guide provides detailed configuration examples for NOAA It All, including entity setup, device grouping, dashboard cards, and automation patterns.
 
 ## Table of Contents
 1. [Installation Methods](#installation-methods)
@@ -17,7 +17,7 @@ The Config Flow method provides location-specific features including weather ale
 
 **Steps:**
 1. Navigate to **Settings** → **Devices & Services** → **Add Integration**
-2. Search for "NOAA Integration"
+2. Search for "NOAA It All"
 3. Select your NWS Forecast Office (e.g., SGX for San Diego)
 4. Enter your **Latitude** (e.g., 32.7157)
 5. Enter your **Longitude** (e.g., -117.1611)
@@ -44,7 +44,7 @@ noaa_it_all:
 ## Entity Configuration
 
 ### Understanding Entity IDs
-All NOAA Integration entities follow consistent naming patterns:
+All NOAA It All entities follow consistent naming patterns:
 
 **Pattern:**
 ```
@@ -81,7 +81,7 @@ homeassistant:
 
 ## Device Grouping
 
-The NOAA Integration automatically organizes entities into four device groups:
+NOAA It All automatically organizes entities into four device groups:
 
 ### 1. NOAA Space (Global Space Weather)
 Entities that monitor space weather conditions worldwide.
