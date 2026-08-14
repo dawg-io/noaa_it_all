@@ -9,7 +9,11 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import CONF_OFFICE_CODE, CONF_LATITUDE, CONF_LONGITUDE, DOMAIN
+from .const import (
+    CONF_OFFICE_CODE, CONF_LATITUDE, CONF_LONGITUDE, DOMAIN,
+    METEOR_ACTIVE_MIN_RATE, METEOR_ACTIVE_MIN_SCORE,
+)
+from .sensors.meteor_showers import space_device_info
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -33,6 +37,7 @@ async def async_setup_entry(
     data = hass.data[DOMAIN][config_entry.entry_id]
     surf_coord = data["surf_coordinator"]
     alerts_coord = data["alerts_coordinator"]
+    meteor_coord = data["meteor_coordinator"]
 
     entities = [UnsafeToSwimBinarySensor(surf_coord, office_code)]
 
@@ -44,11 +49,16 @@ async def async_setup_entry(
             ActiveAlertsGeneralBinarySensor(alerts_coord, office_code, latitude, longitude),
         ])
 
+    if meteor_coord:
+        entities.append(MeteorShowerActiveBinarySensor(meteor_coord, office_code))
+
     async_add_entities(entities)
 
 
 class UnsafeToSwimBinarySensor(CoordinatorEntity, BinarySensorEntity):
     """Binary sensor for unsafe swimming conditions based on rip current forecasts."""
+
+    _attr_has_entity_name = True
 
     _HIGH_RISK_PATTERNS = [
         r"high\s+rip\s+current\s+risk",
@@ -70,7 +80,7 @@ class UnsafeToSwimBinarySensor(CoordinatorEntity, BinarySensorEntity):
         self._state = False
         self._attributes = {}
         self._attr_unique_id = f"noaa_{office_code}_unsafe_to_swim"
-        self._attr_name = f"NOAA {office_code} Unsafe to Swim"
+        self._attr_name = "Unsafe to Swim"
 
     def _check_risk(self):
         """Return (high_risk_found, moderate_risk_found) from coordinator data."""
@@ -128,6 +138,8 @@ class UnsafeToSwimBinarySensor(CoordinatorEntity, BinarySensorEntity):
 class SevereWeatherAlertBinarySensor(CoordinatorEntity, BinarySensorEntity):
     """Binary sensor for severe/hazardous weather warnings (tornado, thunderstorm, etc.)."""
 
+    _attr_has_entity_name = True
+
     _SEVERE_EVENTS = [
         'tornado warning', 'tornado watch',
         'severe thunderstorm warning', 'severe thunderstorm watch',
@@ -152,7 +164,7 @@ class SevereWeatherAlertBinarySensor(CoordinatorEntity, BinarySensorEntity):
         self._state = False
         self._attributes = {}
         self._attr_unique_id = f"noaa_{office_code}_severe_weather_alert"
-        self._attr_name = f"NOAA {office_code} Severe Weather Alert"
+        self._attr_name = "Severe Weather Alert"
 
     def _get_filtered_alerts(self):
         """Return list of active severe weather alerts from coordinator data."""
@@ -222,6 +234,8 @@ class SevereWeatherAlertBinarySensor(CoordinatorEntity, BinarySensorEntity):
 class FloodWinterAlertBinarySensor(CoordinatorEntity, BinarySensorEntity):
     """Binary sensor for flood and winter weather alerts."""
 
+    _attr_has_entity_name = True
+
     _FLOOD_WINTER_EVENTS = [
         'flood warning', 'flood watch', 'flash flood warning', 'flash flood watch',
         'coastal flood warning', 'coastal flood watch', 'lakeshore flood warning',
@@ -244,7 +258,7 @@ class FloodWinterAlertBinarySensor(CoordinatorEntity, BinarySensorEntity):
         self._state = False
         self._attributes = {}
         self._attr_unique_id = f"noaa_{office_code}_flood_winter_alert"
-        self._attr_name = f"NOAA {office_code} Flood/Winter Alert"
+        self._attr_name = "Flood/Winter Alert"
 
     def _get_filtered_alerts(self):
         """Return list of active flood/winter alerts from coordinator data."""
@@ -314,6 +328,8 @@ class FloodWinterAlertBinarySensor(CoordinatorEntity, BinarySensorEntity):
 class HeatAirQualityAlertBinarySensor(CoordinatorEntity, BinarySensorEntity):
     """Binary sensor for heat, air quality, and other environmental advisories."""
 
+    _attr_has_entity_name = True
+
     _HEAT_AIRQUALITY_EVENTS = [
         'excessive heat warning', 'excessive heat watch', 'heat advisory',
         'extreme heat warning', 'extreme heat watch',
@@ -335,7 +351,7 @@ class HeatAirQualityAlertBinarySensor(CoordinatorEntity, BinarySensorEntity):
         self._state = False
         self._attributes = {}
         self._attr_unique_id = f"noaa_{office_code}_heat_air_quality_alert"
-        self._attr_name = f"NOAA {office_code} Heat/Air Quality Alert"
+        self._attr_name = "Heat/Air Quality Alert"
 
     def _get_filtered_alerts(self):
         """Return list of active heat/air quality alerts from coordinator data."""
@@ -405,6 +421,8 @@ class HeatAirQualityAlertBinarySensor(CoordinatorEntity, BinarySensorEntity):
 class ActiveAlertsGeneralBinarySensor(CoordinatorEntity, BinarySensorEntity):
     """Binary sensor for general active NWS alerts for the configured location."""
 
+    _attr_has_entity_name = True
+
     def __init__(self, coordinator, office_code, latitude, longitude):
         """Initialize the binary sensor."""
         super().__init__(coordinator)
@@ -414,7 +432,7 @@ class ActiveAlertsGeneralBinarySensor(CoordinatorEntity, BinarySensorEntity):
         self._state = False
         self._attributes = {}
         self._attr_unique_id = f"noaa_{office_code}_active_alerts"
-        self._attr_name = f"NOAA {office_code} Active Alerts"
+        self._attr_name = "Active Alerts"
 
     def _get_filtered_alerts(self):
         """Return list of all active alerts and type counts from coordinator data."""
@@ -483,3 +501,95 @@ class ActiveAlertsGeneralBinarySensor(CoordinatorEntity, BinarySensorEntity):
             name=f"NOAA {self._office_code} Weather",
             manufacturer="NOAA"
         )
+
+
+class MeteorShowerActiveBinarySensor(CoordinatorEntity, BinarySensorEntity):
+    """Binary sensor that turns on when a meteor shower is genuinely worth going outside for.
+
+    This is the entity to trigger automations from. It is deliberately *not* a bare "is any
+    shower active" flag: with around thirty showers catalogued something is technically active on
+    most nights of the year, so such a flag would sit permanently on. Instead it requires a real
+    predicted rate and usable sky geometry.
+
+    Measured over 2026 from Wilmington NC that turns on for roughly 50 nights, clustered tightly
+    around the major showers — about thirteen for the Perseids, eight for the Orionids, seven for
+    the Geminids. That is not an arbitrary number: with a published activity slope of 0.2 the
+    Perseids genuinely stay above five meteors an hour for about six days either side of
+    maximum. Raise ``METEOR_ACTIVE_MIN_RATE`` if you only want to hear about the peak nights.
+
+    Unlike the other binary sensors in this module it sets ``_attr_has_entity_name``, matching the
+    sensor convention, so the entity ID carries the ``space`` device segment
+    (``binary_sensor.noaa_ilm_space_meteor_shower_active``) and reads as a sibling of the meteor
+    sensors rather than an orphan.
+    """
+
+    _attr_has_entity_name = True
+
+    def __init__(self, coordinator, office_code):
+        """Initialize the binary sensor."""
+        super().__init__(coordinator)
+        self._office_code = office_code
+        self._attr_unique_id = f"noaa_{office_code}_meteor_shower_active"
+
+    @property
+    def name(self):
+        """Return the local name of the binary sensor."""
+        return "Meteor Shower Active"
+
+    @property
+    def _best(self):
+        """Return tonight's best shower entry, or None when nothing is active."""
+        if not self.coordinator.data:
+            return None
+        return self.coordinator.data.get("best")
+
+    @property
+    def is_on(self):
+        """Return true when a worthwhile shower is observable tonight."""
+        best = self._best
+        if not best:
+            return False
+        return (
+            best['expected_per_hour'] >= METEOR_ACTIVE_MIN_RATE
+            and best['viewing_score'] >= METEOR_ACTIVE_MIN_SCORE
+        )
+
+    @property
+    def icon(self):
+        """Return the icon."""
+        if self.is_on:
+            return 'mdi:meteor'
+        return 'mdi:weather-night'
+
+    @property
+    def extra_state_attributes(self):
+        """Return the state attributes."""
+        attrs = {
+            'office_code': self._office_code,
+            'minimum_rate': METEOR_ACTIVE_MIN_RATE,
+            'minimum_score': METEOR_ACTIVE_MIN_SCORE,
+        }
+        best = self._best
+        if not best:
+            return attrs
+
+        attrs.update({
+            'shower': best['name'],
+            'shower_code': best['code'],
+            'zhr_now': best['zhr_now'],
+            'expected_per_hour': best['expected_per_hour'],
+            'viewing_score': best['viewing_score'],
+            'rating': best['rating'],
+            'peak_local': best['peak_local'],
+            'days_until': best['days_until'],
+            'is_peak_night': best['is_peak_night'],
+            'best_window_start': best['best_window_start'],
+            'best_window_end': best['best_window_end'],
+            'limiting_factor': best['limiting_factor'],
+        })
+        return attrs
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information to group this entity."""
+        return space_device_info(self._office_code)

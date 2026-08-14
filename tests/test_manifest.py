@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import struct
 import unittest
 import zlib
@@ -218,11 +219,50 @@ class TestBrandAssets(unittest.TestCase):
                 )
 
     def test_root_icon_exists(self):
-        """icon.png at the repository root is required for HACS store display."""
+        """icon.png at the repository root is the README header image source.
+
+        It is NOT read by HACS or Home Assistant for any store or UI display.
+        Those come from custom_components/noaa_it_all/brand/ (inside HA) and from
+        the home-assistant/brands CDN (the HACS store list).
+        """
         root_icon = os.path.join(_REPO, "icon.png")
         self.assertTrue(os.path.isfile(root_icon), "icon.png missing from repository root")
         w, h, _, _, _ = _png_dimensions(root_icon)
         self.assertEqual((w, h), (256, 256), "root icon.png must be 256x256")
+
+
+class TestReadmeImages(unittest.TestCase):
+    """Guard against image URLs that render as a broken image.
+
+    A github.com/<owner>/<repo>/blob/... URL serves an HTML *page*, not an image,
+    so it shows as broken on GitHub and on the HACS repository page (hacs.json sets
+    render_readme, so HACS renders this same markdown).
+    """
+
+    _FENCE = re.compile(r"^\s*(```|~~~).*?^\s*\1", re.DOTALL | re.MULTILINE)
+    _HTML_IMG = re.compile(r"<img[^>]*?\ssrc=[\"']([^\"']+)[\"']", re.IGNORECASE)
+    _MD_IMG = re.compile(r"!\[[^\]]*\]\(\s*([^\s)]+)")
+
+    @classmethod
+    def setUpClass(cls):
+        with open(os.path.join(_REPO, "README.md"), encoding="utf-8") as f:
+            body = f.read()
+        # Drop fenced code blocks first: the Lovelace card examples contain
+        # <img src="{{ ... }}"> templates that are documentation, not real images.
+        body = cls._FENCE.sub("", body)
+        cls.urls = cls._HTML_IMG.findall(body) + cls._MD_IMG.findall(body)
+
+    def test_images_found(self):
+        """Sanity check that the extraction actually matched something."""
+        self.assertTrue(self.urls, "no image URLs found in README.md -- extraction is broken")
+
+    def test_no_github_blob_image_urls(self):
+        for url in self.urls:
+            if "github.com" in url and "/blob/" in url:
+                self.fail(
+                    f"README.md image URL serves an HTML page, not an image: {url}\n"
+                    "Use https://raw.githubusercontent.com/<owner>/<repo>/<branch>/<path> instead."
+                )
 
 
 if __name__ == "__main__":

@@ -53,7 +53,7 @@ All NOAA It All entities follow consistent naming patterns:
 
 **Examples:**
 - `sensor.noaa_sgx_temperature` - Temperature for San Diego office
-- `binary_sensor.noaa_sgx_unsafe_to_swim` - Rip current safety sensor
+- `binary_sensor.noaa_sgx_surf_unsafe_to_swim` - Rip current safety sensor
 - `sensor.noaa_space_kp_index` - Global space weather sensor
 - `image.noaa_geomagnetic_field` - Space weather image
 
@@ -69,7 +69,7 @@ homeassistant:
       friendly_name: "San Diego Temperature"
       icon: mdi:thermometer
     
-    binary_sensor.noaa_sgx_unsafe_to_swim:
+    binary_sensor.noaa_sgx_surf_unsafe_to_swim:
       friendly_name: "Beach Safety"
       icon: mdi:swim
       device_class: safety
@@ -83,8 +83,9 @@ homeassistant:
 
 NOAA It All automatically organizes entities into four device groups:
 
-### 1. NOAA Space (Global Space Weather)
-Entities that monitor space weather conditions worldwide.
+### 1. NOAA Space (Space Weather & Meteor Showers)
+Entities that monitor space weather conditions worldwide, plus the meteor shower forecast for
+your configured location.
 
 **Entities in this group:**
 - `sensor.noaa_space_kp_index`
@@ -93,8 +94,16 @@ Entities that monitor space weather conditions worldwide.
 - `sensor.noaa_{office}_aurora_duration`
 - `sensor.noaa_{office}_aurora_visibility_probability`
 - `sensor.noaa_{office}_solar_radiation_storm_alerts`
+- `sensor.noaa_{office}_space_meteor_shower_activity`
+- `sensor.noaa_{office}_space_next_meteor_shower`
+- `sensor.noaa_{office}_space_meteor_viewing_score`
+- `binary_sensor.noaa_{office}_space_meteor_shower_active`
 - `image.noaa_geomagnetic_field`
 - `image.noaa_aurora_forecast`
+
+> Meteor shower entities require latitude/longitude (Config Flow setup) because the radiant's
+> altitude — the single biggest factor in how many meteors you see — depends on where you are.
+> They are computed locally from a bundled catalog and make no network requests.
 
 ### 2. NOAA Weather (Global & Location Weather)
 Entities for hurricane tracking, forecasts, and weather observations.
@@ -125,16 +134,16 @@ Entities for beach safety and surf conditions.
 - `sensor.noaa_{office}_rip_current_risk`
 - `sensor.noaa_{office}_surf_height`
 - `sensor.noaa_{office}_water_temperature`
-- `binary_sensor.noaa_{office}_unsafe_to_swim`
+- `binary_sensor.noaa_{office}_surf_unsafe_to_swim`
 
 ### 4. NOAA Weather [OFFICE] (Location-Specific Alerts)
 Device per office for location-specific weather alerts.
 
 **Entities in this group:**
-- `binary_sensor.noaa_{office}_severe_weather_alert`
-- `binary_sensor.noaa_{office}_flood_winter_alert`
-- `binary_sensor.noaa_{office}_heat_air_quality_alert`
-- `binary_sensor.noaa_{office}_active_alerts`
+- `binary_sensor.noaa_{office}_weather_severe_weather_alert`
+- `binary_sensor.noaa_{office}_weather_flood_winter_alert`
+- `binary_sensor.noaa_{office}_weather_heat_air_quality_alert`
+- `binary_sensor.noaa_{office}_weather_active_alerts`
 
 ### Creating Custom Groups
 
@@ -145,10 +154,10 @@ You can create additional groups combining entities from different devices:
 noaa_safety_alerts:
   name: "NOAA Safety Alerts"
   entities:
-    - binary_sensor.noaa_sgx_severe_weather_alert
-    - binary_sensor.noaa_sgx_flood_winter_alert
-    - binary_sensor.noaa_sgx_heat_air_quality_alert
-    - binary_sensor.noaa_sgx_unsafe_to_swim
+    - binary_sensor.noaa_sgx_weather_severe_weather_alert
+    - binary_sensor.noaa_sgx_weather_flood_winter_alert
+    - binary_sensor.noaa_sgx_weather_heat_air_quality_alert
+    - binary_sensor.noaa_sgx_surf_unsafe_to_swim
 
 noaa_current_conditions:
   name: "Current Weather"
@@ -192,11 +201,11 @@ type: entities
 title: "Weather Alerts"
 state_color: true
 entities:
-  - entity: binary_sensor.noaa_sgx_severe_weather_alert
+  - entity: binary_sensor.noaa_sgx_weather_severe_weather_alert
     name: "Severe Weather"
-  - entity: binary_sensor.noaa_sgx_flood_winter_alert
+  - entity: binary_sensor.noaa_sgx_weather_flood_winter_alert
     name: "Flood/Winter"
-  - entity: binary_sensor.noaa_sgx_heat_air_quality_alert
+  - entity: binary_sensor.noaa_sgx_weather_heat_air_quality_alert
     name: "Heat/Air Quality"
   - entity: sensor.noaa_weather_active_nws_alerts
     name: "Alert Details"
@@ -207,7 +216,7 @@ entities:
 type: entities
 title: "Beach Conditions"
 entities:
-  - entity: binary_sensor.noaa_sgx_unsafe_to_swim
+  - entity: binary_sensor.noaa_sgx_surf_unsafe_to_swim
     name: "Safe to Swim"
   - entity: sensor.noaa_sgx_rip_current_risk
     name: "Rip Current Risk"
@@ -234,6 +243,25 @@ cards:
     show_state: false
 ```
 
+### Meteor Shower Card
+```yaml
+type: entities
+title: "Meteor Showers"
+entities:
+  - binary_sensor.noaa_ilm_space_meteor_shower_active
+  - sensor.noaa_ilm_space_meteor_shower_activity
+  - sensor.noaa_ilm_space_meteor_viewing_score
+  - type: attribute
+    entity: sensor.noaa_ilm_space_meteor_viewing_score
+    attribute: expected_per_hour
+    name: "Expected Meteors/Hour"
+  - type: attribute
+    entity: sensor.noaa_ilm_space_meteor_viewing_score
+    attribute: best_window_start
+    name: "Best Viewing From"
+  - sensor.noaa_ilm_space_next_meteor_shower
+```
+
 ## Automation Examples
 
 ### Binary Sensor Alert Automation
@@ -243,7 +271,7 @@ automation:
     description: "Alert when rip currents make swimming dangerous"
     trigger:
       - platform: state
-        entity_id: binary_sensor.noaa_sgx_unsafe_to_swim
+        entity_id: binary_sensor.noaa_sgx_surf_unsafe_to_swim
         to: 'on'
     action:
       - service: notify.mobile_app
@@ -262,7 +290,7 @@ automation:
         at: "08:00:00"
     condition:
       - condition: state
-        entity_id: binary_sensor.noaa_sgx_unsafe_to_swim
+        entity_id: binary_sensor.noaa_sgx_surf_unsafe_to_swim
         state: 'off'
       - condition: numeric_state
         entity_id: sensor.noaa_sgx_temperature
@@ -287,7 +315,7 @@ automation:
     description: "Automated responses to severe weather"
     trigger:
       - platform: state
-        entity_id: binary_sensor.noaa_sgx_severe_weather_alert
+        entity_id: binary_sensor.noaa_sgx_weather_severe_weather_alert
         to: 'on'
     action:
       # Close blinds
@@ -325,7 +353,7 @@ script:
             Conditions: {{ states('sensor.noaa_sgx_sky_conditions') }}
             Wind: {{ states('sensor.noaa_sgx_wind_speed') }} mph
             Humidity: {{ states('sensor.noaa_sgx_humidity') }}%
-            {% if is_state('binary_sensor.noaa_sgx_active_alerts', 'on') %}
+            {% if is_state('binary_sensor.noaa_sgx_weather_active_alerts', 'on') %}
             ⚠️ Weather alerts active!
             {% endif %}
 ```

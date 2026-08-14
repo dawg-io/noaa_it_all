@@ -11,6 +11,12 @@ Comprehensive NOAA data integration providing real-time space weather, hurricane
 - **Solar Radiation Storm Alerts** - S1-S5 classification with location-specific risk assessment
 - **Visual Displays** - Real-time geomagnetic field and aurora forecast images
 
+### ☄️ Meteor Showers
+- **Meteor Shower Alerts** - Binary sensor that turns on only when a shower is genuinely worth going outside for
+- **Viewing Forecast** - 0-100 score from radiant altitude, moon phase and astronomical darkness, plus the best viewing window and expected meteors per hour
+- **Upcoming Showers** - The next five showers with peak dates, for dashboard cards and automations
+- **Works Offline** - ~29 showers keyed by solar longitude and computed locally; no API, no key, no extra dependency
+
 ### 🌊 Surf & Ocean Conditions (Location-Specific)
 - **Rip Current Risk** - Low/Moderate/High risk assessment with safety alerts
 - **Surf Height** - Wave height estimates from NWS surf zone forecasts

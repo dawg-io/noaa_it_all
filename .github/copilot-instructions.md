@@ -15,9 +15,9 @@ NOAA Integration is a Home Assistant custom component that provides NOAA solar a
 
 ### Code Validation and Quality
 - **ALWAYS validate Python syntax before making changes**:
-  - `python3 -m py_compile custom_components/noaa_integration/__init__.py custom_components/noaa_integration/sensor.py custom_components/noaa_integration/image.py` -- takes <1 second
+  - `python3 -m py_compile custom_components/noaa_it_all/__init__.py custom_components/noaa_it_all/sensor.py custom_components/noaa_it_all/image.py` -- takes <1 second
 - **ALWAYS run code linting before committing**:
-  - `flake8 custom_components/noaa_integration/ --max-line-length=120` -- takes <5 seconds
+  - `flake8 custom_components/noaa_it_all/ --max-line-length=120` -- takes <5 seconds
   - Fix all linting issues before proceeding. Common issues: blank line spacing (E302), line length (E501), unused imports (F401)
 - **NEVER commit code with linting errors** - the HACS validation will fail
 
@@ -32,9 +32,9 @@ For thorough validation of your changes, run all essential checks:
 ```bash
 # Essential validation sequence (takes <30 seconds total)
 python3 --version                                                    # Verify Python
-python3 -m py_compile custom_components/noaa_integration/*.py         # Syntax check
-flake8 custom_components/noaa_integration/ --max-line-length=120     # Code quality
-python3 -c "import json; print('Valid:', json.load(open('custom_components/noaa_integration/manifest.json'))['domain'])"  # JSON validation
+python3 -m py_compile custom_components/noaa_it_all/*.py         # Syntax check
+flake8 custom_components/noaa_it_all/ --max-line-length=120     # Code quality
+python3 -c "import json; print('Valid:', json.load(open('custom_components/noaa_it_all/manifest.json'))['domain'])"  # JSON validation
 ```
 **CRITICAL**: Fix ALL flake8 issues before committing - zero tolerance for linting errors.
 
@@ -69,11 +69,27 @@ python3 -c "import json; print('Valid:', json.load(open('custom_components/noaa_
 
 ### Key Files and Locations
 ```
-/custom_components/noaa_integration/
-├── __init__.py          # Component initialization and platform discovery
+/custom_components/noaa_it_all/
+├── __init__.py          # Component setup and platform forwarding
 ├── manifest.json        # Component metadata, dependencies, version
-├── sensor.py           # Sensor entities: K-index, geomagnetic storm data and interpretations
-└── image.py            # Image entities: geoelectric field and aurora forecast images
+├── config_flow.py       # UI config flow (config_flow: true in the manifest)
+├── const.py             # Constants, API endpoints, defaults
+├── coordinator.py       # DataUpdateCoordinator: fetches and caches NOAA data
+├── parsers.py           # Parsing helpers for NOAA API and text-product responses
+├── astro.py             # Positional astronomy (stdlib only, no HA imports, no network)
+├── meteor.py            # Meteor shower rate/score model (stdlib only, no HA imports)
+├── meteor_catalog.py    # Bundled shower catalog, keyed by solar longitude
+├── entity_naming.py     # Shared entity naming helpers
+├── sensor.py            # Sensor platform
+├── binary_sensor.py     # Binary sensor platform
+├── image.py             # Image platform: geoelectric field and aurora forecast images
+├── weather.py           # Weather platform
+├── strings.json         # UI strings for the config flow
+├── sensors/             # Per-area sensor definitions (space_weather, surf, alerts,
+│                        #   forecasts, hurricanes, weather_observations, weather_extra,
+│                        #   meteor_showers)
+├── translations/        # en.json
+└── brand/               # Brand images served by HA (icon/logo, incl. @2x and dark)
 ```
 
 ### Configuration Files
@@ -124,7 +140,7 @@ python3 -c "import json; print('Valid:', json.load(open('custom_components/noaa_
 4. Users install via HACS in Home Assistant
 
 ### Version Management
-- Update version in `custom_components/noaa_integration/manifest.json`
+- Update version in `custom_components/noaa_it_all/manifest.json`
 - Version format: semantic versioning (e.g., "1.0.12")
 - HACS uses manifest version for release tracking
 
