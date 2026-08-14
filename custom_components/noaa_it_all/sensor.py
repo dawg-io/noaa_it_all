@@ -49,6 +49,9 @@ from .sensors import (  # noqa: F401
     CloudCoverSensor,
     RadarTimestampSensor,
     ForecastDiscussionSensor,
+    MeteorShowerActivitySensor,
+    NextMeteorShowerSensor,
+    MeteorViewingScoreSensor,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -84,6 +87,7 @@ async def async_setup_entry(
     cloud_cover_coord = data["cloud_cover_coordinator"]
     radar_coord = data["radar_timestamp_coordinator"]
     discussion_coord = data["forecast_discussion_coordinator"]
+    meteor_coord = data["meteor_coordinator"]
 
     entities = [
         # Space weather (global, use SpaceWeatherCoordinator)
@@ -176,6 +180,14 @@ async def async_setup_entry(
     # Cloud cover sensor (location-specific)
     if cloud_cover_coord:
         entities.append(CloudCoverSensor(cloud_cover_coord, office_code, latitude, longitude))
+
+    # Meteor shower sensors (location-specific, grouped under the Space device)
+    if meteor_coord:
+        entities.extend([
+            MeteorShowerActivitySensor(meteor_coord, office_code),
+            NextMeteorShowerSensor(meteor_coord, office_code),
+            MeteorViewingScoreSensor(meteor_coord, office_code),
+        ])
 
     # Radar timestamp sensor (office-specific, may be None if no radar site)
     if radar_coord:

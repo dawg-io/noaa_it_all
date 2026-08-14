@@ -22,6 +22,7 @@ from .coordinator import (
     CloudCoverCoordinator,
     RadarTimestampCoordinator,
     ForecastDiscussionCoordinator,
+    MeteorShowerCoordinator,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -85,6 +86,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     observations_coord = None
     forecast_coord = None
     cloud_cover_coord = None
+    meteor_coord = None
 
     if latitude is not None and longitude is not None:
         alerts_coord = NWSAlertsCoordinator(hass, latitude, longitude)
@@ -95,6 +97,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             hass, office_code, latitude, longitude
         )
         cloud_cover_coord = CloudCoverCoordinator(
+            hass, office_code, latitude, longitude
+        )
+        # Meteor showers are computed locally from a bundled catalog rather than fetched,
+        # but they still need the observer's coordinates to place the radiant in the sky.
+        meteor_coord = MeteorShowerCoordinator(
             hass, office_code, latitude, longitude
         )
 
@@ -119,6 +126,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         refresh_tasks.append(forecast_coord.async_refresh())
     if cloud_cover_coord:
         refresh_tasks.append(cloud_cover_coord.async_refresh())
+    if meteor_coord:
+        refresh_tasks.append(meteor_coord.async_refresh())
 
     await asyncio.gather(*refresh_tasks, return_exceptions=True)
 
@@ -134,6 +143,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         "observations_coordinator": observations_coord,
         "forecast_coordinator": forecast_coord,
         "cloud_cover_coordinator": cloud_cover_coord,
+        "meteor_coordinator": meteor_coord,
     }
 
     # Load all platforms for the configured location

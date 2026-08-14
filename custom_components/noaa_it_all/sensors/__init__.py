@@ -46,3 +46,8 @@ from .weather_extra import (  # noqa: F401
     RadarTimestampSensor,
     ForecastDiscussionSensor,
 )
+from .meteor_showers import (  # noqa: F401
+    MeteorShowerActivitySensor,
+    NextMeteorShowerSensor,
+    MeteorViewingScoreSensor,
+)

@@ -11,7 +11,7 @@
 ![Tracked Installs](https://img.shields.io/endpoint?url=https://analytics.home-assistant.io/api/badge_custom_integrations_json/noaa_it_all.json&style=for-the-badge&logo=home-assistant&label=Tracked%20Installs&color=gray)
 
 <p align="center">
-  <img src="https://github.com/dawg-io/noaa_it_all/blob/main/custom_components/noaa_it_all/brand/icon.png" width="120"><br>
+  <img src="https://raw.githubusercontent.com/dawg-io/noaa_it_all/main/icon.png" width="120" alt="NOAA It All"><br>
 </p>
 
 This Home Assistant integration provides comprehensive NOAA data through sensors and images, with the latest addition of location-specific rip current and surf zone forecasts.
@@ -81,10 +81,10 @@ NOAA It All organizes entities into logical device groups for better organizatio
 ### Device Groups Overview
 
 #### 🌌 NOAA Space
-Global space weather monitoring - aurora visibility, geomagnetic storms, and solar radiation alerts
+Space weather monitoring — aurora visibility, geomagnetic storms, solar radiation alerts — plus the meteor shower forecast
 - **Device ID**: `noaa_space`
-- **Location**: Independent (global data)
-- **Update Frequency**: 5 minutes
+- **Location**: Space weather is global; meteor shower entities use your configured latitude/longitude
+- **Update Frequency**: 10 minutes for space weather, 30 minutes for meteor showers
 
 <p align="left">
 <img width="330" height="620" alt="image" src="https://github.com/user-attachments/assets/50d6d649-dec7-4a52-a6db-d53488b7bbc3" />
@@ -144,10 +144,10 @@ Location-specific weather observations, forecasts, alerts, and radar — **one d
 Real-time monitoring of National Weather Service alerts for your location *(NOAA Weather [OFFICE])*:
 
 **Binary Sensors (True/False):**
-- **Severe Weather Alert**: Active tornado, thunderstorm, hurricane, or extreme wind warnings/watches *(binary_sensor.noaa_{office}_severe_weather_alert)*
-- **Flood/Winter Alert**: Active flood, winter storm, snow, ice, or freezing rain warnings/watches *(binary_sensor.noaa_{office}_flood_winter_alert)*
-- **Heat/Air Quality Alert**: Active heat, air quality, fire weather, or environmental advisories *(binary_sensor.noaa_{office}_heat_air_quality_alert)*
-- **Active Alerts**: General indicator for any active NWS alerts *(binary_sensor.noaa_{office}_active_alerts)*
+- **Severe Weather Alert**: Active tornado, thunderstorm, hurricane, or extreme wind warnings/watches *(binary_sensor.noaa_{office}_weather_severe_weather_alert)*
+- **Flood/Winter Alert**: Active flood, winter storm, snow, ice, or freezing rain warnings/watches *(binary_sensor.noaa_{office}_weather_flood_winter_alert)*
+- **Heat/Air Quality Alert**: Active heat, air quality, fire weather, or environmental advisories *(binary_sensor.noaa_{office}_weather_heat_air_quality_alert)*
+- **Active Alerts**: General indicator for any active NWS alerts *(binary_sensor.noaa_{office}_weather_active_alerts)*
 
 **Comprehensive Sensor:**
 - **Active NWS Alerts**: Detailed alert information including *(NOAA Weather)*:
@@ -192,6 +192,23 @@ Location-aware monitoring of solar radiation storm activity *(NOAA Space)*:
   - **Real-time Alerts**: Live monitoring of NOAA Space Weather Prediction Center alerts
 
 > **Note**: Solar radiation storm impacts vary by location and magnetic latitude. Higher latitudes (like Alaska and northern Canada) experience more severe effects, while equatorial regions are generally less affected. The integration provides location-specific risk assessments for your configured NWS office.
+
+### Meteor Showers (Config Flow Only)
+Meteor shower alerts and a viewing forecast for your exact location *(NOAA Space)*:
+
+- **Meteor Shower Activity**: The shower most worth watching right now, or `None` *(sensor.noaa_{office}_space_meteor_shower_activity)*
+  - Attributes include the current ZHR, peak time in your local timezone, radiant altitude, parent body, and a list of every shower currently active
+- **Next Meteor Shower**: The next shower to reach maximum *(sensor.noaa_{office}_space_next_meteor_shower)*
+  - The `upcoming` attribute holds the next five showers with peak dates — this is what dashboard "what's coming up" cards read from
+- **Meteor Viewing Score**: How good tonight's sky is, 0–100% *(sensor.noaa_{office}_space_meteor_viewing_score)*
+  - Attributes include `rating`, `best_window_start`/`best_window_end` (when to actually go outside), `expected_per_hour`, `moon_illumination`, `moon_altitude`, `darkness`, and `limiting_factor`
+- **Meteor Shower Active**: Turns on when a shower is genuinely worth going outside for *(binary_sensor.noaa_{office}_space_meteor_shower_active)*
+  - Requires both a real predicted rate (≥5/hour) and usable sky conditions (score ≥25), so it stays off most nights instead of sitting permanently on
+  - Measured over 2026 from Wilmington NC that is about 50 nights, clustered around the major showers (~13 for the Perseids, 8 for the Orionids, 7 for the Geminids) — the Perseids really do stay above 5/hour for roughly six days either side of maximum
+
+> **Note on the data source**: NOAA publishes no meteor shower data, and neither does anyone else as a live feed — none is needed. Earth crosses the same debris streams at the same point in its orbit every year, so this feature ships a catalog of ~29 showers keyed by **solar longitude** and computes each year's peak time locally. There is no API call, no API key, and no extra dependency, and it keeps working with no internet connection. Computed peak times are accurate to about ±11 minutes, which is far finer than the hours-wide spread of real shower maxima.
+
+> **Note on the score**: The viewing score measures *sky conditions*, not shower strength — it is the fraction of the ideal meteor rate you would actually achieve, so a minor shower riding high under a new moon scores well while the Perseids behind a full moon score badly. Shower strength is reported separately as `expected_per_hour`. The score accounts for radiant altitude, moonlight and astronomical darkness. It does **not** account for cloud cover; pair it with `sensor.noaa_{office}_weather_cloud_cover` if you want that.
 
 ### Optional Secondary Sensors (Config Flow Only)
 These sensors provide additional weather data where available from NOAA/NWS *(NOAA Weather)*:
@@ -266,7 +283,7 @@ All entities use `_attr_has_entity_name = True`, which means Home Assistant deri
 
 **Examples:**
 - `sensor.noaa_ilm_temperature` — Temperature for Wilmington (ILM office)
-- `binary_sensor.noaa_ilm_unsafe_to_swim` — Rip current safety for Wilmington
+- `binary_sensor.noaa_ilm_surf_unsafe_to_swim` — Rip current safety for Wilmington
 - `sensor.noaa_weather_hurricane_activity` — Global hurricane activity (NOAA Hurricane device)
 - `image.noaa_weather_hurricane_outlook_image` — Hurricane outlook image (NOAA Hurricane device)
 - `image.noaa_ilm_weather_radar_base_reflectivity` — Radar for Wilmington (ILM)
@@ -296,9 +313,11 @@ All entities use `_attr_has_entity_name = True`, which means Home Assistant deri
 | Data Type | Entity Pattern | Example |
 |-----------|---------------|---------|
 | Weather Observation | `sensor.noaa_{office}_weather_{metric}` | `sensor.noaa_ilm_weather_temperature` |
-| Weather Alert Binary | `binary_sensor.noaa_{office}_{alert_type}_alert` | `binary_sensor.noaa_ilm_severe_weather_alert` |
+| Weather Alert Binary | `binary_sensor.noaa_{office}_weather_{alert_type}_alert` | `binary_sensor.noaa_ilm_weather_severe_weather_alert` |
 | Surf Conditions | `sensor.noaa_{office}_{surf_metric}` | `sensor.noaa_ilm_rip_current_risk` |
 | Space Weather | `sensor.noaa_{office}_{metric}` | `sensor.noaa_ilm_aurora_next_time` |
+| Meteor Showers | `sensor.noaa_{office}_space_{metric}` | `sensor.noaa_ilm_space_meteor_viewing_score` |
+| Meteor Shower Binary | `binary_sensor.noaa_{office}_space_meteor_shower_active` | `binary_sensor.noaa_ilm_space_meteor_shower_active` |
 | Hurricane (global) | `sensor.noaa_weather_hurricane_{metric}` | `sensor.noaa_weather_hurricane_activity` |
 | Hurricane Images | `image.noaa_weather_hurricane_{name}` | `image.noaa_weather_hurricane_outlook_image` |
 | Radar Image | `image.noaa_{office}_weather_radar_base_reflectivity` | `image.noaa_ilm_weather_radar_base_reflectivity` |
@@ -316,6 +335,22 @@ If you are upgrading from a previous version, the following image entity IDs hav
 
 The underlying unique IDs for GOES Air Mass and GOES Geocolor have also changed, so Home Assistant will register them as new entities. To clean up stale entries, go to **Settings → Devices & Services → Entities**, filter by "unavailable", and remove the old image entities. Update any automations or dashboard cards that reference the old entity IDs.
 
+#### Binary sensor names (0.5.0)
+
+Before 0.5.0 the binary sensors set a full name that already contained `NOAA {office}`, which Home Assistant then prefixed with the device name again. The result was a doubled entity ID and friendly name:
+
+| Before 0.5.0 | From 0.5.0 |
+|---|---|
+| `binary_sensor.noaa_{office}_surf_noaa_{office}_unsafe_to_swim` | `binary_sensor.noaa_{office}_surf_unsafe_to_swim` |
+| `binary_sensor.noaa_{office}_weather_noaa_{office}_severe_weather_alert` | `binary_sensor.noaa_{office}_weather_severe_weather_alert` |
+| `binary_sensor.noaa_{office}_weather_noaa_{office}_flood_winter_alert` | `binary_sensor.noaa_{office}_weather_flood_winter_alert` |
+| `binary_sensor.noaa_{office}_weather_noaa_{office}_heat_air_quality_alert` | `binary_sensor.noaa_{office}_weather_heat_air_quality_alert` |
+| `binary_sensor.noaa_{office}_weather_noaa_{office}_active_alerts` | `binary_sensor.noaa_{office}_weather_active_alerts` |
+
+**Existing installations keep their current entity IDs and nothing breaks.** The `unique_id` values are unchanged, so Home Assistant's entity registry holds on to whatever ID it already assigned — your automations and dashboard cards keep working untouched. What does change is the displayed friendly name, which loses the stutter (for example "NOAA ILM Surf NOAA ILM Unsafe to Swim" becomes "NOAA ILM Surf Unsafe to Swim").
+
+Only fresh installations get the shorter entity IDs. If you would like an existing installation to match, rename the entities yourself in **Settings → Devices & Services → Entities**, then update any automations that reference the old IDs.
+
 ## Example Automations
 
 ### Binary Sensor Triggers for Safety Alerts
@@ -327,7 +362,7 @@ automation:
     description: "Alert when rip current conditions become dangerous"
     trigger:
       platform: state
-      entity_id: binary_sensor.noaa_ilm_unsafe_to_swim
+      entity_id: binary_sensor.noaa_ilm_surf_unsafe_to_swim
       to: 'on'
     action:
       - service: notify.mobile_app
@@ -348,20 +383,20 @@ automation:
     description: "Immediate notification for severe weather warnings"
     trigger:
       platform: state
-      entity_id: binary_sensor.noaa_ilm_severe_weather_alert
+      entity_id: binary_sensor.noaa_ilm_weather_severe_weather_alert
       to: 'on'
     action:
       - service: notify.mobile_app
         data:
-          title: "⚠️ {{ state_attr('binary_sensor.noaa_ilm_active_alerts','alerts')[0].event }}"
-          message: "{{ state_attr('binary_sensor.noaa_ilm_active_alerts','alerts')[0].description | replace('\r\n',' ') }}"
+          title: "⚠️ {{ state_attr('binary_sensor.noaa_ilm_weather_active_alerts','alerts')[0].event }}"
+          message: "{{ state_attr('binary_sensor.noaa_ilm_weather_active_alerts','alerts')[0].description | replace('\r\n',' ') }}"
           data:
             priority: high
             notification_icon: mdi:weather-lightning-rainy
       - service: tts.google_translate_say
         data:
           entity_id: media_player.home_speaker
-          message: "{{ state_attr('binary_sensor.noaa_ilm_active_alerts','alerts')[0].description | replace('\r\n',' ') }}"
+          message: "{{ state_attr('binary_sensor.noaa_ilm_weather_active_alerts','alerts')[0].description | replace('\r\n',' ') }}"
 ```
 
 #### Winter Storm Alert with Light Flash
@@ -371,7 +406,7 @@ automation:
     description: "Visual and mobile notification for winter weather"
     trigger:
       platform: state
-      entity_id: binary_sensor.noaa_ilm_flood_winter_alert
+      entity_id: binary_sensor.noaa_ilm_weather_flood_winter_alert
       to: 'on'
     action:
       - service: notify.mobile_app
@@ -395,7 +430,7 @@ automation:
     description: "Auto-adjust cooling when heat advisory is active"
     trigger:
       platform: state
-      entity_id: binary_sensor.noaa_ilm_heat_air_quality_alert
+      entity_id: binary_sensor.noaa_ilm_weather_heat_air_quality_alert
       to: 'on'
     action:
       - service: notify.mobile_app
@@ -458,6 +493,62 @@ automation:
             notification_icon: mdi:solar-power
 ```
 
+#### Meteor Shower Tonight
+```yaml
+automation:
+  - alias: "Meteor Shower Tonight"
+    description: "Notify in the early evening when a shower is worth staying up for"
+    trigger:
+      - platform: time
+        at: "19:00:00"
+    condition:
+      - condition: state
+        entity_id: binary_sensor.noaa_ilm_space_meteor_shower_active
+        state: "on"
+    action:
+      - service: notify.mobile_app
+        data:
+          title: >
+            ☄️ {{ state_attr('binary_sensor.noaa_ilm_space_meteor_shower_active', 'shower') }} tonight
+          message: >
+            Up to {{ state_attr('binary_sensor.noaa_ilm_space_meteor_shower_active', 'expected_per_hour') }}
+            meteors/hour. Best viewing
+            {{ state_attr('binary_sensor.noaa_ilm_space_meteor_shower_active', 'best_window_start') | as_timestamp | timestamp_custom('%-I:%M %p') }}
+            to
+            {{ state_attr('binary_sensor.noaa_ilm_space_meteor_shower_active', 'best_window_end') | as_timestamp | timestamp_custom('%-I:%M %p') }}.
+            Conditions: {{ state_attr('binary_sensor.noaa_ilm_space_meteor_shower_active', 'rating') }}.
+          data:
+            notification_icon: mdi:meteor
+```
+
+#### Wake Me for the Peak
+```yaml
+automation:
+  - alias: "Meteor Shower Peak Reminder"
+    description: "Alert the evening before a major shower peaks"
+    trigger:
+      - platform: time
+        at: "20:00:00"
+    condition:
+      - condition: numeric_state
+        entity_id: sensor.noaa_ilm_space_next_meteor_shower
+        attribute: days_until
+        below: 1.5
+      - condition: numeric_state
+        entity_id: sensor.noaa_ilm_space_next_meteor_shower
+        attribute: zhr_max
+        above: 20
+    action:
+      - service: notify.mobile_app
+        data:
+          title: "☄️ {{ states('sensor.noaa_ilm_space_next_meteor_shower') }} peaks soon"
+          message: >
+            Peak: {{ state_attr('sensor.noaa_ilm_space_next_meteor_shower', 'peak_local') }}
+            — up to {{ state_attr('sensor.noaa_ilm_space_next_meteor_shower', 'zhr_max') }} meteors/hour
+            under ideal conditions. Radiant in
+            {{ state_attr('sensor.noaa_ilm_space_next_meteor_shower', 'constellation') }}.
+```
+
 ### Multi-Condition Automation with Grouping Logic
 
 #### Safe Beach Day Notification
@@ -470,7 +561,7 @@ automation:
         at: "08:00:00"
     condition:
       - condition: state
-        entity_id: binary_sensor.noaa_ilm_unsafe_to_swim
+        entity_id: binary_sensor.noaa_ilm_surf_unsafe_to_swim
         state: 'off'
       - condition: numeric_state
         entity_id: sensor.noaa_ilm_temperature
@@ -479,7 +570,7 @@ automation:
         entity_id: sensor.noaa_ilm_wind_speed
         below: 15
       - condition: state
-        entity_id: binary_sensor.noaa_ilm_active_alerts
+        entity_id: binary_sensor.noaa_ilm_weather_active_alerts
         state: 'off'
     action:
       - service: notify.mobile_app
@@ -505,8 +596,8 @@ automation:
     trigger:
       - platform: state
         entity_id: 
-          - binary_sensor.noaa_ilm_severe_weather_alert
-          - binary_sensor.noaa_ilm_flood_winter_alert
+          - binary_sensor.noaa_ilm_weather_severe_weather_alert
+          - binary_sensor.noaa_ilm_weather_flood_winter_alert
         to: 'on'
     action:
       # Close automated blinds/shades
@@ -557,7 +648,7 @@ script:
             feels like {{ states('sensor.noaa_ilm_feels_like') }} degrees.
             {{ states('sensor.noaa_ilm_sky_conditions') }} skies.
             Wind {{ states('sensor.noaa_ilm_wind_speed') }} miles per hour from the {{ states('sensor.noaa_ilm_wind_direction') }}.
-            {% if is_state('binary_sensor.noaa_ilm_active_alerts', 'on') %}
+            {% if is_state('binary_sensor.noaa_ilm_weather_active_alerts', 'on') %}
               Alert: {{ state_attr('sensor.noaa_weather_active_nws_alerts', 'total_alerts') }} weather alerts are currently active.
             {% endif %}
 ```
@@ -628,16 +719,16 @@ entities:
     name: "Active Alerts"
     icon: mdi:alert-circle
   - type: divider
-  - entity: binary_sensor.noaa_ilm_severe_weather_alert
+  - entity: binary_sensor.noaa_ilm_weather_severe_weather_alert
     name: "Severe Weather"
     icon: mdi:weather-lightning
-  - entity: binary_sensor.noaa_ilm_flood_winter_alert
+  - entity: binary_sensor.noaa_ilm_weather_flood_winter_alert
     name: "Flood/Winter"
     icon: mdi:weather-snowy-rainy
-  - entity: binary_sensor.noaa_ilm_heat_air_quality_alert
+  - entity: binary_sensor.noaa_ilm_weather_heat_air_quality_alert
     name: "Heat/Air Quality"
     icon: mdi:sun-thermometer
-  - entity: binary_sensor.noaa_ilm_active_alerts
+  - entity: binary_sensor.noaa_ilm_weather_active_alerts
     name: "Any Active Alerts"
     icon: mdi:bell-alert
 ```
@@ -651,7 +742,7 @@ entities:
   - entity: sensor.noaa_ilm_rip_current_risk
     name: "Rip Current Risk"
     icon: mdi:waves
-  - entity: binary_sensor.noaa_ilm_unsafe_to_swim
+  - entity: binary_sensor.noaa_ilm_surf_unsafe_to_swim
     name: "Safe to Swim"
     icon: mdi:swim
   - entity: sensor.noaa_ilm_surf_height
@@ -714,6 +805,65 @@ cards:
       }} </span><br> {{
       state_attr('sensor.noaa_ilm_weather_extended_forecast','periods')[2].detailed_forecast
       }} </div></div>
+```
+
+#### Meteor Shower Card (NOAA Space Group)
+```yaml
+type: entities
+title: ☄️ Meteor Showers
+show_header_toggle: false
+entities:
+  - entity: binary_sensor.noaa_ilm_space_meteor_shower_active
+    name: Worth Going Outside
+  - entity: sensor.noaa_ilm_space_meteor_shower_activity
+    name: Active Now
+  - entity: sensor.noaa_ilm_space_meteor_viewing_score
+    name: Viewing Score
+  - type: attribute
+    entity: sensor.noaa_ilm_space_meteor_viewing_score
+    attribute: rating
+    name: Conditions
+  - type: attribute
+    entity: sensor.noaa_ilm_space_meteor_viewing_score
+    attribute: expected_per_hour
+    name: Expected Meteors/Hour
+  - type: attribute
+    entity: sensor.noaa_ilm_space_meteor_viewing_score
+    attribute: limiting_factor
+    name: Limited By
+  - type: divider
+  - type: attribute
+    entity: sensor.noaa_ilm_space_meteor_viewing_score
+    attribute: best_window_start
+    name: Best Viewing From
+  - type: attribute
+    entity: sensor.noaa_ilm_space_meteor_viewing_score
+    attribute: best_window_end
+    name: Best Viewing Until
+  - type: attribute
+    entity: sensor.noaa_ilm_space_meteor_viewing_score
+    attribute: moon_illumination
+    name: Moon Illumination
+    suffix: "%"
+  - type: divider
+  - entity: sensor.noaa_ilm_space_next_meteor_shower
+    name: Next Shower
+  - type: attribute
+    entity: sensor.noaa_ilm_space_next_meteor_shower
+    attribute: days_until
+    name: Days Away
+```
+
+To list the upcoming showers, read the `upcoming` attribute with a markdown card:
+
+```yaml
+type: markdown
+title: ☄️ Upcoming Meteor Showers
+content: |
+  {% for s in state_attr('sensor.noaa_ilm_space_next_meteor_shower', 'upcoming') %}
+  **{{ s.name }}** — {{ s.peak_local | as_timestamp | timestamp_custom('%b %-d') }}
+  ({{ s.days_until | round(0) | int }} days), up to {{ s.zhr_max }}/hr in {{ s.constellation }}
+  {% endfor %}
 ```
 
 #### Space Weather Card (NOAA Space Group)
@@ -785,7 +935,7 @@ cards:
       
       - type: conditional
         conditions:
-          - entity: binary_sensor.noaa_ilm_weather_unsafe_to_swim
+          - entity: binary_sensor.noaa_ilm_surf_unsafe_to_swim
             state: 'on'
         card:
           type: markdown
@@ -871,11 +1021,11 @@ entities:
     name: "Wind"
   - entity: sensor.noaa_surf_surf_height
     name: "Surf"
-  - entity: binary_sensor.noaa_ilm_unsafe_to_swim
+  - entity: binary_sensor.noaa_ilm_surf_unsafe_to_swim
     name: "Safe Swim"
   - entity: sensor.noaa_ilm_space_planetary_k_index_rating
     name: "Kp Index"
-  - entity: binary_sensor.noaa_ilm_active_alerts
+  - entity: binary_sensor.noaa_ilm_weather_active_alerts
     name: "Alerts"
   - entity: sensor.noaa_weather_hurricane_activity
     name: "Hurricanes"
@@ -982,6 +1132,14 @@ A: Please open an issue on [GitHub](https://github.com/dawg-io/noaa_it_all/issue
   - Aurora visibility forecasts and geomagnetic storm data
   - Solar radiation storm alerts and classification (S1-S5 scale)
   - Real-time space weather alert monitoring
+- **Meteor Showers**: bundled catalog, computed locally — **not** a NOAA feed
+  - NOAA/NWS publish no meteor shower data of any kind: the NWS alert taxonomy covers terrestrial
+    hazards, and the Space Weather Prediction Center covers geomagnetic activity, not meteors
+  - Shower parameters come from the IMO Meteor Shower Calendar and the IAU Meteor Data Center
+    working list, stored by **solar longitude** rather than by date
+  - Peak times, radiant altitudes, moon phase and astronomical darkness are all computed on your
+    machine using standard positional astronomy — no API call, no API key, no extra dependency,
+    and it works with no internet connection at all
 - **Hurricane Data**: National Hurricane Center (NHC) and National Weather Service (NWS)
 - **NWS Active Alerts**: National Weather Service weather.gov API
   - Location-specific severe weather warnings and watches
@@ -993,7 +1151,11 @@ A: Please open an issue on [GitHub](https://github.com/dawg-io/noaa_it_all/issue
   - Automatic unit conversions to US customary units
 
 ## Update Frequency
-All sensors update every 5 minutes to provide current conditions while respecting API rate limits.
+Most sensors update every 10 minutes to provide current conditions while respecting API rate limits.
+
+Meteor shower entities update every 30 minutes. They fetch nothing, so there is no rate limit to
+respect — but the best-of-night result is stable for hours, so a slower cadence keeps the recorder
+database smaller for no loss of accuracy.
 
 **Note:** Legacy YAML configurations without lat/lon will continue to work but will use the fallback office-to-station mapping for weather data. Config Flow setups require the new fields.
 

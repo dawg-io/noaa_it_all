@@ -333,6 +333,26 @@ SOLAR_RADIATION_STORM_SCALES = {
     }
 }
 
+# Meteor shower forecast tuning.
+#
+# Unlike every other data domain here, meteor showers need no feed: Earth crosses the same debris
+# streams at the same solar longitude every year, so the bundled catalog in meteor_catalog.py is
+# computed locally rather than polled. NOAA/NWS publish no meteor data of any kind — their alert
+# taxonomy is terrestrial hazards, and SWPC covers geomagnetic activity, not meteors.
+
+# How often to recompute the forecast, in minutes. Longer than DEFAULT_SCAN_INTERVAL because
+# nothing is being fetched and the best-of-night result is stable for hours.
+METEOR_SCAN_INTERVAL = 30
+
+# How many upcoming showers to expose for dashboard cards.
+METEOR_UPCOMING_COUNT = 5
+
+# Thresholds for the "meteor shower active" binary sensor. With ~30 showers catalogued something
+# is technically active most nights, so a bare activity flag would sit permanently on and be
+# useless as an automation trigger. Requiring a real predicted rate keeps it meaningful.
+METEOR_ACTIVE_MIN_RATE = 5      # predicted meteors/hour at the best moment of the night
+METEOR_ACTIVE_MIN_SCORE = 25    # viewing score out of 100
+
 # Solar Radiation Storm alert keywords for filtering NOAA alerts
 SOLAR_RADIATION_KEYWORDS = [
     "solar radiation",

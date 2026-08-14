@@ -1,7 +1,7 @@
 {
     "name": "NOAA It All",
     "content_in_root": false,
-	"country": "US",
+    "country": "US",
     "render_readme": true,
     "homeassistant": "2026.3.0",
     "zip_release": false
