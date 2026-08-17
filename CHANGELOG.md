@@ -5,7 +5,41 @@ All notable changes to NOAA It All for Home Assistant will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.5.0] - Current
+## [0.5.1] - Current
+
+### Fixed
+- **The Configure screen no longer fails with a 500.** `NOAAOptionsFlow.__init__` assigned
+  `self.config_entry`, but Home Assistant made `OptionsFlow.config_entry` a read-only property that
+  the framework populates itself, so opening options raised
+  `AttributeError: property 'config_entry' of 'NOAAOptionsFlow' object has no setter`. The options
+  flow now takes no constructor argument and reads the entry through the inherited property.
+- **Saved options are now actually used.** The options flow writes to `config_entry.options`, but
+  every runtime read used `config_entry.data`, so changing the location saved without error and
+  then had no effect on any entity. `__init__.py`, `sensor.py`, `binary_sensor.py`, `weather.py`
+  and `image.py` now resolve their configuration through the new
+  `entry_config.resolve_entry_config()` helper, which lets saved options override the values
+  entered at initial setup and falls back to those values per key.
+- **Changing the location takes effect without restarting Home Assistant.** Nothing reloaded the
+  config entry when its options changed, and the coordinators capture the office code and
+  coordinates at construction with no way to re-point them — so even a correct read still needed a
+  restart. The entry now registers an update listener that reloads it, rebuilding the coordinators
+  against the new location.
+- The options form pre-fills from the location currently in effect rather than from the original
+  setup values, so reopening Configure after a save no longer shows stale coordinates.
+
+### Notes
+- Changing the **forecast office** rewrites entity IDs, which are derived from the office code, so
+  the previous office's entities are left behind for manual cleanup. The config entry's title and
+  `unique_id` also still reflect the office and coordinates chosen at initial setup, because
+  options are stored separately from entry data. Migrating this flow to Home Assistant's
+  `async_step_reconfigure` would address both and is tracked separately.
+- The test suite's fake `OptionsFlow` now exposes `config_entry` as a getter-only property,
+  matching real Home Assistant. The previous permissive stub is why CI stayed green on a crash that
+  reproduced on every supported install.
+
+Reported by @JoeOster in [dawg-io/noaa_it_all#21](https://github.com/dawg-io/noaa_it_all/issues/21).
+
+## [0.5.0]
 
 ### Added
 - **Meteor shower alerts and viewing forecast**, in the `NOAA Space` device group:

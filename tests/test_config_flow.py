@@ -30,7 +30,12 @@ _ha_config_entries.ConfigFlow = type("ConfigFlow", (), {
     "async_create_entry": lambda self, **kw: {"type": "create_entry", **kw},
     "async_show_form": lambda self, **kw: {"type": "form", **kw},
 })
+# Mirror real Home Assistant: OptionsFlow.config_entry is a read-only property
+# that the framework populates itself, so assigning to it must raise
+# AttributeError. A permissive stub here is what let the crash in issue #21
+# ship — keep this getter-only.
 _ha_config_entries.OptionsFlow = type("OptionsFlow", (), {
+    "config_entry": property(lambda self: self._config_entry),
     "async_create_entry": lambda self, **kw: {"type": "create_entry", **kw},
     "async_show_form": lambda self, **kw: {"type": "form", **kw},
 })
@@ -152,6 +157,25 @@ def _make_hass(lat=None, lon=None):
     hass.config.latitude = lat
     hass.config.longitude = lon
     return hass
+
+
+def _reset_recorded_defaults():
+    """Forget vol.Required(...) calls recorded by earlier tests."""
+    _MOCK_MODULES["voluptuous"].Required.reset_mock()
+
+
+def _recorded_defaults():
+    """Return {field: default} from the vol.Required(...) calls since the reset.
+
+    voluptuous is a MagicMock here, so schema defaults cannot be read back off
+    the schema object — but the calls that built it are recorded.
+    """
+    vol = _MOCK_MODULES["voluptuous"]
+    return {
+        call.args[0]: call.kwargs.get("default")
+        for call in vol.Required.call_args_list
+        if call.args
+    }
 
 
 class TestAsyncStepUser(unittest.TestCase):
@@ -393,11 +417,16 @@ class TestHaversineAndOfficeLookup(unittest.TestCase):
 class TestAsyncStepInit(unittest.TestCase):
     """Exercise NOAAOptionsFlow.async_step_init with valid/invalid inputs."""
 
-    def _make_flow(self):
+    def _make_flow(self, options=None):
         from noaa_it_all.config_flow import NOAAOptionsFlow
         entry = MagicMock()
         entry.data = {"office_code": "SGX", "latitude": 32.0, "longitude": -117.0}
-        flow = NOAAOptionsFlow(entry)
+        # Must be a real mapping — resolve_entry_config() unpacks it, and a bare
+        # MagicMock attribute is truthy but not mappable.
+        entry.options = {} if options is None else options
+        flow = NOAAOptionsFlow()
+        # Real Home Assistant populates the read-only config_entry property.
+        flow._config_entry = entry
         flow.hass = None
         return flow
 
@@ -409,9 +438,47 @@ class TestAsyncStepInit(unittest.TestCase):
 
     def test_no_input_prefills_existing_coords(self):
         flow = self._make_flow()
+        _reset_recorded_defaults()
         _run(flow.async_step_init(user_input=None))
-        # We can't easily inspect schema defaults via our MagicMock voluptuous,
-        # but we can confirm the form did not error.
+        defaults = _recorded_defaults()
+        self.assertAlmostEqual(defaults["latitude"], 32.0)
+        self.assertAlmostEqual(defaults["longitude"], -117.0)
+
+    def test_prefill_prefers_saved_options_over_setup_data(self):
+        flow = self._make_flow(options={"latitude": 34.2257, "longitude": -77.9447})
+        _reset_recorded_defaults()
+        _run(flow.async_step_init(user_input=None))
+        defaults = _recorded_defaults()
+        self.assertAlmostEqual(defaults["latitude"], 34.2257)
+        self.assertAlmostEqual(defaults["longitude"], -77.9447)
+
+    def test_prefill_falls_back_to_data_for_keys_absent_from_options(self):
+        flow = self._make_flow(options={"latitude": 34.2257})
+        _reset_recorded_defaults()
+        _run(flow.async_step_init(user_input=None))
+        defaults = _recorded_defaults()
+        self.assertAlmostEqual(defaults["latitude"], 34.2257)
+        self.assertAlmostEqual(defaults["longitude"], -117.0)
+
+    def test_office_default_prefers_saved_option(self):
+        # ILM (Wilmington, NC) sits within the nearby radius of these coords, so
+        # a saved office_code option should survive as the dropdown default.
+        flow = self._make_flow(options={"office_code": "ILM"})
+        _reset_recorded_defaults()
+        _run(flow.async_step_init(user_input={
+            "latitude": 34.2257,
+            "longitude": -77.9447,
+        }))
+        self.assertEqual(_recorded_defaults()["office_code"], "ILM")
+
+    def test_office_default_ignores_saved_option_that_is_not_nearby(self):
+        flow = self._make_flow(options={"office_code": "GUM"})
+        _reset_recorded_defaults()
+        _run(flow.async_step_init(user_input={
+            "latitude": 34.2257,
+            "longitude": -77.9447,
+        }))
+        self.assertNotEqual(_recorded_defaults()["office_code"], "GUM")
 
     def test_valid_input_advances_to_office_step(self):
         flow = self._make_flow()
@@ -473,6 +540,38 @@ class TestAsyncStepInit(unittest.TestCase):
             "longitude": -180.0,
         }))
         self.assertEqual(result["step_id"], "office")
+
+
+class TestOptionsFlowConfigEntry(unittest.TestCase):
+    """Guard the crash from issue #21 (dawg-io/noaa_it_all).
+
+    Home Assistant made OptionsFlow.config_entry a read-only property, so the
+    old-style `self.config_entry = config_entry` in __init__ raised
+    AttributeError and the Configure screen failed with a 500.
+    """
+
+    def test_config_entry_cannot_be_assigned(self):
+        from noaa_it_all.config_flow import NOAAOptionsFlow
+        flow = NOAAOptionsFlow()
+        with self.assertRaises(AttributeError):
+            flow.config_entry = MagicMock()
+
+    def test_init_takes_no_config_entry(self):
+        from noaa_it_all.config_flow import NOAAOptionsFlow
+        with self.assertRaises(TypeError):
+            NOAAOptionsFlow(MagicMock())
+
+    def test_config_entry_reads_through_base_class_property(self):
+        from noaa_it_all.config_flow import NOAAOptionsFlow
+        entry = MagicMock()
+        flow = NOAAOptionsFlow()
+        flow._config_entry = entry
+        self.assertIs(flow.config_entry, entry)
+
+    def test_async_get_options_flow_returns_options_flow(self):
+        from noaa_it_all.config_flow import NOAAConfigFlow, NOAAOptionsFlow
+        flow = NOAAConfigFlow.async_get_options_flow(MagicMock())
+        self.assertIsInstance(flow, NOAAOptionsFlow)
 
 
 if __name__ == "__main__":

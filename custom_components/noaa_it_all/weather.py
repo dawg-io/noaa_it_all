@@ -27,6 +27,7 @@ from .const import (
     CONF_LONGITUDE,
     DOMAIN,
 )
+from .entry_config import resolve_entry_config
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -37,9 +38,10 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up NOAA weather entity from config entry."""
-    office_code = config_entry.data[CONF_OFFICE_CODE]
-    latitude = config_entry.data.get(CONF_LATITUDE)
-    longitude = config_entry.data.get(CONF_LONGITUDE)
+    conf = resolve_entry_config(config_entry)
+    office_code = conf[CONF_OFFICE_CODE]
+    latitude = conf.get(CONF_LATITUDE)
+    longitude = conf.get(CONF_LONGITUDE)
 
     if latitude is None or longitude is None:
         _LOGGER.error("Weather entity requires latitude and longitude")
