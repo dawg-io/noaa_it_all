@@ -15,6 +15,7 @@ from .const import (
     CONF_OFFICE_CODE, CONF_LATITUDE, CONF_LONGITUDE, DOMAIN,
     HURRICANE_SENSORS_ADDED_KEY,
 )
+from .entry_config import resolve_entry_config
 
 # Re-export every sensor class so that existing code that imports
 # directly from ``sensor`` continues to work.
@@ -73,9 +74,10 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up NOAA sensors from config entry."""
-    office_code = config_entry.data[CONF_OFFICE_CODE]
-    latitude = config_entry.data.get(CONF_LATITUDE)
-    longitude = config_entry.data.get(CONF_LONGITUDE)
+    conf = resolve_entry_config(config_entry)
+    office_code = conf[CONF_OFFICE_CODE]
+    latitude = conf.get(CONF_LATITUDE)
+    longitude = conf.get(CONF_LONGITUDE)
 
     data = hass.data[DOMAIN][config_entry.entry_id]
     space_coord = data["space_weather_coordinator"]

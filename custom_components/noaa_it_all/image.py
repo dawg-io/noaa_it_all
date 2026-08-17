@@ -15,6 +15,7 @@ from .const import (
     NWS_RADAR_BASE_URL, NWS_RADAR_LOOP_URL,
     OFFICE_RADAR_SITES, REQUEST_TIMEOUT,
 )
+from .entry_config import resolve_entry_config
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -63,7 +64,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up NOAA image entities from config entry."""
-    office_code = config_entry.data[CONF_OFFICE_CODE]
+    office_code = resolve_entry_config(config_entry)[CONF_OFFICE_CODE]
 
     # Global image entities (grouped under office device)
     geoelectric_image_entity = GeoelectricFieldImageEntity(hass, office_code)

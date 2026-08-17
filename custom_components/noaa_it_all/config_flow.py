@@ -14,6 +14,7 @@ from .const import (
     CONF_OFFICE_CODE,
     OFFICE_COORDINATES,
 )
+from .entry_config import resolve_entry_config
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -232,15 +233,19 @@ class NOAAConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     @callback
     def async_get_options_flow(config_entry):
         """Create the options flow."""
-        return NOAAOptionsFlow(config_entry)
+        return NOAAOptionsFlow()
 
 
 class NOAAOptionsFlow(config_entries.OptionsFlow):
     """NOAA config flow options handler."""
 
-    def __init__(self, config_entry):
-        """Initialize NOAA options flow."""
-        self.config_entry = config_entry
+    def __init__(self):
+        """Initialize transient state for the multi-step flow.
+
+        ``self.config_entry`` is deliberately not assigned here: it is a
+        read-only property supplied by the OptionsFlow base class, and
+        assigning to it raises AttributeError on current Home Assistant.
+        """
         self._latitude = None
         self._longitude = None
 
@@ -264,8 +269,11 @@ class NOAAOptionsFlow(config_entries.OptionsFlow):
                 return await self.async_step_office()
 
         # Prefer the previously configured value, then HA Home, then 0.0.
-        existing_lat = self.config_entry.data.get(CONF_LATITUDE)
-        existing_lon = self.config_entry.data.get(CONF_LONGITUDE)
+        # Options win over setup data so the form shows what is in effect now,
+        # not whatever was entered at initial setup.
+        existing = resolve_entry_config(self.config_entry)
+        existing_lat = existing.get(CONF_LATITUDE)
+        existing_lon = existing.get(CONF_LONGITUDE)
         default_lat = (
             existing_lat if existing_lat is not None
             else ha_lat if ha_lat is not None
@@ -298,7 +306,7 @@ class NOAAOptionsFlow(config_entries.OptionsFlow):
             self._latitude, self._longitude
         )
         # Prefer the existing office_code if it's still a valid candidate.
-        existing_code = self.config_entry.data.get(CONF_OFFICE_CODE)
+        existing_code = resolve_entry_config(self.config_entry).get(CONF_OFFICE_CODE)
         if existing_code in options:
             default_code = existing_code
 

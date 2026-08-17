@@ -12,6 +12,7 @@ from .const import (
     HURRICANE_IMAGES_ADDED_KEY, HURRICANE_SENSORS_ADDED_KEY,
     OFFICE_RADAR_SITES, OFFICE_TIDE_STATIONS, OFFICE_BUOY_STATIONS,
 )
+from .entry_config import resolve_entry_config
 from .coordinator import (
     SpaceWeatherCoordinator,
     HurricaneCoordinator,
@@ -45,14 +46,15 @@ async def async_setup(hass: HomeAssistant, config: dict):
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up NOAA Integration from a config entry."""
-    _LOGGER.info("Setting up NOAA integration for %s", entry.data.get("office_code"))
-
     hass.data.setdefault(DOMAIN, {})
     domain_data = hass.data[DOMAIN]
 
-    office_code = entry.data[CONF_OFFICE_CODE]
-    latitude = entry.data.get(CONF_LATITUDE)
-    longitude = entry.data.get(CONF_LONGITUDE)
+    conf = resolve_entry_config(entry)
+    office_code = conf[CONF_OFFICE_CODE]
+    latitude = conf.get(CONF_LATITUDE)
+    longitude = conf.get(CONF_LONGITUDE)
+
+    _LOGGER.info("Setting up NOAA integration for %s", office_code)
 
     # ---- Create coordinators ----
 
@@ -133,7 +135,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     # ---- Store everything for platform setup ----
     hass.data[DOMAIN][entry.entry_id] = {
-        "config": entry.data,
+        "config": conf,
         "space_weather_coordinator": space_weather_coord,
         "hurricane_coordinator": hurricane_coord,
         "surf_coordinator": surf_coord,
@@ -146,10 +148,22 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         "meteor_coordinator": meteor_coord,
     }
 
+    # Reload the entry whenever its options change. The coordinators capture
+    # office_code/latitude/longitude at construction and offer no way to update
+    # them afterwards, so a full reload is what makes a saved option take
+    # effect. Registered via async_on_unload so the reload itself re-registers
+    # it rather than stacking listeners.
+    entry.async_on_unload(entry.add_update_listener(_async_update_listener))
+
     # Load all platforms for the configured location
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     return True
+
+
+async def _async_update_listener(hass: HomeAssistant, entry: ConfigEntry):
+    """Reload the entry so changed options are picked up by the coordinators."""
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):

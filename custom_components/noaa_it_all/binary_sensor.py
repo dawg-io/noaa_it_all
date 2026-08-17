@@ -13,6 +13,7 @@ from .const import (
     CONF_OFFICE_CODE, CONF_LATITUDE, CONF_LONGITUDE, DOMAIN,
     METEOR_ACTIVE_MIN_RATE, METEOR_ACTIVE_MIN_SCORE,
 )
+from .entry_config import resolve_entry_config
 from .sensors.meteor_showers import space_device_info
 
 _LOGGER = logging.getLogger(__name__)
@@ -30,9 +31,10 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up NOAA binary sensors from config entry."""
-    office_code = config_entry.data[CONF_OFFICE_CODE]
-    latitude = config_entry.data.get(CONF_LATITUDE)
-    longitude = config_entry.data.get(CONF_LONGITUDE)
+    conf = resolve_entry_config(config_entry)
+    office_code = conf[CONF_OFFICE_CODE]
+    latitude = conf.get(CONF_LATITUDE)
+    longitude = conf.get(CONF_LONGITUDE)
 
     data = hass.data[DOMAIN][config_entry.entry_id]
     surf_coord = data["surf_coordinator"]
