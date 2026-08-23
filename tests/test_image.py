@@ -1,5 +1,6 @@
 """Tests for image.py entity properties using mocked HA modules."""
 
+import asyncio
 import os
 import sys
 import unittest
@@ -70,6 +71,25 @@ def tearDownModule():
 
 OFFICE = "SGX"
 HASS = MagicMock()
+
+
+def _run(coro):
+    """Run a coroutine on a private loop, leaving the ambient one intact.
+
+    ``asyncio.run()`` clears the thread's current event loop when it returns,
+    which breaks other test modules that reach for ``get_event_loop()``.
+    """
+    previous = None
+    try:
+        previous = asyncio.get_event_loop_policy().get_event_loop()
+    except RuntimeError:
+        pass
+    loop = asyncio.new_event_loop()
+    try:
+        return loop.run_until_complete(coro)
+    finally:
+        loop.close()
+        asyncio.set_event_loop(previous)
 
 
 class TestGeoelectricFieldImageEntity(unittest.TestCase):
@@ -410,6 +430,92 @@ class TestTwoOfficeSetup(unittest.TestCase):
         self.assertEqual(entity.name, "Radar Base Reflectivity")
         self.assertNotIn("ILM", entity.name)
         self.assertNotIn("NOAA Weather", entity.name)
+
+
+class TestAsyncUpdateBeforeAdd(unittest.TestCase):
+    """Regression tests for the startup ``NoEntitySpecifiedError`` errors.
+
+    ``async_setup_entry`` calls ``async_add_entities(entities, True)``, so
+    Home Assistant awaits ``async_update()`` *before* the entity is added and
+    therefore before ``entity_id`` is assigned.  Any ``async_write_ha_state()``
+    call inside ``async_update()`` raises ``NoEntitySpecifiedError`` at that
+    point, which the broad ``except Exception`` turns into an error log line
+    on every startup (and on every update, for entities disabled in the
+    registry, which are never added at all).
+
+    The explicit write is redundant anyway: Home Assistant writes the state
+    itself exactly once, in ``add_to_platform_finish()`` after the entity is
+    added. (Image entities are never polled -- upstream ``ImageEntity`` sets
+    ``_attr_should_poll = False`` -- so the pre-add call is the only time
+    ``async_update()`` runs at all.)
+    """
+
+    def _all_entities(self):
+        from noaa_it_all.image import (
+            AuroraForecastImageEntity,
+            GOESAirMassImageEntity,
+            GOESGeoColorImageEntity,
+            GeoelectricFieldImageEntity,
+            HurricaneOutlookImageEntity,
+            RadarBaseReflectivityImageEntity,
+            RadarLoopImageEntity,
+        )
+        return [
+            GeoelectricFieldImageEntity(HASS, OFFICE),
+            AuroraForecastImageEntity(HASS, OFFICE),
+            HurricaneOutlookImageEntity(HASS),
+            RadarBaseReflectivityImageEntity(HASS, OFFICE, "KNKX"),
+            RadarLoopImageEntity(HASS, OFFICE, "KNKX"),
+            GOESAirMassImageEntity(HASS),
+            GOESGeoColorImageEntity(HASS),
+        ]
+
+    def test_update_before_add_logs_no_error(self):
+        """async_update() must not error when entity_id is not yet assigned."""
+        class _NoEntitySpecifiedError(Exception):
+            pass
+
+        for entity in self._all_entities():
+            with self.subTest(entity=entity.__class__.__name__):
+                def _raise(*args, **kwargs):
+                    raise _NoEntitySpecifiedError(
+                        "No entity id specified for entity"
+                    )
+
+                # Simulate HA's pre-add state: writing state blows up.
+                entity.async_write_ha_state = _raise
+
+                with patch("noaa_it_all.image._LOGGER") as logger:
+                    _run(entity.async_update())
+                    logger.error.assert_not_called()
+
+    def test_update_still_refreshes_the_image_url(self):
+        """Dropping the explicit state write must not stop the URL refreshing."""
+        for entity in self._all_entities():
+            with self.subTest(entity=entity.__class__.__name__):
+                entity._image_url = "https://example.invalid/stale.png"
+                _run(entity.async_update())
+                self.assertNotEqual(
+                    entity._image_url, "https://example.invalid/stale.png"
+                )
+                self.assertIn("?t=", entity._image_url)
+
+    def test_async_update_does_not_write_state(self):
+        """No async_update() may call async_write_ha_state()."""
+        import inspect
+
+        from noaa_it_all import image as image_module
+
+        for entity in self._all_entities():
+            with self.subTest(entity=entity.__class__.__name__):
+                source = inspect.getsource(type(entity).async_update)
+                self.assertNotIn("async_write_ha_state", source)
+
+        # And guard the module as a whole, so a new image entity cannot
+        # reintroduce the pattern.
+        self.assertNotIn(
+            "async_write_ha_state", inspect.getsource(image_module)
+        )
 
 
 if __name__ == "__main__":

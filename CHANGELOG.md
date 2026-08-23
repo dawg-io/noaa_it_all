@@ -5,7 +5,71 @@ All notable changes to NOAA It All for Home Assistant will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.5.1] - Current
+## [0.5.2] - Current
+
+### Fixed
+- **Image entities no longer log an error on every startup.** `image.py` sets up its entities with
+  `async_add_entities(entities, True)`, so Home Assistant calls `async_update()` *before* adding
+  each entity — and `entity_id` is not assigned until after the add. The explicit
+  `self.async_write_ha_state()` inside every image `async_update()` therefore raised
+  `NoEntitySpecifiedError` on that first call, which the surrounding `except Exception` turned into
+  `Error during <image> update: No entity id specified for entity ...` — one line per image entity,
+  every startup. All seven writes are removed. Home Assistant writes the state itself exactly once,
+  in `add_to_platform_finish()` after the entity is added, so the explicit call was redundant then
+  and fatal before then. `update_before_add=True` is kept, so the image URL is resolved as the
+  entity is set up rather than left empty.
+- **Documentation entity IDs now match the entities the integration actually creates.** Every
+  `sensor.`/`binary_sensor.`/`image.`/`weather.` reference in `README.md`, `CONFIGURATION.md` and
+  `info.md` was checked against the 45 entity IDs produced by instantiating the real entity classes.
+  128 references were wrong — most were missing the device-group segment
+  (`sensor.noaa_ilm_temperature` instead of `sensor.noaa_ilm_weather_temperature`), had a phantom
+  one (`sensor.noaa_weather_hurricane_activity` instead of `sensor.noaa_hurricane_activity`), or
+  used a renamed metric (`kp_index` instead of `planetary_k_index`). All examples now use one
+  office code (`ilm`) throughout, so adapting one means changing that single token.
+- **The documented naming rule is now the rule the code follows.** `README.md` claimed "All
+  entities use `_attr_has_entity_name = True`"; three do not. The device table listed a
+  `NOAA Surf` device that does not exist (it is `NOAA {OFFICE} Surf`) and omitted `NOAA Hurricane`;
+  `CONFIGURATION.md`'s pattern omitted the device-group segment entirely. Both documents now carry
+  an **Exceptions to the pattern** table listing the five entity IDs that contain no office code,
+  so a find-and-replace does not corrupt them. The rule itself is stated correctly: Home Assistant
+  prepends the device name whether or not an entity sets `has_entity_name` — that flag only decides
+  whether a redundant device-name prefix is stripped off the entity's own name first
+  (`entity_registry._async_get_full_entity_name`).
+- **Broken copy/paste examples fixed.** `state_attr()` calls naming attributes that do not exist
+  (`total_alerts`, `alert_types`, `office`, `issued_time`, `product_link`) now use the real keys
+  (`alert_count`, `alerts`, `office_code`, `issue_time`); the aurora automation's `condition: sun`
+  with both `after: sunset` and `before: sunrise` — unsatisfiable at every instant, so it never
+  fired — is now a `sun.sun` state condition; wind direction reads its `cardinal_direction`
+  attribute rather than the state, which is degrees; and `notify.mobile_app` is written
+  `notify.mobile_app_your_phone`, since the bare service is never registered.
+- **Update frequency and legacy YAML corrected.** The docs claimed a 5-minute refresh; coordinators
+  run at `DEFAULT_SCAN_INTERVAL = 10` minutes, and meteor sensors at 30. Legacy YAML was documented
+  as providing "global sensors only" — it creates no entities at all and logs an error, which the
+  docs now say.
+
+### Notes
+- The geoelectric and aurora images are `image.noaa_{office}_space_geoelectric_field_image` and
+  `image.noaa_{office}_space_aurora_forecast_image`. An earlier revision of this release documented
+  them without the device prefix, on the mistaken belief that omitting `_attr_has_entity_name`
+  suppressed it. It does not — the device name is always prepended.
+- An image entity **disabled in the entity registry** is never added, so the pre-add update was the
+  only update it ever ran — the error repeated on every update instead of firing once at startup.
+  That is how this surfaced.
+- The remaining `async_write_ha_state()` in `weather.py` is intentional and unaffected: it is the
+  forecast-coordinator listener, registered in `async_added_to_hass()`, so it can only fire after
+  `entity_id` is assigned, and there is no platform-side write behind it.
+- **Image entities are not polled.** Home Assistant's `ImageEntity` sets `_attr_should_poll = False`
+  upstream, and `entity_platform` only arms a polling timer when some entity reports `should_poll`.
+  So `async_update()` runs exactly once and the module-level `SCAN_INTERVAL` in `image.py` has no
+  effect — the cache-busting `?t=` suffix is fixed for the lifetime of the config entry, and each
+  image entity's state stays `unknown` because `_attr_image_last_updated` is never set. This is
+  pre-existing behaviour, unchanged by this release, and is tracked as a follow-up.
+- `tests/test_image.py` now runs `async_update()` on all seven image entities with an
+  `async_write_ha_state` that raises, asserting nothing is logged as an error and that the image URL
+  is still populated, plus a source-level guard so a new image entity cannot reintroduce the
+  pattern.
+
+## [0.5.1]
 
 ### Fixed
 - **The Configure screen no longer fails with a 500.** `NOAAOptionsFlow.__init__` assigned
