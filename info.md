@@ -27,7 +27,7 @@ Comprehensive NOAA data integration providing real-time space weather, hurricane
 - **Hurricane Tracking** - Active alerts, warnings, and satellite imagery
 - **Current Weather** - Temperature, humidity, wind, pressure, visibility, and sky conditions
 - **NWS Alerts** - Severe weather, flood, winter storm, heat, and air quality warnings
-- **Weather Radar** - Real-time radar imagery with timestamp tracking
+- **Weather Radar** - Real-time radar imagery with timestamp tracking, plus an animated loop covering up to 24 hours
 - **Forecast Discussion** - Meteorologist-written technical analysis (AFD product)
 
 ### 🚨 Alert Categories (Location-Specific Binary Sensors)

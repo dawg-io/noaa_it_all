@@ -12,7 +12,10 @@ from .const import (
     CONF_LATITUDE,
     CONF_LONGITUDE,
     CONF_OFFICE_CODE,
+    CONF_RADAR_LOOP_HOURS,
+    DEFAULT_RADAR_LOOP_HOURS,
     OFFICE_COORDINATES,
+    RADAR_LOOP_MAX_HOURS,
 )
 from .entry_config import resolve_entry_config
 
@@ -248,6 +251,7 @@ class NOAAOptionsFlow(config_entries.OptionsFlow):
         """
         self._latitude = None
         self._longitude = None
+        self._office_code = None
 
     async def async_step_init(self, user_input=None):
         """Step 1 of the options flow: latitude / longitude."""
@@ -323,14 +327,8 @@ class NOAAOptionsFlow(config_entries.OptionsFlow):
                     errors={CONF_OFFICE_CODE: "invalid_office"},
                     description_placeholders=self._office_placeholders(no_within_radius),
                 )
-            return self.async_create_entry(
-                title="",
-                data={
-                    CONF_OFFICE_CODE: office_code,
-                    CONF_LATITUDE: self._latitude,
-                    CONF_LONGITUDE: self._longitude,
-                },
-            )
+            self._office_code = office_code
+            return await self.async_step_radar()
 
         return self.async_show_form(
             step_id="office",
@@ -338,6 +336,56 @@ class NOAAOptionsFlow(config_entries.OptionsFlow):
                 vol.Required(CONF_OFFICE_CODE, default=default_code): vol.In(options),
             }),
             description_placeholders=self._office_placeholders(no_within_radius),
+        )
+
+    async def async_step_radar(self, user_input=None):
+        """Step 3 of the options flow: how much radar history to keep.
+
+        NOAA's own animation covers about fifty minutes and cannot be made
+        longer, so anything beyond that is accumulated locally over time.  The
+        value is in hours, and 0 means "just serve NOAA's loop".
+        """
+        errors = {}
+        existing = resolve_entry_config(self.config_entry)
+        default_hours = existing.get(
+            CONF_RADAR_LOOP_HOURS, DEFAULT_RADAR_LOOP_HOURS
+        )
+
+        if user_input is not None:
+            hours = user_input.get(CONF_RADAR_LOOP_HOURS)
+            # Validated here rather than left to the schema alone: the flow
+            # tests mock voluptuous wholesale, so a vol.Range would be a
+            # MagicMock that accepts anything.
+            try:
+                hours = int(hours)
+            except (TypeError, ValueError):
+                hours = None
+            if hours is None or not 0 <= hours <= RADAR_LOOP_MAX_HOURS:
+                errors[CONF_RADAR_LOOP_HOURS] = "invalid_radar_hours"
+            else:
+                # Every key is listed explicitly.  Options replace the stored
+                # mapping wholesale rather than merging into it, so a key left
+                # out here is a key silently dropped on the next options edit.
+                return self.async_create_entry(
+                    title="",
+                    data={
+                        CONF_OFFICE_CODE: self._office_code,
+                        CONF_LATITUDE: self._latitude,
+                        CONF_LONGITUDE: self._longitude,
+                        CONF_RADAR_LOOP_HOURS: hours,
+                    },
+                )
+            default_hours = user_input.get(CONF_RADAR_LOOP_HOURS, default_hours)
+
+        return self.async_show_form(
+            step_id="radar",
+            data_schema=vol.Schema({
+                vol.Required(
+                    CONF_RADAR_LOOP_HOURS, default=default_hours
+                ): vol.All(vol.Coerce(int), vol.Range(min=0, max=RADAR_LOOP_MAX_HOURS)),
+            }),
+            errors=errors,
+            description_placeholders={"max_hours": str(RADAR_LOOP_MAX_HOURS)},
         )
 
     def _office_placeholders(self, no_within_radius):

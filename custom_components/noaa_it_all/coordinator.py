@@ -37,6 +37,17 @@ _LOGGER = logging.getLogger(__name__)
 
 DEFAULT_UPDATE_INTERVAL = timedelta(minutes=DEFAULT_SCAN_INTERVAL)
 
+
+def _describe(err: Exception) -> str:
+    """Render an exception for an UpdateFailed message.
+
+    Several aiohttp errors have an empty ``str()``, which would otherwise
+    reduce the reason to nothing at all.
+    """
+    text = str(err)
+    return f"{type(err).__name__}: {text}" if text else type(err).__name__
+
+
 # Space weather API endpoints
 _DST_URL = "https://services.swpc.noaa.gov/json/geospace/geospace_dst_1_hour.json"
 _KP_INDEX_URL = "https://services.swpc.noaa.gov/json/planetary_k_index_1m.json"
@@ -68,37 +79,31 @@ class SpaceWeatherCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self) -> dict:
         session = async_get_clientsession(self.hass)
         timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+        headers = {"User-Agent": USER_AGENT}
         data: dict = {}
+        errors: list[str] = []
 
-        # --- DST ---
-        try:
-            async with session.get(_DST_URL, timeout=timeout) as resp:
-                resp.raise_for_status()
-                data["dst"] = await resp.json()
-        except Exception as err:
-            _LOGGER.warning("Error fetching DST data: %s", err)
-            data["dst"] = None
-
-        # --- K-index ---
-        try:
-            async with session.get(_KP_INDEX_URL, timeout=timeout) as resp:
-                resp.raise_for_status()
-                data["kp_index"] = await resp.json()
-        except Exception as err:
-            _LOGGER.warning("Error fetching K-index data: %s", err)
-            data["kp_index"] = None
-
-        # --- SWPC alerts ---
-        try:
-            async with session.get(_SPACE_ALERTS_URL, timeout=timeout) as resp:
-                resp.raise_for_status()
-                data["space_alerts"] = await resp.json()
-        except Exception as err:
-            _LOGGER.warning("Error fetching space weather alerts: %s", err)
-            data["space_alerts"] = None
+        endpoints = (
+            ("dst", "DST", _DST_URL),
+            ("kp_index", "K-index", _KP_INDEX_URL),
+            ("space_alerts", "space weather alerts", _SPACE_ALERTS_URL),
+        )
+        for key, label, url in endpoints:
+            try:
+                async with session.get(
+                    url, headers=headers, timeout=timeout
+                ) as resp:
+                    resp.raise_for_status()
+                    data[key] = await resp.json()
+            except Exception as err:
+                _LOGGER.warning("Error fetching %s data: %s", label, err)
+                errors.append(f"{label} ({_describe(err)})")
+                data[key] = None
 
         if all(v is None for v in data.values()):
-            raise UpdateFailed("All space weather API requests failed")
+            raise UpdateFailed(
+                "All space weather API requests failed: " + "; ".join(errors)
+            )
 
         return data
 
@@ -121,30 +126,30 @@ class HurricaneCoordinator(DataUpdateCoordinator):
     async def _async_update_data(self) -> dict:
         session = async_get_clientsession(self.hass)
         timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+        headers = {"User-Agent": USER_AGENT}
         data: dict = {}
+        errors: list[str] = []
 
-        try:
-            async with session.get(
-                _HURRICANE_ALERTS_URL, timeout=timeout
-            ) as resp:
-                resp.raise_for_status()
-                data["alerts"] = await resp.json()
-        except Exception as err:
-            _LOGGER.warning("Error fetching hurricane alerts: %s", err)
-            data["alerts"] = None
-
-        try:
-            async with session.get(
-                _CURRENT_STORMS_URL, timeout=timeout
-            ) as resp:
-                resp.raise_for_status()
-                data["storms"] = await resp.json()
-        except Exception as err:
-            _LOGGER.warning("Error fetching current storms: %s", err)
-            data["storms"] = None
+        endpoints = (
+            ("alerts", "hurricane alerts", _HURRICANE_ALERTS_URL),
+            ("storms", "current storms", _CURRENT_STORMS_URL),
+        )
+        for key, label, url in endpoints:
+            try:
+                async with session.get(
+                    url, headers=headers, timeout=timeout
+                ) as resp:
+                    resp.raise_for_status()
+                    data[key] = await resp.json()
+            except Exception as err:
+                _LOGGER.warning("Error fetching %s: %s", label, err)
+                errors.append(f"{label} ({_describe(err)})")
+                data[key] = None
 
         if all(v is None for v in data.values()):
-            raise UpdateFailed("All hurricane API requests failed")
+            raise UpdateFailed(
+                "All hurricane API requests failed: " + "; ".join(errors)
+            )
 
         return data
 
@@ -299,11 +304,14 @@ class ObservationsCoordinator(DataUpdateCoordinator):
                     )
             self._station_fetched = True
         except Exception as err:
-            _LOGGER.error(
-                "Error resolving station for lat=%s, lon=%s: %s",
+            # Not latched on failure -- see the note in
+            # ForecastCoordinator._resolve_forecast_urls. A transient failure
+            # here would otherwise leave station_id None for good.
+            _LOGGER.warning(
+                "Could not resolve observation station for lat=%s, lon=%s, "
+                "will retry on the next update: %s",
                 self.latitude, self.longitude, err,
             )
-            self._station_fetched = True
 
 
 # -------------------------------------------------------------------
@@ -424,15 +432,20 @@ class ForecastCoordinator(DataUpdateCoordinator):
         self._forecast_url: Optional[str] = None
         self._hourly_forecast_url: Optional[str] = None
         self._urls_fetched: bool = False
+        self._resolve_error: Optional[str] = None
 
     async def _async_update_data(self) -> dict:
         session = async_get_clientsession(self.hass)
         timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
 
         if not self._urls_fetched:
+            self._resolve_error = None
             await self._resolve_forecast_urls(session, timeout)
 
         data: dict = {}
+        errors: list[str] = []
+        if self._resolve_error:
+            errors.append(f"Points API lookup ({self._resolve_error})")
 
         if self._forecast_url:
             try:
@@ -445,6 +458,7 @@ class ForecastCoordinator(DataUpdateCoordinator):
                     data["extended"] = await resp.json()
             except Exception as err:
                 _LOGGER.warning("Error fetching extended forecast: %s", err)
+                errors.append(f"extended forecast ({_describe(err)})")
                 data["extended"] = None
         else:
             data["extended"] = None
@@ -460,12 +474,16 @@ class ForecastCoordinator(DataUpdateCoordinator):
                     data["hourly"] = await resp.json()
             except Exception as err:
                 _LOGGER.warning("Error fetching hourly forecast: %s", err)
+                errors.append(f"hourly forecast ({_describe(err)})")
                 data["hourly"] = None
         else:
             data["hourly"] = None
 
         if all(v is None for v in data.values()):
-            raise UpdateFailed("All forecast API requests failed")
+            raise UpdateFailed(
+                "All forecast API requests failed: "
+                + ("; ".join(errors) if errors else "no forecast URL resolved")
+            )
 
         return data
 
@@ -496,11 +514,18 @@ class ForecastCoordinator(DataUpdateCoordinator):
                 )
             self._urls_fetched = True
         except Exception as err:
-            _LOGGER.error(
-                "Error resolving forecast URLs for lat=%s, lon=%s: %s",
+            # Deliberately leave ``_urls_fetched`` False: latching it here
+            # would retire the Points API lookup permanently, so a single
+            # transient failure would leave both forecast URLs None and every
+            # later refresh would raise "All forecast API requests failed"
+            # until Home Assistant restarted. The coordinator only runs every
+            # 10 minutes, so simply retrying next cycle is the right backoff.
+            self._resolve_error = _describe(err)
+            _LOGGER.warning(
+                "Could not resolve forecast URLs for lat=%s, lon=%s, will "
+                "retry on the next update: %s",
                 self.latitude, self.longitude, err,
             )
-            self._urls_fetched = True
 
 
 # -------------------------------------------------------------------
@@ -579,11 +604,13 @@ class CloudCoverCoordinator(DataUpdateCoordinator):
                 )
             self._grid_fetched = True
         except Exception as err:
-            _LOGGER.error(
-                "Error resolving gridpoint URL for lat=%s, lon=%s: %s",
+            # Not latched on failure -- see the note in
+            # ForecastCoordinator._resolve_forecast_urls.
+            _LOGGER.warning(
+                "Could not resolve gridpoint URL for lat=%s, lon=%s, will "
+                "retry on the next update: %s",
                 self.latitude, self.longitude, err,
             )
-            self._grid_fetched = True
 
 
 # -------------------------------------------------------------------

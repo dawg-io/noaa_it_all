@@ -266,9 +266,21 @@ Visual representations of current conditions:
 
 **NOAA {OFFICE} Weather** (one per configured office):
 - **Radar Base Reflectivity** — Latest NEXRAD base reflectivity radar for your NWS office *(image.noaa_{office}_weather_radar_base_reflectivity)*
-- **Radar Loop** — Animated NEXRAD radar loop *(image.noaa_{office}_weather_radar_loop)*
+- **Radar Loop** — Animated NEXRAD radar loop, covering up to 24 hours *(image.noaa_{office}_weather_radar_loop)*
 
-> **Tip**: Image entities can be displayed on dashboards using the standard `picture-entity` or `picture-glance` cards. Note that image entities are not polled by Home Assistant: their URL is resolved once when the integration loads, so the picture refreshes only when the browser re-fetches it or the config entry is reloaded.
+> **Radar loop history**: NOAA's own radar animation is fixed at ten frames covering roughly 50 minutes, and only those ten frames exist on its server — a longer loop cannot simply be downloaded. So the integration collects one frame per refresh and assembles the animation itself. The window defaults to **24 hours** and is set under **Settings → Devices & Services → NOAA It All → Configure**; set it to `0` to serve NOAA's 50-minute loop unchanged and store nothing.
+>
+> Worth knowing before you turn it up:
+>
+> - **It fills in over time.** A newly configured loop starts at whatever history has been collected so far and reaches its full length after that many hours of uptime. Until there are enough frames, the card shows NOAA's own loop instead, so it is never blank.
+> - **Frames survive restarts.** They are stored under `<config>/noaa_it_all/radar_frames/<RADAR_SITE>/`, so a restart does not send the loop back to the beginning. Budget a few megabytes per radar site; the directory is deleted if you remove the integration.
+> - **The animation is bigger than NOAA's.** A 24-hour loop is sampled down to 72 frames (one every 20 minutes) and plays through in about ten seconds, but it is still a larger file that every open dashboard re-downloads whenever it changes. Shorter windows are proportionally finer: a 6-hour loop keeps one frame per scan.
+>
+> The entity's `loop_mode` attribute reports whether you are looking at a locally built animation (`local`) or NOAA's (`upstream`), alongside `frame_count`, `window_start` and `window_end`.
+
+> **Tip**: Image entities can be displayed on dashboards using the standard `picture-entity` or `picture-glance` cards.
+>
+> Home Assistant fetches each image from NOAA in the background every 10 minutes and serves it to the browser through its own image proxy (`/api/image_proxy/...`), so the dashboard does not talk to NOAA directly. The most recently fetched frame is kept in memory: if NOAA is briefly unreachable the card keeps showing the last good image rather than going blank, and the outage is logged quietly unless it persists. Each entity's state is the timestamp of the image currently being served, so you can alert on an image going stale.
 
 ## NWS Forecast Offices
 
@@ -442,15 +454,18 @@ automation:
     action:
       - service: notify.mobile_app_your_phone
         data:
-          title: "⚠️ {{ state_attr('binary_sensor.noaa_ilm_weather_active_alerts','alerts')[0].event }}"
-          message: "{{ state_attr('binary_sensor.noaa_ilm_weather_active_alerts','alerts')[0].description | replace('\r\n',' ') }}"
+          title: >-
+            ⚠️ {{ (state_attr('binary_sensor.noaa_ilm_weather_active_alerts','alerts') or [{}])[0].get('event', 'Weather alert') }}
+          message: >-
+            {{ (state_attr('binary_sensor.noaa_ilm_weather_active_alerts','alerts') or [{}])[0].get('description', 'See the NWS alert for details.') | replace('\r\n',' ') }}
           data:
             priority: high
             notification_icon: mdi:weather-lightning-rainy
       - service: tts.google_translate_say
         data:
           entity_id: media_player.home_speaker
-          message: "{{ state_attr('binary_sensor.noaa_ilm_weather_active_alerts','alerts')[0].description | replace('\r\n',' ') }}"
+          message: >-
+            {{ (state_attr('binary_sensor.noaa_ilm_weather_active_alerts','alerts') or [{}])[0].get('description', 'See the NWS alert for details.') | replace('\r\n',' ') }}
 ```
 
 #### Winter Storm Alert with Light Flash
@@ -758,9 +773,27 @@ script:
 
 ### Dashboard Card Examples
 
-### Dashboard Card Examples
-
 These examples demonstrate how to create effective dashboard cards organized by device groups.
+
+> **Guard against startup, or your log will fill with tracebacks.** Home Assistant renders
+> dashboard templates as soon as the frontend subscribes to them, which on a cold boot can be
+> *before* this integration has registered its entities — the config entry awaits an initial
+> refresh of ten coordinators, all making live NWS calls, before any platform is set up. Until
+> that finishes, `state_attr('sensor.noaa_…', 'periods')` returns `None` and
+> `states.sensor.noaa_…` returns `None`, so an unguarded `[0]` or `{% for %}` raises
+> `TypeError: 'NoneType' object is not iterable` or `UndefinedError: None has no element 0`.
+> The card recovers on the next render, but each attempt logs a full traceback, and it is
+> intermittent — it depends on whether the templates lose the race that boot.
+>
+> Two habits avoid all of it:
+>
+> - **List attributes**: `{% set items = state_attr(…, 'periods') or [] %}`, then check
+>   `{% if items | count > 0 %}` before indexing. The integration itself always publishes these
+>   as lists, never `None` — a `None` means the entity is not there yet.
+> - **`states.` objects**: bind first and test for truth —
+>   `{% set s = states.sensor.noaa_… %}{{ … if s else '—' }}`.
+>
+> The examples below all do this.
 
 #### Weather Alerts Card (NOAA Weather [OFFICE] Group)
 ```yaml
@@ -812,53 +845,53 @@ entities:
 type: vertical-stack
 cards:
   - type: markdown
-    content: >
-      <div style="display:flex;align-items:center;gap:14px;"> <img src="{{
-      state_attr('sensor.noaa_ilm_weather_extended_forecast','periods')[0].icon
-      }}" width="56"> <div> <b>{{
-      state_attr('sensor.noaa_ilm_weather_extended_forecast','periods')[0].name
-      }} · {{
-      as_timestamp(state_attr('sensor.noaa_ilm_weather_extended_forecast','periods')[0].start_time)
-      | timestamp_custom('%a %m/%d') }}</b><br> <span
-      style="font-size:1.4em;font-weight:700;"> {{
-      state_attr('sensor.noaa_ilm_weather_extended_forecast','periods')[0].temperature
-      }}°{{
-      state_attr('sensor.noaa_ilm_weather_extended_forecast','periods')[0].temperature_unit
-      }} </span><br> {{
-      state_attr('sensor.noaa_ilm_weather_extended_forecast','periods')[0].detailed_forecast
-      }} </div></div>
+    content: |
+      {% set periods = state_attr('sensor.noaa_ilm_weather_extended_forecast','periods') or [] %}
+      {% if periods | count > 0 %}
+      {% set p = periods[0] %}
+      <div style="display:flex;align-items:center;gap:14px;">
+      <img src="{{ p.icon }}" width="56">
+      <div>
+      <b>{{ p.name }} · {{ as_timestamp(p.start_time) | timestamp_custom('%a %m/%d') }}</b><br>
+      <span style="font-size:1.4em;font-weight:700;">{{ p.temperature }}°{{ p.temperature_unit }}</span><br>
+      {{ p.detailed_forecast }}
+      </div>
+      </div>
+      {% else %}
+      _Forecast loading…_
+      {% endif %}
   - type: markdown
-    content: >
-      <div style="display:flex;align-items:center;gap:14px;"> <img src="{{
-      state_attr('sensor.noaa_ilm_weather_extended_forecast','periods')[1].icon
-      }}" width="56"> <div> <b>{{
-      state_attr('sensor.noaa_ilm_weather_extended_forecast','periods')[1].name
-      }} · {{
-      as_timestamp(state_attr('sensor.noaa_ilm_weather_extended_forecast','periods')[1].start_time)
-      | timestamp_custom('%a %m/%d') }}</b><br> <span
-      style="font-size:1.4em;font-weight:700;"> {{
-      state_attr('sensor.noaa_ilm_weather_extended_forecast','periods')[1].temperature
-      }}°{{
-      state_attr('sensor.noaa_ilm_weather_extended_forecast','periods')[1].temperature_unit
-      }} </span><br> {{
-      state_attr('sensor.noaa_ilm_weather_extended_forecast','periods')[1].detailed_forecast
-      }} </div></div>
+    content: |
+      {% set periods = state_attr('sensor.noaa_ilm_weather_extended_forecast','periods') or [] %}
+      {% if periods | count > 1 %}
+      {% set p = periods[1] %}
+      <div style="display:flex;align-items:center;gap:14px;">
+      <img src="{{ p.icon }}" width="56">
+      <div>
+      <b>{{ p.name }} · {{ as_timestamp(p.start_time) | timestamp_custom('%a %m/%d') }}</b><br>
+      <span style="font-size:1.4em;font-weight:700;">{{ p.temperature }}°{{ p.temperature_unit }}</span><br>
+      {{ p.detailed_forecast }}
+      </div>
+      </div>
+      {% else %}
+      _Forecast loading…_
+      {% endif %}
   - type: markdown
-    content: >
-      <div style="display:flex;align-items:center;gap:14px;"> <img src="{{
-      state_attr('sensor.noaa_ilm_weather_extended_forecast','periods')[2].icon
-      }}" width="56"> <div> <b>{{
-      state_attr('sensor.noaa_ilm_weather_extended_forecast','periods')[2].name
-      }} · {{
-      as_timestamp(state_attr('sensor.noaa_ilm_weather_extended_forecast','periods')[2].start_time)
-      | timestamp_custom('%a %m/%d') }}</b><br> <span
-      style="font-size:1.4em;font-weight:700;"> {{
-      state_attr('sensor.noaa_ilm_weather_extended_forecast','periods')[2].temperature
-      }}°{{
-      state_attr('sensor.noaa_ilm_weather_extended_forecast','periods')[2].temperature_unit
-      }} </span><br> {{
-      state_attr('sensor.noaa_ilm_weather_extended_forecast','periods')[2].detailed_forecast
-      }} </div></div>
+    content: |
+      {% set periods = state_attr('sensor.noaa_ilm_weather_extended_forecast','periods') or [] %}
+      {% if periods | count > 2 %}
+      {% set p = periods[2] %}
+      <div style="display:flex;align-items:center;gap:14px;">
+      <img src="{{ p.icon }}" width="56">
+      <div>
+      <b>{{ p.name }} · {{ as_timestamp(p.start_time) | timestamp_custom('%a %m/%d') }}</b><br>
+      <span style="font-size:1.4em;font-weight:700;">{{ p.temperature }}°{{ p.temperature_unit }}</span><br>
+      {{ p.detailed_forecast }}
+      </div>
+      </div>
+      {% else %}
+      _Forecast loading…_
+      {% endif %}
 ```
 
 #### Meteor Shower Card (NOAA Space Group)
@@ -914,7 +947,8 @@ To list the upcoming showers, read the `upcoming` attribute with a markdown card
 type: markdown
 title: ☄️ Upcoming Meteor Showers
 content: |
-  {% for s in state_attr('sensor.noaa_ilm_space_next_meteor_shower', 'upcoming') %}
+  {% set showers = state_attr('sensor.noaa_ilm_space_next_meteor_shower', 'upcoming') or [] %}
+  {% for s in showers %}
   **{{ s.name }}** — {{ s.peak_local | as_timestamp | timestamp_custom('%b %-d') }}
   ({{ s.days_until | round(0) | int }} days), up to {{ s.zhr_max }}/hr in {{ s.constellation }}
   {% endfor %}
@@ -1094,7 +1128,8 @@ cards:
   - type: markdown
     content: |
       # 📍 Wilmington Weather
-      Updated: {{ as_timestamp(states.sensor.noaa_ilm_weather_temperature.last_changed) | timestamp_custom('%I:%M %p') }}
+      {% set t = states.sensor.noaa_ilm_weather_temperature %}
+      Updated: {{ as_timestamp(t.last_changed) | timestamp_custom('%I:%M %p') if t else '—' }}
   
   - type: entities
     entities:
