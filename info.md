@@ -55,18 +55,21 @@ For full functionality including location-specific data:
 5. Complete setup
 
 #### Legacy YAML Configuration
-For basic global sensors only (no location-specific features):
-```yaml
-noaa_it_all:
-```
+
+> **Removed.** YAML configuration is no longer supported and creates **no entities**. If
+> `noaa_it_all:` is present in `configuration.yaml`, the integration logs an error and sets nothing
+> up. Remove the block and add the integration through **Settings → Devices & Services → Add
+> Integration → NOAA It All**.
 
 ## Device Organization
 
 Entities are automatically grouped into logical devices:
-- **NOAA Space** - Global space weather and aurora data
-- **NOAA Weather** - Hurricane tracking and general weather
-- **NOAA Surf** - Location-specific surf and ocean conditions
-- **NOAA Weather [OFFICE]** - Severe weather alerts for your location
+- **NOAA {OFFICE} Space** - Space weather, aurora and meteor shower data
+- **NOAA {OFFICE} Weather** - Observations, forecasts, radar and severe weather alerts
+- **NOAA {OFFICE} Surf** - Surf and ocean conditions
+- **NOAA Hurricane** - Global tropical data and satellite imagery, created once across all offices
+
+`{OFFICE}` is your NWS forecast office code, e.g. `NOAA ILM Weather`.
 
 ## Requirements
 
@@ -87,7 +90,7 @@ All NWS forecast offices that issue Surf Zone Forecasts (SRF products). Examples
 
 ## Update Frequency
 
-All sensors and images update every 5 minutes with fresh data from NOAA.
+Most sensors update every 10 minutes with fresh data from NOAA. Meteor shower sensors recompute every 30 minutes. Image entities resolve their URL once when the integration loads.
 
 ## Links
 

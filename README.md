@@ -69,10 +69,11 @@ For location-specific rip current, surf zone, and weather data:
 **Important:** Starting with version 0.4.0, latitude and longitude are required fields for proper weather entity setup. Weather data is now fetched from the nearest observation station to your specified coordinates using the weather.gov API, rather than defaulting to the Home Assistant location or using a predefined office-to-station mapping.
 
 #### Legacy YAML Configuration
-For basic sensors without location-specific data:
-```yaml
-noaa_it_all:
-```
+
+> **Removed.** YAML configuration is no longer supported and creates **no entities**. If
+> `noaa_it_all:` is present in `configuration.yaml`, the integration logs an error and sets nothing
+> up. Remove the block and add the integration through **Settings → Devices & Services → Add
+> Integration → NOAA It All**.
 
 ## Device Grouping and Organization
 
@@ -95,7 +96,7 @@ Global hurricane tracking and GOES satellite imagery — **created once**, share
 - **Device ID**: `noaa_weather_hurricane`
 - **Location**: Independent (global NHC/GOES data)
 - **Update Frequency**: 5 minutes
-- **Entities**: `sensor.noaa_weather_hurricane_activity`, `sensor.noaa_weather_hurricane_alerts`, `image.noaa_weather_hurricane_outlook_image`, `image.noaa_weather_hurricane_goes_air_mass`, `image.noaa_weather_hurricane_goes_geocolor`
+- **Entities**: `sensor.noaa_hurricane_activity`, `sensor.noaa_hurricane_alerts`, `image.noaa_hurricane_outlook_image`, `image.noaa_hurricane_goes_air_mass`, `image.noaa_hurricane_goes_geocolor`
 
 <p align="left">
   <img width="327" height="380" alt="image" src="https://github.com/user-attachments/assets/7b484039-abe9-4c14-ab37-91b41d084411" />
@@ -158,33 +159,33 @@ Real-time monitoring of National Weather Service alerts for your location *(NOAA
   - Full alert details with headlines, descriptions, and instructions
   - Location-specific filtering based on configured coordinates
 
-> **Note**: Alert sensors update every 5 minutes and only include actual alerts (excludes test messages and drafts). All alerts are filtered to your specific location using latitude/longitude coordinates from config flow setup. Binary sensors are grouped under NOAA Weather [OFFICE] while the comprehensive sensor is under NOAA Weather.
+> **Note**: Alert sensors update every 10 minutes and only include actual alerts (excludes test messages and drafts). All alerts are filtered to your specific location using latitude/longitude coordinates from config flow setup. Binary sensors are grouped under NOAA Weather [OFFICE] while the comprehensive sensor is under NOAA Weather.
 
 ### Current Weather Conditions (Config Flow Only)
 Real-time weather observations from your local NWS observation station *(NOAA Weather)*:
-- **Temperature**: Current temperature in °F *(sensor.noaa_{office}_temperature)*
-- **Humidity**: Relative humidity percentage *(sensor.noaa_{office}_humidity)*
-- **Wind Speed**: Wind speed in mph *(sensor.noaa_{office}_wind_speed)*
-- **Wind Direction**: Wind direction in degrees with cardinal direction *(sensor.noaa_{office}_wind_direction)*
-- **Barometric Pressure**: Barometric pressure in inHg *(sensor.noaa_{office}_barometric_pressure)*
-- **Dewpoint**: Dewpoint temperature in °F *(sensor.noaa_{office}_dewpoint)*
-- **Visibility**: Visibility distance in miles *(sensor.noaa_{office}_visibility)*
-- **Sky Conditions**: Current sky conditions description (Clear, Cloudy, Fog, etc.) *(sensor.noaa_{office}_sky_conditions)*
-- **Feels Like**: Apparent temperature incorporating wind chill or heat index *(sensor.noaa_{office}_feels_like)*
+- **Temperature**: Current temperature in °F *(sensor.noaa_{office}_weather_temperature)*
+- **Humidity**: Relative humidity percentage *(sensor.noaa_{office}_weather_humidity)*
+- **Wind Speed**: Wind speed in mph *(sensor.noaa_{office}_weather_wind_speed)*
+- **Wind Direction**: Wind direction in degrees with cardinal direction *(sensor.noaa_{office}_weather_wind_direction)*
+- **Barometric Pressure**: Barometric pressure in inHg *(sensor.noaa_{office}_weather_barometric_pressure)*
+- **Dewpoint**: Dewpoint temperature in °F *(sensor.noaa_{office}_weather_dewpoint)*
+- **Visibility**: Visibility distance in miles *(sensor.noaa_{office}_weather_visibility)*
+- **Sky Conditions**: Current sky conditions description (Clear, Cloudy, Fog, etc.) *(sensor.noaa_{office}_weather_sky_conditions)*
+- **Feels Like**: Apparent temperature incorporating wind chill or heat index *(sensor.noaa_{office}_weather_feels_like)*
 
-> **Note**: Weather observations update every 5 minutes from the primary observation station for your configured NWS office location. Data includes automatic unit conversions to US customary units.
+> **Note**: Weather observations update every 10 minutes from the primary observation station for your configured NWS office location. Data includes automatic unit conversions to US customary units.
 
 ### Aurora Visibility Alerts (Config Flow Only)
 Location-aware aurora visibility predictions *(NOAA Space)*:
-- **Aurora Next Time**: Predicted timing when aurora activity may begin at your location *(sensor.noaa_{office}_aurora_next_time)*
-- **Aurora Duration**: Estimated length of aurora visibility in hours based on geomagnetic conditions *(sensor.noaa_{office}_aurora_duration)*
-- **Aurora Visibility Probability**: Percentage chance of aurora visibility from your specific location *(sensor.noaa_{office}_aurora_visibility_probability)*
+- **Aurora Next Time**: Predicted timing when aurora activity may begin at your location *(sensor.noaa_{office}_space_aurora_next_time)*
+- **Aurora Duration**: Estimated length of aurora visibility in hours based on geomagnetic conditions *(sensor.noaa_{office}_space_aurora_duration)*
+- **Aurora Visibility Probability**: Percentage chance of aurora visibility from your specific location *(sensor.noaa_{office}_space_aurora_visibility_probability)*
 
 > **Note**: Aurora predictions are based on real-time Kp index data and your location's magnetic latitude. Northern locations (like Duluth, MN) have much higher visibility potential than southern locations (like Miami, FL).
 
 ### Solar Radiation Storm Alerts (Config Flow Only)
 Location-aware monitoring of solar radiation storm activity *(NOAA Space)*:
-- **Solar Radiation Storm Alerts**: Location-aware monitoring of solar radiation storm activity with S1-S5 classification *(sensor.noaa_{office}_solar_radiation_storm_alerts)*
+- **Solar Radiation Storm Alerts**: Location-aware monitoring of solar radiation storm activity with S1-S5 classification *(sensor.noaa_{office}_space_solar_radiation_storm_alerts)*
   - **Storm Classification**: Automatic detection and classification of solar radiation storms (S1-S5 scale)
   - **Expected Timing**: Start and end times for radiation storm events when available
   - **Impact Assessment**: Potential impacts including satellite interference, radio blackouts, and radiation exposure risks
@@ -213,24 +214,41 @@ Meteor shower alerts and a viewing forecast for your exact location *(NOAA Space
 ### Optional Secondary Sensors (Config Flow Only)
 These sensors provide additional weather data where available from NOAA/NWS *(NOAA Weather)*:
 
-- **Cloud Cover**: Current cloud coverage percentage from NWS gridpoint data *(sensor.noaa_{office}_cloud_cover)*
+- **Cloud Cover**: Current cloud coverage percentage from NWS gridpoint data *(sensor.noaa_{office}_weather_cloud_cover)*
   - Returns percentage (0-100%) of sky covered by clouds
   - Updated from forecast gridpoint data for your location
   - Requires latitude/longitude configuration
   - May not be available for all locations
 
-- **Radar Timestamp**: Timestamp of the latest radar image for your NWS office *(sensor.noaa_{office}_radar_timestamp)*
+- **Radar Timestamp**: Timestamp of the latest radar image for your NWS office *(sensor.noaa_{office}_weather_radar_timestamp)*
   - Shows when the most recent radar image was captured
   - Useful for automations or displaying radar freshness
   - Based on NEXRAD radar site for your office location
   - Available for most coastal and land-based offices
 
-- **Forecast Discussion**: Meteorologist-written forecast discussion (AFD product) *(sensor.noaa_{office}_forecast_discussion)*
+- **Forecast Discussion**: Meteorologist-written forecast discussion (AFD product) *(sensor.noaa_{office}_weather_forecast_discussion)*
   - Detailed technical analysis from local NWS meteorologists
   - Includes reasoning behind forecast decisions
   - Updated when new forecast discussions are issued (typically 2-3 times daily)
-  - Full text available in sensor attributes with summary in state
+  - State is the literal `Available` (or unknown); the text lives in the `full_text` and
+    `summary` attributes
   - Provides insight into weather patterns and forecast confidence
+
+### Forecast Sensors and the Weather Entity (Config Flow Only)
+
+- **Extended Forecast**: Multi-day NWS forecast *(sensor.noaa_{office}_weather_extended_forecast)* —
+  periods are in the `forecast` attribute
+- **Hourly Forecast**: Hour-by-hour NWS forecast *(sensor.noaa_{office}_weather_hourly_forecast)*
+- **Weather**: A full Home Assistant weather entity backed by NWS observations and forecasts
+  *(weather.noaa_{office}_weather)* — use this with the standard Weather Forecast card, and with
+  `weather.get_forecasts` in templates. Note the single `weather` in the ID, not `_weather_weather`.
+
+### Derived Space Weather Sensors (Config Flow Only)
+
+- **Geomagnetic Storm Interpretation**: Plain-language reading of the Dst value
+  *(sensor.noaa_{office}_space_geomagnetic_storm_interpretation)*
+- **Planetary K-Index Rating**: Plain-language reading of the Kp value
+  *(sensor.noaa_{office}_space_planetary_k_index_rating)*
 
 > **Note**: These sensors gracefully handle missing data by returning `None` or `Unknown` when data is unavailable. The `availability` attribute indicates data source and current status. **UV Index is NOT available** through NWS APIs and cannot be provided by this integration.
 
@@ -238,19 +256,19 @@ These sensors provide additional weather data where available from NOAA/NWS *(NO
 Visual representations of current conditions:
 
 **NOAA Space** (global, shared):
-- **Geomagnetic Field Image** — Real-time geomagnetic storm intensity visualization *(image.noaa_{office}_geoelectric_image)*
-- **Aurora Forecast Image** — Tonight's aurora coverage forecast *(image.noaa_{office}_aurora_image)*
+- **Geomagnetic Field Image** — Real-time geomagnetic storm intensity visualization *(image.noaa_ilm_space_geoelectric_field_image)*
+- **Aurora Forecast Image** — Tonight's aurora coverage forecast *(image.noaa_ilm_space_aurora_forecast_image)*
 
 **NOAA Hurricane** (global, created once):
-- **Outlook Image** — 2-day tropical weather outlook from NHC *(image.noaa_weather_hurricane_outlook_image)*
-- **GOES Air Mass** — GOES-19 Air Mass RGB satellite imagery *(image.noaa_weather_hurricane_goes_air_mass)*
-- **GOES Geocolor** — GOES-19 GeoColor satellite imagery *(image.noaa_weather_hurricane_goes_geocolor)*
+- **Outlook Image** — 2-day tropical weather outlook from NHC *(image.noaa_hurricane_outlook_image)*
+- **GOES Air Mass** — GOES-19 Air Mass RGB satellite imagery *(image.noaa_hurricane_goes_air_mass)*
+- **GOES Geocolor** — GOES-19 GeoColor satellite imagery *(image.noaa_hurricane_goes_geocolor)*
 
 **NOAA {OFFICE} Weather** (one per configured office):
 - **Radar Base Reflectivity** — Latest NEXRAD base reflectivity radar for your NWS office *(image.noaa_{office}_weather_radar_base_reflectivity)*
 - **Radar Loop** — Animated NEXRAD radar loop *(image.noaa_{office}_weather_radar_loop)*
 
-> **Tip**: Image entities can be displayed on dashboards using the standard `picture-entity` or `picture-glance` cards. They automatically refresh every 5 minutes to show the latest data.
+> **Tip**: Image entities can be displayed on dashboards using the standard `picture-entity` or `picture-glance` cards. Note that image entities are not polled by Home Assistant: their URL is resolved once when the integration loads, so the picture refreshes only when the browser re-fetches it or the config entry is reloaded.
 
 ## NWS Forecast Offices
 
@@ -270,29 +288,61 @@ The integration supports all NWS offices that issue Surf Zone Forecasts (SRF):
 
 Understanding entity naming helps you quickly identify and use sensors in automations and dashboards.
 
-All entities use `_attr_has_entity_name = True`, which means Home Assistant derives the entity ID by combining the **device name** slug with the **local entity name** slug.
+Home Assistant derives the entity ID by combining the **device name** slug with the entity's
+own **name** slug. The device name is prepended whether or not the integration sets
+`_attr_has_entity_name` — that flag only decides whether a redundant device-name prefix is
+stripped off the entity's own name first. The five global hurricane entities are the exception,
+because their device carries no office code — see
+[Exceptions to the pattern](#exceptions-to-the-pattern) below.
+
+**Every example in this document uses the `ILM` office.** To adapt one to your own location,
+replace `ilm` with your office code in lower case — and leave the entities listed under
+[Exceptions to the pattern](#exceptions-to-the-pattern) alone, because they carry no office code.
 
 ### Naming Patterns by Device
 
 | Device | Device Name Pattern | Example Entity ID |
 |--------|--------------------|--------------------|
-| NOAA Hurricane | `NOAA Hurricane` | `sensor.noaa_weather_hurricane_activity` |
+| NOAA Hurricane | `NOAA Hurricane` (global — no office code) | `sensor.noaa_hurricane_activity` |
 | NOAA {OFFICE} Weather | `NOAA {OFFICE} Weather` | `sensor.noaa_ilm_weather_visibility` |
-| NOAA {OFFICE} Space | `NOAA {OFFICE} Space` | `image.noaa_ilm_geoelectric_image` |
-| NOAA Surf | `NOAA Surf` | `sensor.noaa_ilm_rip_current_risk` |
+| NOAA {OFFICE} Space | `NOAA {OFFICE} Space` | `sensor.noaa_ilm_space_planetary_k_index` |
+| NOAA {OFFICE} Surf | `NOAA {OFFICE} Surf` | `sensor.noaa_ilm_surf_rip_current_risk` |
 
 **Examples:**
-- `sensor.noaa_ilm_temperature` — Temperature for Wilmington (ILM office)
+- `sensor.noaa_ilm_weather_temperature` — Temperature for Wilmington (ILM office)
 - `binary_sensor.noaa_ilm_surf_unsafe_to_swim` — Rip current safety for Wilmington
-- `sensor.noaa_weather_hurricane_activity` — Global hurricane activity (NOAA Hurricane device)
-- `image.noaa_weather_hurricane_outlook_image` — Hurricane outlook image (NOAA Hurricane device)
-- `image.noaa_ilm_weather_radar_base_reflectivity` — Radar for Wilmington (ILM)
-- `image.noaa_ilm_weather_radar_base_reflectivity` — Radar for Wilmington (ILM)
+- `sensor.noaa_hurricane_activity` — Global hurricane activity (NOAA Hurricane device)
+- `image.noaa_hurricane_outlook_image` — Hurricane outlook image (NOAA Hurricane device)
+- `image.noaa_ilm_weather_radar_base_reflectivity` — Radar base reflectivity for Wilmington (ILM)
+- `image.noaa_ilm_weather_radar_loop` — Radar loop for Wilmington (ILM)
+
+### Exceptions to the pattern
+
+These five entity IDs do **not** contain an office code, because they live on the shared,
+office-independent `NOAA Hurricane` device. When you copy an example and swap the office code,
+skip these — substituting into them produces an entity that does not exist:
+
+| Entity ID | Why |
+|---|---|
+| `sensor.noaa_hurricane_alerts` | Global NHC data, on the shared `NOAA Hurricane` device |
+| `sensor.noaa_hurricane_activity` | Global NHC data, on the shared `NOAA Hurricane` device |
+| `image.noaa_hurricane_outlook_image` | Global NHC data, on the shared `NOAA Hurricane` device |
+| `image.noaa_hurricane_goes_air_mass` | Global GOES imagery, on the shared `NOAA Hurricane` device |
+| `image.noaa_hurricane_goes_geocolor` | Global GOES imagery, on the shared `NOAA Hurricane` device |
+
+Two further IDs are easy to get wrong even though they do follow the rule:
+
+- `sensor.noaa_{office}_surf_surf_height` — the word "surf" appears **twice**: once for the
+  `NOAA {OFFICE} Surf` device and once for the "Surf Height" entity name.
+- `weather.noaa_{office}_weather` — a single `weather`, not a doubled `_weather_weather`; this
+  entity does not set `has_entity_name`, so its ID comes from its own name alone.
 
 ### Office Code Usage
 - **Office-specific entities**: Include the office code in the device name (e.g., `NOAA ILM Weather`)
 - **Global hurricane entities**: Always under `NOAA Hurricane` — never duplicated per office
-- **Replace office code**: If you change NWS offices, entity names will include the new code
+- **Replace office code**: If you change NWS offices, entity IDs for office-scoped entities will
+  include the new code. Entity IDs also embed the configured latitude/longitude in their
+  `unique_id`, so changing coordinates re-registers those entities — see the note in the Changelog.
 
 ### Entity Types
 - **sensor.**: Numeric or text state (temperature, humidity, alert count, etc.)
@@ -314,13 +364,17 @@ All entities use `_attr_has_entity_name = True`, which means Home Assistant deri
 |-----------|---------------|---------|
 | Weather Observation | `sensor.noaa_{office}_weather_{metric}` | `sensor.noaa_ilm_weather_temperature` |
 | Weather Alert Binary | `binary_sensor.noaa_{office}_weather_{alert_type}_alert` | `binary_sensor.noaa_ilm_weather_severe_weather_alert` |
-| Surf Conditions | `sensor.noaa_{office}_{surf_metric}` | `sensor.noaa_ilm_rip_current_risk` |
-| Space Weather | `sensor.noaa_{office}_{metric}` | `sensor.noaa_ilm_aurora_next_time` |
+| Surf Conditions | `sensor.noaa_{office}_surf_{metric}` | `sensor.noaa_ilm_surf_rip_current_risk` |
+| Surf Binary | `binary_sensor.noaa_{office}_surf_{name}` | `binary_sensor.noaa_ilm_surf_unsafe_to_swim` |
+| Space Weather | `sensor.noaa_{office}_space_{metric}` | `sensor.noaa_ilm_space_aurora_next_time` |
 | Meteor Showers | `sensor.noaa_{office}_space_{metric}` | `sensor.noaa_ilm_space_meteor_viewing_score` |
 | Meteor Shower Binary | `binary_sensor.noaa_{office}_space_meteor_shower_active` | `binary_sensor.noaa_ilm_space_meteor_shower_active` |
-| Hurricane (global) | `sensor.noaa_weather_hurricane_{metric}` | `sensor.noaa_weather_hurricane_activity` |
-| Hurricane Images | `image.noaa_weather_hurricane_{name}` | `image.noaa_weather_hurricane_outlook_image` |
-| Radar Image | `image.noaa_{office}_weather_radar_base_reflectivity` | `image.noaa_ilm_weather_radar_base_reflectivity` |
+| Forecast / Discussion | `sensor.noaa_{office}_weather_{name}` | `sensor.noaa_ilm_weather_extended_forecast` |
+| Weather Entity | `weather.noaa_{office}_weather` | `weather.noaa_ilm_weather` |
+| Hurricane (global) | `sensor.noaa_hurricane_{metric}` | `sensor.noaa_hurricane_activity` |
+| Hurricane Images (global) | `image.noaa_hurricane_{name}` | `image.noaa_hurricane_outlook_image` |
+| Space Images | `image.noaa_{office}_space_{name}` | `image.noaa_ilm_space_aurora_forecast_image` |
+| Radar Image | `image.noaa_{office}_weather_radar_{name}` | `image.noaa_ilm_weather_radar_base_reflectivity` |
 
 ### Migration: Old Entity IDs
 
@@ -328,9 +382,9 @@ If you are upgrading from a previous version, the following image entity IDs hav
 
 | Old Entity ID | New Entity ID |
 |---------------|---------------|
-| `image.noaa_weather_hurricane_outlook_image` | `image.noaa_weather_hurricane_outlook_image` |
-| `image.noaa_weather_noaa_satellite_goes_air_mass` | `image.noaa_weather_hurricane_goes_air_mass` |
-| `image.noaa_weather_noaa_satellite_goes_geocolor` | `image.noaa_weather_hurricane_goes_geocolor` |
+| `image.noaa_weather_hurricane_outlook_image` | `image.noaa_hurricane_outlook_image` |
+| `image.noaa_weather_noaa_satellite_goes_air_mass` | `image.noaa_hurricane_goes_air_mass` |
+| `image.noaa_weather_noaa_satellite_goes_geocolor` | `image.noaa_hurricane_goes_geocolor` |
 | `image.noaa_weather_radar_base_reflectivity_{office}` | `image.noaa_{office}_weather_radar_base_reflectivity` |
 
 The underlying unique IDs for GOES Air Mass and GOES Geocolor have also changed, so Home Assistant will register them as new entities. To clean up stale entries, go to **Settings → Devices & Services → Entities**, filter by "unavailable", and remove the old image entities. Update any automations or dashboard cards that reference the old entity IDs.
@@ -365,7 +419,7 @@ automation:
       entity_id: binary_sensor.noaa_ilm_surf_unsafe_to_swim
       to: 'on'
     action:
-      - service: notify.mobile_app
+      - service: notify.mobile_app_your_phone
         data:
           title: "⚠️ Beach Safety Alert"
           message: "High rip current risk detected - swimming not recommended!"
@@ -386,7 +440,7 @@ automation:
       entity_id: binary_sensor.noaa_ilm_weather_severe_weather_alert
       to: 'on'
     action:
-      - service: notify.mobile_app
+      - service: notify.mobile_app_your_phone
         data:
           title: "⚠️ {{ state_attr('binary_sensor.noaa_ilm_weather_active_alerts','alerts')[0].event }}"
           message: "{{ state_attr('binary_sensor.noaa_ilm_weather_active_alerts','alerts')[0].description | replace('\r\n',' ') }}"
@@ -409,7 +463,7 @@ automation:
       entity_id: binary_sensor.noaa_ilm_weather_flood_winter_alert
       to: 'on'
     action:
-      - service: notify.mobile_app
+      - service: notify.mobile_app_your_phone
         data:
           title: "❄️ Winter Weather Alert"
           message: "Winter storm or flood warning active for your area!"
@@ -433,7 +487,7 @@ automation:
       entity_id: binary_sensor.noaa_ilm_weather_heat_air_quality_alert
       to: 'on'
     action:
-      - service: notify.mobile_app
+      - service: notify.mobile_app_your_phone
         data:
           title: "🔥 Heat Advisory"
           message: "Heat advisory or air quality alert active!"
@@ -456,19 +510,19 @@ automation:
     description: "Notify when aurora visibility probability is high"
     trigger:
       - platform: numeric_state
-        entity_id: sensor.noaa_dlh_aurora_visibility_probability
+        entity_id: sensor.noaa_ilm_space_aurora_visibility_probability
         above: 50
     condition:
-      - condition: sun
-        after: sunset
-        before: sunrise
+      - condition: state
+        entity_id: sun.sun
+        state: below_horizon
     action:
-      - service: notify.mobile_app
+      - service: notify.mobile_app_your_phone
         data:
           title: "🌌 Aurora Alert!"
           message: >
-            Aurora visibility probability is {{ states('sensor.noaa_dlh_aurora_visibility_probability') }}%!
-            Expected duration: {{ states('sensor.noaa_dlh_aurora_duration') }} hours.
+            Aurora visibility probability is {{ states('sensor.noaa_ilm_space_aurora_visibility_probability') }}%!
+            Expected duration: {{ states('sensor.noaa_ilm_space_aurora_duration') }} hours.
           data:
             notification_icon: mdi:weather-night
 ```
@@ -480,15 +534,15 @@ automation:
     description: "Notify when Kp index indicates geomagnetic storm"
     trigger:
       - platform: numeric_state
-        entity_id: sensor.noaa_space_kp_index
+        entity_id: sensor.noaa_ilm_space_planetary_k_index
         above: 5
     action:
-      - service: notify.mobile_app
+      - service: notify.mobile_app_your_phone
         data:
           title: "⚡ Geomagnetic Storm"
           message: >
-            Kp Index: {{ states('sensor.noaa_space_kp_index') }}
-            Geomagnetic Storm Level: {{ states('sensor.noaa_space_geomagnetic_storm') }}
+            Kp Index: {{ states('sensor.noaa_ilm_space_planetary_k_index') }}
+            Geomagnetic Storm Level: {{ states('sensor.noaa_ilm_space_geomagnetic_storm') }}
           data:
             notification_icon: mdi:solar-power
 ```
@@ -506,7 +560,7 @@ automation:
         entity_id: binary_sensor.noaa_ilm_space_meteor_shower_active
         state: "on"
     action:
-      - service: notify.mobile_app
+      - service: notify.mobile_app_your_phone
         data:
           title: >
             ☄️ {{ state_attr('binary_sensor.noaa_ilm_space_meteor_shower_active', 'shower') }} tonight
@@ -539,7 +593,7 @@ automation:
         attribute: zhr_max
         above: 20
     action:
-      - service: notify.mobile_app
+      - service: notify.mobile_app_your_phone
         data:
           title: "☄️ {{ states('sensor.noaa_ilm_space_next_meteor_shower') }} peaks soon"
           message: >
@@ -564,24 +618,24 @@ automation:
         entity_id: binary_sensor.noaa_ilm_surf_unsafe_to_swim
         state: 'off'
       - condition: numeric_state
-        entity_id: sensor.noaa_ilm_temperature
+        entity_id: sensor.noaa_ilm_weather_temperature
         above: 75
       - condition: numeric_state
-        entity_id: sensor.noaa_ilm_wind_speed
+        entity_id: sensor.noaa_ilm_weather_wind_speed
         below: 15
       - condition: state
         entity_id: binary_sensor.noaa_ilm_weather_active_alerts
         state: 'off'
     action:
-      - service: notify.mobile_app
+      - service: notify.mobile_app_your_phone
         data:
           title: "🏖️ Perfect Beach Day!"
           message: >
             Great conditions for beach activities:
-            Temperature: {{ states('sensor.noaa_ilm_temperature') }}°F
-            Rip Current Risk: {{ states('sensor.noaa_ilm_rip_current_risk') }}
-            Surf Height: {{ states('sensor.noaa_ilm_surf_height') }} ft
-            Water Temp: {{ states('sensor.noaa_ilm_water_temperature') }}°F
+            Temperature: {{ states('sensor.noaa_ilm_weather_temperature') }}°F
+            Rip Current Risk: {{ states('sensor.noaa_ilm_surf_rip_current_risk') }}
+            Surf Height: {{ states('sensor.noaa_ilm_surf_surf_height') }} ft
+            Water Temp: {{ states('sensor.noaa_ilm_surf_water_temperature') }}°F
           data:
             actions:
               - action: "VIEW_SURF_CONDITIONS"
@@ -616,8 +670,8 @@ automation:
           title: "🚨 Severe Weather - Take Action"
           message: >
             Multiple severe weather alerts are active.
-            Total Alerts: {{ state_attr('sensor.noaa_weather_active_nws_alerts', 'total_alerts') }}
-            Types: {{ state_attr('sensor.noaa_weather_active_nws_alerts', 'alert_types') | join(', ') }}
+            Total Alerts: {{ state_attr('sensor.noaa_ilm_weather_active_nws_alerts', 'alert_count') }}
+            Types: {{ (state_attr('sensor.noaa_ilm_weather_active_nws_alerts', 'alerts') or []) | map(attribute='event') | unique | join(', ') }}
           data:
             priority: high
             ttl: 0
@@ -644,12 +698,12 @@ script:
         data:
           message: >
             Current conditions: 
-            Temperature {{ states('sensor.noaa_ilm_temperature') }} degrees, 
-            feels like {{ states('sensor.noaa_ilm_feels_like') }} degrees.
-            {{ states('sensor.noaa_ilm_sky_conditions') }} skies.
-            Wind {{ states('sensor.noaa_ilm_wind_speed') }} miles per hour from the {{ states('sensor.noaa_ilm_wind_direction') }}.
+            Temperature {{ states('sensor.noaa_ilm_weather_temperature') }} degrees, 
+            feels like {{ states('sensor.noaa_ilm_weather_feels_like') }} degrees.
+            {{ states('sensor.noaa_ilm_weather_sky_conditions') }} skies.
+            Wind {{ states('sensor.noaa_ilm_weather_wind_speed') }} miles per hour from the {{ state_attr('sensor.noaa_ilm_weather_wind_direction', 'cardinal_direction') }}.
             {% if is_state('binary_sensor.noaa_ilm_weather_active_alerts', 'on') %}
-              Alert: {{ state_attr('sensor.noaa_weather_active_nws_alerts', 'total_alerts') }} weather alerts are currently active.
+              Alert: {{ state_attr('sensor.noaa_ilm_weather_active_nws_alerts', 'alert_count') }} weather alerts are currently active.
             {% endif %}
 ```
 
@@ -660,17 +714,17 @@ script:
     alias: "Space Weather Report"
     description: "Get current space weather conditions"
     sequence:
-      - service: notify.mobile_app
+      - service: notify.mobile_app_your_phone
         data:
           title: "🌌 Space Weather Report"
           message: >
-            Kp Index: {{ states('sensor.noaa_space_kp_index') }}
-            Geomagnetic Activity: {{ states('sensor.noaa_space_geomagnetic_storm') }}
-            {% if states('sensor.noaa_dlh_aurora_visibility_probability') | int > 0 %}
-            Aurora Visibility: {{ states('sensor.noaa_dlh_aurora_visibility_probability') }}%
-            Expected at: {{ states('sensor.noaa_dlh_aurora_next_time') }}
+            Kp Index: {{ states('sensor.noaa_ilm_space_planetary_k_index') }}
+            Geomagnetic Activity: {{ states('sensor.noaa_ilm_space_geomagnetic_storm') }}
+            {% if states('sensor.noaa_ilm_space_aurora_visibility_probability') | int > 0 %}
+            Aurora Visibility: {{ states('sensor.noaa_ilm_space_aurora_visibility_probability') }}%
+            Expected at: {{ states('sensor.noaa_ilm_space_aurora_next_time') }}
             {% endif %}
-            Solar Radiation: {{ states('sensor.noaa_ilm_solar_radiation_storm_alerts') }}
+            Solar Radiation: {{ states('sensor.noaa_ilm_space_solar_radiation_storm_alerts') }}
 ```
 
 #### Morning Weather Briefing
@@ -680,23 +734,23 @@ script:
     alias: "Morning Weather Briefing"
     description: "Complete morning weather and alert briefing"
     sequence:
-      - service: notify.mobile_app
+      - service: notify.mobile_app_your_phone
         data:
           title: "☀️ Good Morning - Weather Briefing"
           message: >
             **Current Conditions:**
-            🌡️ {{ states('sensor.noaa_ilm_weather_temperature') }}°F (feels like {{ states('sensor.noaa_ilm_feels_like') }}°F)
+            🌡️ {{ states('sensor.noaa_ilm_weather_temperature') }}°F (feels like {{ states('sensor.noaa_ilm_weather_feels_like') }}°F)
             💨 Wind {{ states('sensor.noaa_ilm_weather_wind_speed') }} mph
             ☁️ {{ states('sensor.noaa_ilm_weather_sky_conditions') }}
             
             **Beach Conditions:**
-            🌊 Surf: {{ states('sensor.noaa_ilm_surf_height') }} ft
-            🏊 Rip Current Risk: {{ states('sensor.noaa_ilm_rip_current_risk') }}
-            🌡️ Water: {{ states('sensor.noaa_ilm_water_temperature') }}°F
+            🌊 Surf: {{ states('sensor.noaa_ilm_surf_surf_height') }} ft
+            🏊 Rip Current Risk: {{ states('sensor.noaa_ilm_surf_rip_current_risk') }}
+            🌡️ Water: {{ states('sensor.noaa_ilm_surf_water_temperature') }}°F
             
             **Alerts:**
-            {% if is_state('binary_sensor.noaa_weather_active_nws_alerts', 'on') %}
-            ⚠️ {{ state_attr('sensor.noaa_weather_active_nws_alerts', 'total_alerts') }} active weather alerts
+            {% if is_state('binary_sensor.noaa_ilm_weather_active_alerts', 'on') %}
+            ⚠️ {{ state_attr('sensor.noaa_ilm_weather_active_nws_alerts', 'alert_count') }} active weather alerts
             {% else %}
             ✅ No active weather alerts
             {% endif %}
@@ -715,7 +769,7 @@ title: "🚨 NWS Active Alerts - Wilmington"
 show_header_toggle: false
 state_color: true
 entities:
-  - entity: sensor.noaa_weather_active_nws_alerts
+  - entity: sensor.noaa_ilm_weather_active_nws_alerts
     name: "Active Alerts"
     icon: mdi:alert-circle
   - type: divider
@@ -739,16 +793,16 @@ type: entities
 title: "🏖️ Beach Conditions - Wilmington"
 show_header_toggle: false
 entities:
-  - entity: sensor.noaa_ilm_rip_current_risk
+  - entity: sensor.noaa_ilm_surf_rip_current_risk
     name: "Rip Current Risk"
     icon: mdi:waves
   - entity: binary_sensor.noaa_ilm_surf_unsafe_to_swim
     name: "Safe to Swim"
     icon: mdi:swim
-  - entity: sensor.noaa_ilm_surf_height
+  - entity: sensor.noaa_ilm_surf_surf_height
     name: "Surf Height"
     icon: mdi:wave
-  - entity: sensor.noaa_ilm_water_temperature
+  - entity: sensor.noaa_ilm_surf_water_temperature
     name: "Water Temperature"
     icon: mdi:thermometer-water
 ```
@@ -872,24 +926,24 @@ type: entities
 title: 🌌 Space Weather
 show_header_toggle: false
 entities:
-  - entity: sensor.noaa_space_planetary_k_index
+  - entity: sensor.noaa_ilm_space_planetary_k_index
     name: Kp Index
     icon: mdi:chart-line
-  - entity: sensor.noaa_space_geomagnetic_storm
+  - entity: sensor.noaa_ilm_space_geomagnetic_storm
     name: Geomagnetic Storm
     icon: mdi:earth
   - type: divider
-  - entity: sensor.aurora_visibility_probability_ilm
+  - entity: sensor.noaa_ilm_space_aurora_visibility_probability
     name: Aurora Probability
     icon: mdi:star-shooting
-  - entity: sensor.aurora_next_time_ilm
+  - entity: sensor.noaa_ilm_space_aurora_next_time
     name: Next Aurora
     icon: mdi:clock-outline
-  - entity: sensor.aurora_duration_ilm
+  - entity: sensor.noaa_ilm_space_aurora_duration
     name: Duration
     icon: mdi:timer-outline
   - type: divider
-  - entity: sensor.noaa_weather_active_nws_alerts
+  - entity: sensor.noaa_ilm_weather_active_nws_alerts
     name: Solar Radiation
     icon: mdi:radioactive
 
@@ -901,10 +955,10 @@ type: entities
 title: "🌀 Hurricane Activity"
 show_header_toggle: false
 entities:
-  - entity: sensor.noaa_weather_hurricane_alerts
+  - entity: sensor.noaa_hurricane_alerts
     name: "Active Alerts"
     icon: mdi:alert-octagon
-  - entity: sensor.noaa_weather_hurricane_activity
+  - entity: sensor.noaa_hurricane_activity
     name: "Activity Level"
     icon: mdi:weather-hurricane
 ```
@@ -924,8 +978,8 @@ cards:
           type: markdown
           content: |
             ## ⚠️ ACTIVE WEATHER ALERTS
-            **{{ state_attr('sensor.noaa_weather_active_ilm_weather_alerts', 'total_alerts') }} Alert(s)**
-            {{ state_attr('sensor.noaa_weather_active_ilm_weather_alerts', 'summary') }}
+            **{{ state_attr('sensor.noaa_ilm_weather_active_nws_alerts', 'alert_count') }} Alert(s)**
+            {{ state_attr('sensor.noaa_ilm_weather_active_nws_alerts', 'summary') }}
           card_mod:
             style: |
               ha-card {
@@ -1019,7 +1073,7 @@ entities:
     name: "Temp"
   - entity: sensor.noaa_ilm_weather_wind_speed
     name: "Wind"
-  - entity: sensor.noaa_surf_surf_height
+  - entity: sensor.noaa_ilm_surf_surf_height
     name: "Surf"
   - entity: binary_sensor.noaa_ilm_surf_unsafe_to_swim
     name: "Safe Swim"
@@ -1027,9 +1081,9 @@ entities:
     name: "Kp Index"
   - entity: binary_sensor.noaa_ilm_weather_active_alerts
     name: "Alerts"
-  - entity: sensor.noaa_weather_hurricane_activity
+  - entity: sensor.noaa_hurricane_activity
     name: "Hurricanes"
-  - entity: sensor.noaa_surf_rip_current_risk
+  - entity: sensor.noaa_ilm_surf_rip_current_risk
     name: "Rip Risk"
 ```
 
@@ -1040,7 +1094,7 @@ cards:
   - type: markdown
     content: |
       # 📍 Wilmington Weather
-      Updated: {{ as_timestamp(states.sensor.noaa_ilm_temperature.last_changed) | timestamp_custom('%I:%M %p') }}
+      Updated: {{ as_timestamp(states.sensor.noaa_ilm_weather_temperature.last_changed) | timestamp_custom('%I:%M %p') }}
   
   - type: entities
     entities:
@@ -1061,7 +1115,7 @@ cards:
       icon: mdi:alert-circle
       tap_action:
         action: more-info
-        entity: sensor.noaa_weather_active_nws_alerts
+        entity: sensor.noaa_ilm_weather_active_nws_alerts
       hold_action:
         action: none
 ```
@@ -1071,11 +1125,9 @@ cards:
 type: markdown
 title: "📝 Forecast Discussion"
 content: |
-  **{{ state_attr('sensor.noaa_ilm_forecast_discussion', 'office') }}** - Updated {{ state_attr('sensor.noaa_ilm_forecast_discussion', 'issued_time') }}
+  **{{ state_attr('sensor.noaa_ilm_weather_forecast_discussion', 'office_code') }}** - Updated {{ state_attr('sensor.noaa_ilm_weather_forecast_discussion', 'issue_time') }}
   
-  {{ states('sensor.noaa_ilm_forecast_discussion') }}
-  
-  [Read Full Discussion]({{ state_attr('sensor.noaa_ilm_forecast_discussion', 'product_link') }})
+  {{ states('sensor.noaa_ilm_weather_forecast_discussion') }}
 ```
 
 ## Troubleshooting & FAQ
@@ -1118,7 +1170,7 @@ A: Visit [weather.gov](https://www.weather.gov/) and search for your location. T
 A: Aurora predictions are location-specific and require Config Flow setup. Also, aurora is only visible at high Kp levels for southern latitudes — check the Kp Index value and your office's magnetic latitude.
 
 **Q: How often does data update?**
-A: All sensors update every 5 minutes.
+A: Most sensors update every 10 minutes; meteor shower sensors recompute every 30 minutes.
 
 **Q: Are UV Index readings available?**
 A: No. UV Index is not provided through NWS/NOAA APIs and cannot be included in this integration.

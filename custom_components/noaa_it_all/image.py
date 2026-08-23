@@ -183,7 +183,6 @@ class GeoelectricFieldImageEntity(ImageEntity):
         try:
             # Fetch the image and update with cache busting
             self._image_url = self.get_cache_busted_url()
-            self.async_write_ha_state()  # Notify Home Assistant of the state change
             _LOGGER.debug("Updated geoelectric field image URL")
         except Exception as e:
             _LOGGER.error("Error during geoelectric field image update: %s", e)
@@ -257,7 +256,6 @@ class AuroraForecastImageEntity(ImageEntity):
         try:
             # Fetch the image and update with cache busting
             self._image_url = self.get_cache_busted_url()
-            self.async_write_ha_state()  # Notify Home Assistant of the state change
             _LOGGER.debug("Updated aurora forecast image URL")
         except Exception as e:
             _LOGGER.error("Error during aurora forecast image update: %s", e)
@@ -336,7 +334,6 @@ class HurricaneOutlookImageEntity(ImageEntity):
         """Fetch and update the latest image content asynchronously."""
         try:
             self._image_url = self.get_cache_busted_url()
-            self.async_write_ha_state()
             _LOGGER.debug("Updated hurricane outlook image URL")
         except Exception as e:
             _LOGGER.error("Error during hurricane outlook image update: %s", e)
@@ -421,7 +418,6 @@ class RadarBaseReflectivityImageEntity(ImageEntity):
         try:
             # Fetch the image and update with cache busting
             self._image_url = self.get_cache_busted_url()
-            self.async_write_ha_state()  # Notify Home Assistant of the state change
             _LOGGER.debug("Updated radar base reflectivity image URL for %s", self._office_code)
         except Exception as e:
             _LOGGER.error("Error during radar base reflectivity image update for %s: %s", self._office_code, e)
@@ -509,7 +505,6 @@ class RadarLoopImageEntity(ImageEntity):
         try:
             # Fetch the image and update with cache busting
             self._image_url = self.get_cache_busted_url()
-            self.async_write_ha_state()  # Notify Home Assistant of the state change
             _LOGGER.debug("Updated radar loop image URL for %s", self._office_code)
         except Exception as e:
             _LOGGER.error("Error during radar loop image update for %s: %s",
@@ -597,7 +592,6 @@ class GOESAirMassImageEntity(ImageEntity):
         try:
             # Fetch the image and update with cache busting
             self._image_url = self.get_cache_busted_url()
-            self.async_write_ha_state()  # Notify Home Assistant of the state change
             _LOGGER.debug("Updated GOES Air Mass image URL")
         except Exception as e:
             _LOGGER.error("Error during GOES Air Mass image update: %s", e)
@@ -680,7 +674,6 @@ class GOESGeoColorImageEntity(ImageEntity):
         try:
             # Fetch the image and update with cache busting
             self._image_url = self.get_cache_busted_url()
-            self.async_write_ha_state()  # Notify Home Assistant of the state change
             _LOGGER.debug("Updated GOES GeoColor image URL")
         except Exception as e:
             _LOGGER.error("Error during GOES GeoColor image update: %s", e)

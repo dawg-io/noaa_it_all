@@ -519,7 +519,7 @@ class MeteorShowerActiveBinarySensor(CoordinatorEntity, BinarySensorEntity):
     Perseids genuinely stay above five meteors an hour for about six days either side of
     maximum. Raise ``METEOR_ACTIVE_MIN_RATE`` if you only want to hear about the peak nights.
 
-    Unlike the other binary sensors in this module it sets ``_attr_has_entity_name``, matching the
+    Like the other binary sensors in this module it sets ``_attr_has_entity_name``, matching the
     sensor convention, so the entity ID carries the ``space`` device segment
     (``binary_sensor.noaa_ilm_space_meteor_shower_active``) and reads as a sibling of the meteor
     sensors rather than an orphan.

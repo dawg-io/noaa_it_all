@@ -32,14 +32,11 @@ longitude: -117.1611
 ```
 
 ### Legacy YAML Configuration
-For basic sensors without location-specific data:
 
-```yaml
-# configuration.yaml
-noaa_it_all:
-```
-
-**Note:** Legacy YAML configuration provides only global sensors (Kp Index, Geomagnetic Storm, Hurricane data) and does not include location-specific features like weather alerts, surf conditions, or aurora predictions.
+> **Removed.** YAML configuration is no longer supported and creates **no entities**. If
+> `noaa_it_all:` is present in `configuration.yaml`, the integration logs an error and sets nothing
+> up. Remove the block and add the integration through **Settings → Devices & Services → Add
+> Integration → NOAA It All**.
 
 ## Entity Configuration
 
@@ -48,14 +45,39 @@ All NOAA It All entities follow consistent naming patterns:
 
 **Pattern:**
 ```
-{entity_type}.noaa_{identifier}_{sensor_name}
+{entity_type}.noaa_{office}_{weather|surf|space}_{sensor_name}
 ```
 
+The middle segment is the **device group**, and it is always present on office-scoped entities.
+Globally-scoped entities use `{entity_type}.noaa_hurricane_{sensor_name}` instead, with no office
+code. See [Exceptions to the pattern](#exceptions-to-the-pattern).
+
+**Every example in this guide uses the `ILM` office.** To adapt one, replace `ilm` with your own
+office code in lower case, leaving the exceptions below untouched.
+
 **Examples:**
-- `sensor.noaa_sgx_temperature` - Temperature for San Diego office
-- `binary_sensor.noaa_sgx_surf_unsafe_to_swim` - Rip current safety sensor
-- `sensor.noaa_space_kp_index` - Global space weather sensor
-- `image.noaa_geomagnetic_field` - Space weather image
+- `sensor.noaa_ilm_weather_temperature` - Temperature for the Wilmington (ILM) office
+- `binary_sensor.noaa_ilm_surf_unsafe_to_swim` - Rip current safety sensor
+- `sensor.noaa_ilm_space_planetary_k_index` - Space weather sensor
+- `image.noaa_ilm_weather_radar_base_reflectivity` - Radar image for the office
+
+### Exceptions to the pattern
+
+These five entity IDs contain **no office code** — they live on the shared, office-independent
+`NOAA Hurricane` device. Do not substitute into them:
+
+| Entity ID | Why |
+|---|---|
+| `sensor.noaa_hurricane_alerts` | Global NHC data on the shared `NOAA Hurricane` device |
+| `sensor.noaa_hurricane_activity` | Global NHC data on the shared `NOAA Hurricane` device |
+| `image.noaa_hurricane_outlook_image` | Global NHC imagery |
+| `image.noaa_hurricane_goes_air_mass` | Global GOES imagery |
+| `image.noaa_hurricane_goes_geocolor` | Global GOES imagery |
+
+And two that follow the rule but read oddly:
+
+- `sensor.noaa_{office}_surf_surf_height` — "surf" twice: device group, then entity name.
+- `weather.noaa_{office}_weather` — a single `weather`, not `_weather_weather`.
 
 ### Customizing Entity Properties
 
@@ -65,16 +87,16 @@ You can customize friendly names, icons, and other properties in `customize.yaml
 # customize.yaml
 homeassistant:
   customize:
-    sensor.noaa_sgx_temperature:
+    sensor.noaa_ilm_weather_temperature:
       friendly_name: "San Diego Temperature"
       icon: mdi:thermometer
     
-    binary_sensor.noaa_sgx_surf_unsafe_to_swim:
+    binary_sensor.noaa_ilm_surf_unsafe_to_swim:
       friendly_name: "Beach Safety"
       icon: mdi:swim
       device_class: safety
     
-    sensor.noaa_space_kp_index:
+    sensor.noaa_ilm_space_planetary_k_index:
       friendly_name: "Geomagnetic Activity"
       icon: mdi:earth
 ```
@@ -88,18 +110,18 @@ Entities that monitor space weather conditions worldwide, plus the meteor shower
 your configured location.
 
 **Entities in this group:**
-- `sensor.noaa_space_kp_index`
-- `sensor.noaa_space_geomagnetic_storm`
-- `sensor.noaa_{office}_aurora_next_time`
-- `sensor.noaa_{office}_aurora_duration`
-- `sensor.noaa_{office}_aurora_visibility_probability`
-- `sensor.noaa_{office}_solar_radiation_storm_alerts`
+- `sensor.noaa_ilm_space_planetary_k_index`
+- `sensor.noaa_ilm_space_geomagnetic_storm`
+- `sensor.noaa_{office}_space_aurora_next_time`
+- `sensor.noaa_{office}_space_aurora_duration`
+- `sensor.noaa_{office}_space_aurora_visibility_probability`
+- `sensor.noaa_{office}_space_solar_radiation_storm_alerts`
 - `sensor.noaa_{office}_space_meteor_shower_activity`
 - `sensor.noaa_{office}_space_next_meteor_shower`
 - `sensor.noaa_{office}_space_meteor_viewing_score`
 - `binary_sensor.noaa_{office}_space_meteor_shower_active`
-- `image.noaa_geomagnetic_field`
-- `image.noaa_aurora_forecast`
+- `image.noaa_ilm_space_geoelectric_field_image`
+- `image.noaa_ilm_space_aurora_forecast_image`
 
 > Meteor shower entities require latitude/longitude (Config Flow setup) because the radiant's
 > altitude — the single biggest factor in how many meteors you see — depends on where you are.
@@ -109,35 +131,46 @@ your configured location.
 Entities for hurricane tracking, forecasts, and weather observations.
 
 **Entities in this group:**
-- `sensor.noaa_weather_hurricane_alerts`
-- `sensor.noaa_weather_hurricane_activity`
-- `sensor.noaa_{office}_temperature`
-- `sensor.noaa_{office}_humidity`
-- `sensor.noaa_{office}_wind_speed`
-- `sensor.noaa_{office}_wind_direction`
-- `sensor.noaa_{office}_barometric_pressure`
-- `sensor.noaa_{office}_dewpoint`
-- `sensor.noaa_{office}_visibility`
-- `sensor.noaa_{office}_sky_conditions`
-- `sensor.noaa_{office}_feels_like`
-- `sensor.noaa_{office}_cloud_cover`
-- `sensor.noaa_{office}_radar_timestamp`
-- `sensor.noaa_{office}_forecast_discussion`
-- `sensor.noaa_weather_active_nws_alerts`
-- `image.noaa_hurricane_outlook`
-- `image.noaa_hurricane_satellite`
+- `sensor.noaa_hurricane_alerts`
+- `sensor.noaa_hurricane_activity`
+- `sensor.noaa_{office}_weather_temperature`
+- `sensor.noaa_{office}_weather_humidity`
+- `sensor.noaa_{office}_weather_wind_speed`
+- `sensor.noaa_{office}_weather_wind_direction`
+- `sensor.noaa_{office}_weather_barometric_pressure`
+- `sensor.noaa_{office}_weather_dewpoint`
+- `sensor.noaa_{office}_weather_visibility`
+- `sensor.noaa_{office}_weather_sky_conditions`
+- `sensor.noaa_{office}_weather_feels_like`
+- `sensor.noaa_{office}_weather_cloud_cover`
+- `sensor.noaa_{office}_weather_radar_timestamp`
+- `sensor.noaa_{office}_weather_forecast_discussion`
+- `sensor.noaa_ilm_weather_active_nws_alerts`
+- `image.noaa_hurricane_outlook_image`
+- `image.noaa_hurricane_goes_geocolor`
 
 ### 3. NOAA Surf (Surf & Water Conditions)
 Entities for beach safety and surf conditions.
 
 **Entities in this group:**
-- `sensor.noaa_{office}_rip_current_risk`
+- `sensor.noaa_{office}_surf_rip_current_risk`
 - `sensor.noaa_{office}_surf_height`
-- `sensor.noaa_{office}_water_temperature`
+- `sensor.noaa_{office}_surf_water_temperature`
 - `binary_sensor.noaa_{office}_surf_unsafe_to_swim`
 
-### 4. NOAA Weather [OFFICE] (Location-Specific Alerts)
-Device per office for location-specific weather alerts.
+### 4. NOAA Hurricane (Global Tropical Data)
+A single shared device for National Hurricane Center data. These entities are created once,
+regardless of how many offices you configure, and carry **no office code**.
+
+**Entities in this group:**
+- `sensor.noaa_hurricane_alerts`
+- `sensor.noaa_hurricane_activity`
+- `image.noaa_hurricane_outlook_image`
+- `image.noaa_hurricane_goes_air_mass`
+- `image.noaa_hurricane_goes_geocolor`
+
+### 5. Location-specific alert binary sensors
+These live on the **NOAA {OFFICE} Weather** device alongside the observation sensors.
 
 **Entities in this group:**
 - `binary_sensor.noaa_{office}_weather_severe_weather_alert`
@@ -154,25 +187,25 @@ You can create additional groups combining entities from different devices:
 noaa_safety_alerts:
   name: "NOAA Safety Alerts"
   entities:
-    - binary_sensor.noaa_sgx_weather_severe_weather_alert
-    - binary_sensor.noaa_sgx_weather_flood_winter_alert
-    - binary_sensor.noaa_sgx_weather_heat_air_quality_alert
-    - binary_sensor.noaa_sgx_surf_unsafe_to_swim
+    - binary_sensor.noaa_ilm_weather_severe_weather_alert
+    - binary_sensor.noaa_ilm_weather_flood_winter_alert
+    - binary_sensor.noaa_ilm_weather_heat_air_quality_alert
+    - binary_sensor.noaa_ilm_surf_unsafe_to_swim
 
 noaa_current_conditions:
   name: "Current Weather"
   entities:
-    - sensor.noaa_sgx_temperature
-    - sensor.noaa_sgx_humidity
-    - sensor.noaa_sgx_wind_speed
-    - sensor.noaa_sgx_barometric_pressure
+    - sensor.noaa_ilm_weather_temperature
+    - sensor.noaa_ilm_weather_humidity
+    - sensor.noaa_ilm_weather_wind_speed
+    - sensor.noaa_ilm_weather_barometric_pressure
 
 noaa_space_weather:
   name: "Space Weather"
   entities:
-    - sensor.noaa_space_kp_index
-    - sensor.noaa_space_geomagnetic_storm
-    - sensor.noaa_dlh_aurora_visibility_probability
+    - sensor.noaa_ilm_space_planetary_k_index
+    - sensor.noaa_ilm_space_geomagnetic_storm
+    - sensor.noaa_ilm_space_aurora_visibility_probability
 ```
 
 ## Dashboard Card Examples
@@ -183,15 +216,15 @@ type: entities
 title: "Current Weather - San Diego"
 show_header_toggle: false
 entities:
-  - entity: sensor.noaa_sgx_temperature
+  - entity: sensor.noaa_ilm_weather_temperature
     name: "Temperature"
-  - entity: sensor.noaa_sgx_feels_like
+  - entity: sensor.noaa_ilm_weather_feels_like
     name: "Feels Like"
-  - entity: sensor.noaa_sgx_humidity
+  - entity: sensor.noaa_ilm_weather_humidity
     name: "Humidity"
-  - entity: sensor.noaa_sgx_wind_speed
+  - entity: sensor.noaa_ilm_weather_wind_speed
     name: "Wind Speed"
-  - entity: sensor.noaa_sgx_sky_conditions
+  - entity: sensor.noaa_ilm_weather_sky_conditions
     name: "Conditions"
 ```
 
@@ -201,13 +234,13 @@ type: entities
 title: "Weather Alerts"
 state_color: true
 entities:
-  - entity: binary_sensor.noaa_sgx_weather_severe_weather_alert
+  - entity: binary_sensor.noaa_ilm_weather_severe_weather_alert
     name: "Severe Weather"
-  - entity: binary_sensor.noaa_sgx_weather_flood_winter_alert
+  - entity: binary_sensor.noaa_ilm_weather_flood_winter_alert
     name: "Flood/Winter"
-  - entity: binary_sensor.noaa_sgx_weather_heat_air_quality_alert
+  - entity: binary_sensor.noaa_ilm_weather_heat_air_quality_alert
     name: "Heat/Air Quality"
-  - entity: sensor.noaa_weather_active_nws_alerts
+  - entity: sensor.noaa_ilm_weather_active_nws_alerts
     name: "Alert Details"
 ```
 
@@ -216,13 +249,13 @@ entities:
 type: entities
 title: "Beach Conditions"
 entities:
-  - entity: binary_sensor.noaa_sgx_surf_unsafe_to_swim
+  - entity: binary_sensor.noaa_ilm_surf_unsafe_to_swim
     name: "Safe to Swim"
-  - entity: sensor.noaa_sgx_rip_current_risk
+  - entity: sensor.noaa_ilm_surf_rip_current_risk
     name: "Rip Current Risk"
-  - entity: sensor.noaa_sgx_surf_height
+  - entity: sensor.noaa_ilm_surf_surf_height
     name: "Wave Height"
-  - entity: sensor.noaa_sgx_water_temperature
+  - entity: sensor.noaa_ilm_surf_water_temperature
     name: "Water Temperature"
 ```
 
@@ -233,12 +266,12 @@ cards:
   - type: entities
     title: "Space Weather"
     entities:
-      - sensor.noaa_space_kp_index
-      - sensor.noaa_space_geomagnetic_storm
-      - sensor.noaa_dlh_aurora_visibility_probability
+      - sensor.noaa_ilm_space_planetary_k_index
+      - sensor.noaa_ilm_space_geomagnetic_storm
+      - sensor.noaa_ilm_space_aurora_visibility_probability
   
   - type: picture-entity
-    entity: image.noaa_aurora_forecast
+    entity: image.noaa_ilm_space_aurora_forecast_image
     name: "Aurora Forecast"
     show_state: false
 ```
@@ -271,10 +304,10 @@ automation:
     description: "Alert when rip currents make swimming dangerous"
     trigger:
       - platform: state
-        entity_id: binary_sensor.noaa_sgx_surf_unsafe_to_swim
+        entity_id: binary_sensor.noaa_ilm_surf_unsafe_to_swim
         to: 'on'
     action:
-      - service: notify.mobile_app
+      - service: notify.mobile_app_your_phone
         data:
           title: "Beach Safety Alert"
           message: "High rip current risk - swimming not recommended"
@@ -290,22 +323,22 @@ automation:
         at: "08:00:00"
     condition:
       - condition: state
-        entity_id: binary_sensor.noaa_sgx_surf_unsafe_to_swim
+        entity_id: binary_sensor.noaa_ilm_surf_unsafe_to_swim
         state: 'off'
       - condition: numeric_state
-        entity_id: sensor.noaa_sgx_temperature
+        entity_id: sensor.noaa_ilm_weather_temperature
         above: 75
       - condition: numeric_state
-        entity_id: sensor.noaa_sgx_wind_speed
+        entity_id: sensor.noaa_ilm_weather_wind_speed
         below: 15
     action:
-      - service: notify.mobile_app
+      - service: notify.mobile_app_your_phone
         data:
           title: "Perfect Beach Day!"
           message: >
-            Temperature: {{ states('sensor.noaa_sgx_temperature') }}°F
-            Surf: {{ states('sensor.noaa_sgx_surf_height') }} ft
-            Water: {{ states('sensor.noaa_sgx_water_temperature') }}°F
+            Temperature: {{ states('sensor.noaa_ilm_weather_temperature') }}°F
+            Surf: {{ states('sensor.noaa_ilm_surf_surf_height') }} ft
+            Water: {{ states('sensor.noaa_ilm_surf_water_temperature') }}°F
 ```
 
 ### Severe Weather Response
@@ -315,7 +348,7 @@ automation:
     description: "Automated responses to severe weather"
     trigger:
       - platform: state
-        entity_id: binary_sensor.noaa_sgx_weather_severe_weather_alert
+        entity_id: binary_sensor.noaa_ilm_weather_severe_weather_alert
         to: 'on'
     action:
       # Close blinds
@@ -345,15 +378,15 @@ script:
   weather_report:
     alias: "Get Weather Report"
     sequence:
-      - service: notify.mobile_app
+      - service: notify.mobile_app_your_phone
         data:
           title: "Weather Report"
           message: >
-            Temperature: {{ states('sensor.noaa_sgx_temperature') }}°F
-            Conditions: {{ states('sensor.noaa_sgx_sky_conditions') }}
-            Wind: {{ states('sensor.noaa_sgx_wind_speed') }} mph
-            Humidity: {{ states('sensor.noaa_sgx_humidity') }}%
-            {% if is_state('binary_sensor.noaa_sgx_weather_active_alerts', 'on') %}
+            Temperature: {{ states('sensor.noaa_ilm_weather_temperature') }}°F
+            Conditions: {{ states('sensor.noaa_ilm_weather_sky_conditions') }}
+            Wind: {{ states('sensor.noaa_ilm_weather_wind_speed') }} mph
+            Humidity: {{ states('sensor.noaa_ilm_weather_humidity') }}%
+            {% if is_state('binary_sensor.noaa_ilm_weather_active_alerts', 'on') %}
             ⚠️ Weather alerts active!
             {% endif %}
 ```
@@ -370,10 +403,10 @@ script:
         data:
           message: >
             Space weather report.
-            K P index is {{ states('sensor.noaa_space_kp_index') }}.
-            Geomagnetic activity: {{ states('sensor.noaa_space_geomagnetic_storm') }}.
-            {% if states('sensor.noaa_dlh_aurora_visibility_probability') | int > 50 %}
-            Aurora visibility probability is high at {{ states('sensor.noaa_dlh_aurora_visibility_probability') }} percent.
+            K P index is {{ states('sensor.noaa_ilm_space_planetary_k_index') }}.
+            Geomagnetic activity: {{ states('sensor.noaa_ilm_space_geomagnetic_storm') }}.
+            {% if states('sensor.noaa_ilm_space_aurora_visibility_probability') | int > 50 %}
+            Aurora visibility probability is high at {{ states('sensor.noaa_ilm_space_aurora_visibility_probability') }} percent.
             {% endif %}
 ```
 
