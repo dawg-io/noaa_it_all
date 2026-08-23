@@ -43,12 +43,20 @@
         "data": {
           "office_code": "NWS Forecast Office"
         }
+      },
+      "radar": {
+        "title": "Radar Loop History",
+        "description": "How many hours of radar the animated Radar Loop should cover.\n\nNOAA's own loop is fixed at roughly 50 minutes and it only keeps ten frames on the server, so anything longer is collected here instead: one frame per refresh, saved under your Home Assistant configuration directory and kept across restarts. A newly configured loop starts short and fills out over the hours that follow.\n\nExpect a few megabytes of storage per radar site, and note that the assembled animation is larger than NOAA's, so every open dashboard re-downloads it each time it changes.\n\nSet 0 to serve NOAA's own loop unchanged and store nothing. Maximum {max_hours} hours.",
+        "data": {
+          "radar_loop_hours": "Hours of radar history"
+        }
       }
     },
     "error": {
       "invalid_latitude": "Latitude must be between -90 and 90.",
       "invalid_longitude": "Longitude must be between -180 and 180.",
-      "invalid_office": "Please choose a valid NWS forecast office."
+      "invalid_office": "Please choose a valid NWS forecast office.",
+      "invalid_radar_hours": "Radar history must be a whole number of hours between 0 and {max_hours}."
     }
   }
 }

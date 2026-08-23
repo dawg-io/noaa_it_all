@@ -5,7 +5,155 @@ All notable changes to NOAA It All for Home Assistant will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.5.2] - Current
+## [0.6.0] - Current
+
+### Added
+- **The radar loop can now cover up to 24 hours instead of NOAA's fixed 50 minutes.** NOAA
+  publishes a ready-made animation at `{SITE}_loop.gif`, but it is fixed at ten frames covering
+  roughly 50 minutes, and only those ten frames exist on its server — so a longer loop cannot be
+  downloaded, it has to be collected. The Radar Loop entity now fetches the latest single scan on
+  each refresh, files it under the time NOAA published it, and assembles the animation itself from
+  an evenly time-spaced sample of what it holds.
+
+  Set the window under **Settings → Devices & Services → NOAA It All → Configure**, which gained a
+  third step. It defaults to **24 hours**; `0` restores the previous behaviour exactly — NOAA's own
+  loop, proxied unchanged, with nothing written to disk.
+
+  Things worth knowing:
+  - **The loop fills in over time.** A freshly configured loop is only as long as the history
+    collected so far and reaches its full length after that many hours of uptime. Below six frames
+    the card shows NOAA's own loop instead, so it is never blank and never worse than before.
+  - **Frames survive restarts**, stored as one small GIF per scan under
+    `<config>/noaa_it_all/radar_frames/<RADAR_SITE>/`. Budget a few megabytes per radar site.
+    Anything outside the window — or dated in the future by a wrong clock — is pruned on every
+    refresh. The directory is removed when the integration is deleted, when the entry is switched
+    to another forecast office, and when the option is set back to `0`, unless another configured
+    office is still building a loop from the same radar site.
+  - **The animation is larger than NOAA's**, and every open dashboard re-downloads it whenever it
+    changes. A 24-hour loop is capped at 72 frames (one every 20 minutes) and plays through in
+    about ten seconds; shorter windows are proportionally finer, with a 6-hour loop keeping roughly
+    one frame per scan.
+  - Frames are identified by `Last-Modified` — the time NOAA published the scan — which puts them
+    on the real volume-scan cadence rather than on our refresh boundary, and makes two refreshes
+    that see the same scan resolve to the same file. Hashing the image bytes would have been
+    actively wrong: two consecutive scans of a clear sky are genuinely identical, so a quiet night
+    would collapse into a single frame and the loop would cut straight from "clear" to "storm" with
+    no sense of time passing.
+  - Every failure — too few frames yet, Pillow missing, assembly failing, a disk that will not take
+    the frame — falls back to NOAA's own loop, and no failure path changes the picture already on
+    screen.
+- **The Radar Loop entity exposes what it is actually showing.** `loop_mode` is `local` when the
+  animation was built here and `upstream` when it is NOAA's, alongside `loop_hours`, `frame_count`,
+  `window_start` and `window_end` — so a loop quietly shorter than configured is visible from a
+  template rather than only from the logs.
+
+### Changed
+- **The locally built loop is opaque where NOAA's is transparent.** Source frames are transparent
+  overlays that each carry their own palette, and reconciling per-frame transparency across
+  differing palettes is the most reliable way to produce a psychedelic radar loop. Frames are
+  composited onto a solid black background before being combined. Cards that relied on the radar
+  loop being transparent over a custom background will see black instead; set the option to `0` to
+  keep NOAA's transparent animation.
+- **Cached image validators are only offered back to the URL they came from.** The radar loop
+  entity fetches two different resources, and an `ETag` from the single frame must never be sent as
+  a validator for the animation — a server answering `304` to that would hand back the wrong image.
+
+## [0.5.3] - Previous
+
+### Fixed
+- **A network blip no longer blanks the NOAA image cards.** Every image entity's `async_image()`
+  returned `b""` on any failure, and Home Assistant treats empty bytes as an error and turns them
+  into an HTTP 500 — so a momentary `Cannot connect to host services.swpc.noaa.gov:443 ... [Timeout
+  while contacting DNS servers]` was enough to replace a perfectly good picture with a broken tile.
+  Nothing was cached, so there was nothing to fall back on. The image bytes are now kept in memory
+  and re-served: a failed refresh changes neither the cached frame nor `image_last_updated`, so the
+  previous picture stays on the dashboard until a later refresh replaces it.
+- **Images are fetched on a timer instead of while serving the HTTP request.** All seven entities
+  now fetch in the background every 10 minutes, so a slow NOAA can no longer blow Home Assistant's
+  10-second image-proxy budget, and several dashboard clients asking at once no longer each start
+  their own request. The first fetch is scheduled rather than awaited during setup, so an
+  unreachable NOAA cannot hold up the config entry.
+- **`entity_picture` now points at Home Assistant's image proxy** (`/api/image_proxy/...`) once a
+  frame has been fetched, instead of always sending the browser straight to `services.swpc.noaa.gov`.
+  This is what makes the cache reachable — previously the browser fetched NOAA itself and the
+  entity's own bytes were never used, so the card broke whenever *the browser* could not reach NOAA.
+  Until the first successful fetch the entity still falls back to the upstream URL, so a restart
+  while Home Assistant's own resolver is broken still renders if the browser's network is fine.
+- **A total-request timeout is no longer reported as an unexpected error.** `aiohttp`'s
+  `ClientTimeout` expiry raises `asyncio.TimeoutError`, which is not an `aiohttp.ClientError`, so it
+  fell through to the catch-all arm and logged `Unexpected error fetching ... image`. Timeouts, DNS
+  failures, connection resets and server disconnects are now classified together as transient.
+- **Transient failures no longer log an error per blip.** A `cloud_polling` integration losing its
+  upstream for a minute is normal. Consecutive failures now stay at debug while a cached frame is
+  still being served, warn once the outage has lasted about half an hour, and only escalate to error
+  after roughly an hour — and then only periodically. Recovery logs a single info line. A failure
+  that is *not* transient (a 404, a content type that is not an image) still warns immediately, as
+  does any failure while there is no cached image to show.
+- **The declared content type now matches the actual image format.** Home Assistant defaults every
+  image entity to `image/jpeg`; five of the seven are not JPEGs. The geoelectric field and hurricane
+  outlook images are PNG, both radar images are GIF, and the content type reported by NOAA is
+  adopted when it differs.
+- **A single failed Points API lookup no longer disables forecasts until a restart.** This is the
+  cause of the recurring `Error fetching NOAA Forecasts data: All forecast API requests failed`.
+  `ForecastCoordinator._resolve_forecast_urls()` set `self._urls_fetched = True` in its `except`
+  branch as well as on success, so one transient failure left both forecast URLs `None` with no way
+  to retry — and because each fetch is guarded by `if self._forecast_url:`, no request was even
+  attempted afterwards. Every subsequent refresh went straight to `UpdateFailed`, forever. The flag
+  is now only latched on success, so the next 10-minute cycle re-resolves. The same latch was in
+  `ObservationsCoordinator._resolve_station()` and `CloudCoverCoordinator._resolve_gridpoint_url()`,
+  where it silently retired the observation-station and gridpoint lookups; both are fixed too.
+- **Space weather and hurricane requests now send a `User-Agent`.** They were the only 5 of 19
+  outbound requests without one, and `_HURRICANE_ALERTS_URL` points at `api.weather.gov`, which
+  requires it.
+- **`All X API requests failed` now says which endpoints failed and why.** The message discarded
+  every underlying exception, so the log line naming the problem was useless on its own and the real
+  cause sat in separate `WARNING` lines above it — when a request had been attempted at all. Failures
+  are now collected and appended, e.g. `All forecast API requests failed: Points API lookup
+  (ClientConnectorError: Cannot connect to host api.weather.gov:443 ...)`.
+- **`coordinator.py` now has behavioural tests** (`tests/test_coordinator.py`). It had none, across
+  773 lines and 10 coordinators, which is how the latch bug survived. Every new test was confirmed
+  to fail against the pre-fix code.
+
+### Changed
+- **The seven image entity classes now share a `NoaaImageEntity` base.** Each was a near-identical
+  copy of the same ~70 lines, which is why the `b""` bug existed in seven places at once. Subclasses
+  keep only what differs: name, unique ID, device info, upstream URL, content type and a log label.
+- **Image entities now report a state.** Previously all seven sat at `unknown` forever, because
+  `image_last_updated` was never set. The state is now an ISO-8601 timestamp that advances whenever
+  the image bytes change, which also makes "this image has gone stale" templatable.
+- **The `User-Agent` now identifies this integration honestly.** It was
+  `HomeAssistant/NOAA-Integration` on all 17 outbound request sites: generic, unversioned, carrying no
+  contact information, and implying Home Assistant core rather than a third-party custom integration.
+  `api.weather.gov` requires a User-Agent and asks that it be unique to the application, with a website
+  or email so they can make contact instead of simply blocking traffic they cannot place — which matters
+  more now that the integration polls on a timer. It is now
+  `noaa_it_all/<version> (+https://github.com/dawg-io/noaa_it_all)`, built from `manifest.json` at import
+  so a release bump is the only edit needed — `const.VERSION` and `const.DOCUMENTATION_URL` now read from
+  there, and `tests/test_manifest.py` fails if either is ever pasted back in as a literal. A contact email
+  may be added to the string later.
+- **Refreshes revalidate with `ETag` / `Last-Modified`.** Because the integration now polls whether
+  or not anyone is looking at the dashboard, conditional requests keep the steady-state cost close
+  to zero for sources that publish infrequently. Requests also send the integration's `User-Agent`,
+  matching the coordinators.
+
+- **The documented dashboard templates no longer blow up during startup.** Home Assistant renders
+  dashboard templates as soon as the frontend subscribes to them, which on a cold boot can be before
+  this integration has registered its entities — `async_setup_entry` awaits an initial refresh of ten
+  coordinators, all making live NWS calls, before forwarding any platform. In that window
+  `state_attr(...)` and `states.sensor....` both return `None`, so the README's own examples raised
+  `TypeError: 'NoneType' object is not iterable` and `UndefinedError: None has no element 0`, one
+  traceback per card, intermittently. The three Extended Forecast cards, the upcoming-meteor-shower
+  loop, the mobile header and the two alert automations now guard with `or []` and a truth test, and
+  the Dashboard Card Examples section explains the race so new cards get written the same way. The
+  sensors themselves were never at fault: `periods` and `upcoming` are always published as lists.
+- **Removed a duplicated "Dashboard Card Examples" heading** in `README.md`.
+
+### Known limitations
+- Two configured NWS offices means two entities fetching the byte-identical geoelectric and aurora
+  images, since those URLs are office-independent. Harmless but wasteful; a shared per-URL fetcher
+  is the follow-up.
+
+## [0.5.2]
 
 ### Fixed
 - **Image entities no longer log an error on every startup.** `image.py` sets up its entities with

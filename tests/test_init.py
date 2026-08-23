@@ -225,3 +225,58 @@ class TestOptionsUpdateListener(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestRemoveEntryCleansUpRadarFrames(unittest.TestCase):
+    """Uninstalling should not leave a day of radar behind.
+
+    The frames live in the configuration directory, so anything left there
+    rides along in every backup from then on.
+    """
+
+    @staticmethod
+    def _entry(entry_id, office):
+        entry = MagicMock()
+        entry.entry_id = entry_id
+        entry.data = {"office_code": office}
+        entry.options = {}
+        return entry
+
+    @staticmethod
+    def _hass(entries):
+        hass = MagicMock()
+        hass.config.path = MagicMock(return_value="/config/noaa_it_all/radar_frames")
+        hass.config_entries.async_entries = MagicMock(return_value=entries)
+        return hass
+
+    def _remove(self, hass, entry):
+        import noaa_it_all
+
+        removed = []
+
+        class _Store:
+            def __init__(self, _hass, _base, site):
+                self.site = site
+
+            async def async_remove_all(self):
+                removed.append(self.site)
+
+        with patch.object(noaa_it_all, "RadarFrameStore", _Store):
+            _run(noaa_it_all.async_remove_entry(hass, entry))
+        return removed
+
+    def test_the_sites_frames_are_deleted(self):
+        entry = self._entry("entry_1", "ILM")
+        removed = self._remove(self._hass([entry]), entry)
+        self.assertEqual(["KLTX"], removed)
+
+    def test_frames_shared_with_another_entry_are_kept(self):
+        entry = self._entry("entry_1", "ILM")
+        other = self._entry("entry_2", "ILM")
+        removed = self._remove(self._hass([entry, other]), entry)
+        self.assertEqual([], removed)
+
+    def test_an_office_without_a_radar_site_is_a_no_op(self):
+        entry = self._entry("entry_1", "ZZZ")
+        removed = self._remove(self._hass([entry]), entry)
+        self.assertEqual([], removed)

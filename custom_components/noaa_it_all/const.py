@@ -1,6 +1,36 @@
 """Constants for NOAA Integration."""
 
+import json
+from pathlib import Path
+
 DOMAIN = "noaa_it_all"
+
+
+def _manifest() -> dict:
+    """Return the parsed ``manifest.json`` sitting next to this file.
+
+    Read here so the version and documentation URL have exactly one home and
+    a release bump does not have to be remembered in two places. Home
+    Assistant imports custom integration modules in an executor thread, and
+    this is a single small local file, so the read does not block the event
+    loop.
+    """
+    try:
+        with open(Path(__file__).parent / "manifest.json", encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        # A broken manifest means Home Assistant will not load the
+        # integration at all; fall back to sentinels rather than raising an
+        # obscure error while merely importing constants.
+        return {}
+
+
+_MANIFEST = _manifest()
+
+VERSION = _MANIFEST.get("version") or "0.0.0"
+DOCUMENTATION_URL = (
+    _MANIFEST.get("documentation") or "https://github.com/dawg-io/noaa_it_all"
+)
 
 # Global (non office-specific) device identifiers.
 # Hurricane data comes from the National Hurricane Center and is global,
@@ -27,11 +57,78 @@ HURRICANE_COORDINATOR_KEY = "_hurricane_coordinator"
 CONF_OFFICE_CODE = "office_code"
 CONF_LATITUDE = "latitude"
 CONF_LONGITUDE = "longitude"
+CONF_RADAR_LOOP_HOURS = "radar_loop_hours"
 
 # Default values
 DEFAULT_SCAN_INTERVAL = 10  # minutes
 REQUEST_TIMEOUT = 30  # seconds
-USER_AGENT = "HomeAssistant/NOAA-Integration"
+# Identifies this integration to NOAA. api.weather.gov requires a User-Agent
+# and asks that it be unique to the application, with a website or email so
+# they can make contact instead of simply blocking traffic they cannot place.
+# The version is part of the string so an old release can be told apart from a
+# fixed one -- built from manifest.json so bumping the release is enough.
+# To add a contact address later, put it in the parenthesised part alongside
+# the URL: f"... (+{DOCUMENTATION_URL}, you@example.com)".
+USER_AGENT = f"{DOMAIN}/{VERSION} (+{DOCUMENTATION_URL})"
+
+# Image entities keep the last successfully fetched frame and re-fetch on a
+# background timer, so a transient upstream failure leaves the previous
+# picture on screen.  These thresholds keep the log quiet while that is
+# happening: a blip stays at debug level, a short outage warns once, and only
+# a sustained outage is reported as an error (and then only periodically).
+IMAGE_FAILURE_WARN_AFTER = 3   # consecutive failed refreshes (~30 min)
+IMAGE_FAILURE_ERROR_AFTER = 6  # consecutive failed refreshes (~1 hour)
+
+# Images are fetched in the background rather than while serving an HTTP
+# request, so this is independent of REQUEST_TIMEOUT (which belongs to the
+# coordinators) and of Home Assistant's own 10s image-proxy budget.
+IMAGE_FETCH_TIMEOUT = 20  # seconds
+IMAGE_MAX_BYTES = 20 * 1024 * 1024  # refuse absurd payloads rather than cache them
+
+# -------------------------------------------------------------------
+# Radar loop
+# -------------------------------------------------------------------
+# NOAA publishes a ready-made radar animation, but it is fixed at ten frames
+# covering roughly fifty minutes, which is long enough to see that it is
+# raining and too short to see where the rain came from.  NOAA also keeps only
+# those ten frames on the server, so a longer loop cannot be downloaded -- it
+# has to be accumulated here, one frame per refresh, and assembled locally.
+#
+# The window is measured in hours and 0 means "serve NOAA's own loop
+# unchanged", which is both the escape hatch and the behaviour every release
+# before this one had.
+DEFAULT_RADAR_LOOP_HOURS = 24
+RADAR_LOOP_MAX_HOURS = 24
+
+# The assembled animation is re-downloaded by every open dashboard each time it
+# changes, so frame count is a bandwidth and memory decision, not a fidelity
+# one.  Seventy-two frames spreads a 24-hour window over 20-minute steps: storm
+# motion stays legible, the GIF lands around 1-2 MB, and a cycle plays in about
+# ten seconds, which is roughly as long as anyone watches a loop.  Shorter
+# windows get proportionally finer steps from the same cap -- a six-hour loop
+# works out at one frame per five minutes, i.e. every scan NOAA publishes.
+RADAR_LOOP_MAX_FRAMES = 72
+RADAR_LOOP_MIN_FRAMES = 6  # below this the local loop is worse than NOAA's
+RADAR_LOOP_FRAME_MS = 120  # browsers clamp anything under ~20ms
+RADAR_LOOP_LAST_FRAME_MS = 1500  # hold on "now" so the loop reads as a loop
+RADAR_LOOP_MAX_BYTES = 8 * 1024 * 1024
+
+# Frames are composited onto an opaque background before being combined.  The
+# source frames are transparent overlays with a palette each, and reconciling
+# per-frame transparency across differing palettes is the single most reliable
+# way to produce a psychedelic radar loop.  Compositing removes the problem.
+RADAR_LOOP_BACKGROUND = (0, 0, 0)
+
+# Frames live in <config>/noaa_it_all/radar_frames/<SITE>/.  Every polled frame
+# inside the window is kept, not just the ones the current window displays, so
+# that changing the duration re-samples from real history instead of starting
+# over.  That is ~144 files, a few MB, per radar site.
+RADAR_FRAME_DIR = "radar_frames"
+RADAR_FRAME_MAX_FILES = 200  # backstop against a directory growing unbounded
+# A frame dated beyond now + this is the product of a wrong clock rather than a
+# scan we have not reached yet.  Ageing never reaches such a frame, so it is
+# discarded outright; the slack absorbs ordinary skew between us and NOAA.
+RADAR_FRAME_FUTURE_SLACK_MINUTES = 60
 
 # API endpoints
 NWS_SRF_URL = "https://forecast.weather.gov/product.php?site={office}&issuedby={office}&product=SRF&format=TXT"

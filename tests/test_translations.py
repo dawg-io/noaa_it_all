@@ -85,6 +85,21 @@ class TestTranslationsValid(unittest.TestCase):
         self.assertIn("step", self.en["options"])
         self.assertIn("init", self.en["options"]["step"])
 
+    def test_options_step_radar_present(self):
+        self.assertIn("radar", self.en["options"]["step"])
+        radar = self.en["options"]["step"]["radar"]
+        self.assertIn("title", radar)
+        self.assertIn("description", radar)
+        self.assertIn("radar_loop_hours", radar["data"])
+
+    def test_the_radar_description_fills_its_placeholder(self):
+        """The step passes max_hours, so the text has to ask for it."""
+        description = self.en["options"]["step"]["radar"]["description"]
+        self.assertIn("{max_hours}", description)
+
+    def test_options_error_has_radar_hours(self):
+        self.assertIn("invalid_radar_hours", self.en["options"]["error"])
+
 
 if __name__ == "__main__":
     unittest.main()

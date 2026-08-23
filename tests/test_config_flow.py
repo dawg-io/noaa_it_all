@@ -491,17 +491,93 @@ class TestAsyncStepInit(unittest.TestCase):
         self.assertAlmostEqual(flow._latitude, 34.0)
         self.assertAlmostEqual(flow._longitude, -78.0)
 
-    def test_office_step_creates_entry(self):
+    def test_office_step_advances_to_the_radar_step(self):
         flow = self._make_flow()
         _run(flow.async_step_init(user_input={
             "latitude": 34.0,
             "longitude": -78.0,
         }))
         result = _run(flow.async_step_office(user_input={"office_code": "ILM"}))
+        self.assertEqual(result["type"], "form")
+        self.assertEqual(result["step_id"], "radar")
+        self.assertEqual(flow._office_code, "ILM")
+
+    def _through_to_radar(self, flow=None, office="ILM"):
+        """Walk the options flow as far as the radar step."""
+        flow = flow or self._make_flow()
+        _run(flow.async_step_init(user_input={
+            "latitude": 34.0,
+            "longitude": -78.0,
+        }))
+        _run(flow.async_step_office(user_input={"office_code": office}))
+        return flow
+
+    def test_the_radar_step_creates_the_entry(self):
+        flow = self._through_to_radar()
+        result = _run(flow.async_step_radar(user_input={"radar_loop_hours": 24}))
         self.assertEqual(result["type"], "create_entry")
         self.assertEqual(result["data"]["office_code"], "ILM")
         self.assertAlmostEqual(result["data"]["latitude"], 34.0)
         self.assertAlmostEqual(result["data"]["longitude"], -78.0)
+        self.assertEqual(result["data"]["radar_loop_hours"], 24)
+
+    def test_saved_options_survive_a_second_trip_through_the_flow(self):
+        """Options replace the stored mapping rather than merging into it.
+
+        A key the last step forgets to write is a key silently lost the next
+        time anyone opens Configure, which is a slow enough failure to be worth
+        pinning down.
+        """
+        flow = self._make_flow(options={
+            "latitude": 34.0,
+            "longitude": -78.0,
+            "office_code": "ILM",
+            "radar_loop_hours": 12,
+        })
+        self._through_to_radar(flow)
+        result = _run(flow.async_step_radar(user_input={"radar_loop_hours": 12}))
+        self.assertEqual(
+            {"latitude", "longitude", "office_code", "radar_loop_hours"},
+            set(result["data"]),
+        )
+        self.assertEqual(result["data"]["radar_loop_hours"], 12)
+
+    def test_the_radar_step_prefills_the_saved_value(self):
+        flow = self._make_flow(options={"radar_loop_hours": 6})
+        self._through_to_radar(flow)
+        _reset_recorded_defaults()
+        _run(flow.async_step_radar(user_input=None))
+        self.assertEqual(_recorded_defaults()["radar_loop_hours"], 6)
+
+    def test_the_radar_step_defaults_to_a_full_day(self):
+        flow = self._through_to_radar()
+        _reset_recorded_defaults()
+        _run(flow.async_step_radar(user_input=None))
+        self.assertEqual(_recorded_defaults()["radar_loop_hours"], 24)
+
+    def test_zero_hours_is_accepted_as_the_opt_out(self):
+        flow = self._through_to_radar()
+        result = _run(flow.async_step_radar(user_input={"radar_loop_hours": 0}))
+        self.assertEqual(result["type"], "create_entry")
+        self.assertEqual(result["data"]["radar_loop_hours"], 0)
+
+    def test_out_of_range_or_unparseable_hours_are_rejected(self):
+        for value in (-1, 25, 100, "abc", None):
+            with self.subTest(value=value):
+                flow = self._through_to_radar()
+                result = _run(flow.async_step_radar(
+                    user_input={"radar_loop_hours": value}
+                ))
+                self.assertEqual(result["type"], "form")
+                self.assertEqual(
+                    result["errors"]["radar_loop_hours"], "invalid_radar_hours"
+                )
+
+    def test_hours_given_as_a_numeric_string_are_accepted(self):
+        flow = self._through_to_radar()
+        result = _run(flow.async_step_radar(user_input={"radar_loop_hours": "8"}))
+        self.assertEqual(result["type"], "create_entry")
+        self.assertEqual(result["data"]["radar_loop_hours"], 8)
 
     def test_invalid_latitude_returns_error(self):
         flow = self._make_flow()

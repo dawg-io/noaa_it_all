@@ -4,6 +4,7 @@ import json
 import os
 import re
 import struct
+import sys
 import unittest
 import zlib
 
@@ -72,6 +73,94 @@ class TestManifest(unittest.TestCase):
     def test_requirements(self):
         self.assertIn("requirements", self.manifest)
         self.assertIsInstance(self.manifest["requirements"], list)
+
+
+class TestUserAgent(unittest.TestCase):
+    """The User-Agent must stay truthful about who is calling NOAA.
+
+    api.weather.gov requires a User-Agent and asks that it be unique to the
+    application, with a website or email so they can get in touch rather than
+    just blocking traffic they cannot attribute. These tests exist because the
+    string used to be ``HomeAssistant/NOAA-Integration``: generic, contactless,
+    unversioned, and implying Home Assistant core rather than a third-party
+    custom integration.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        with open(os.path.join(_COMPONENT, "manifest.json")) as f:
+            cls.manifest = json.load(f)
+        # Imported by path rather than as ``noaa_it_all.const``, which would
+        # pull in the package __init__ and with it the Home Assistant runtime.
+        sys.path.insert(0, _COMPONENT)
+        try:
+            import const
+        finally:
+            sys.path.remove(_COMPONENT)
+        cls.user_agent = const.USER_AGENT
+
+    def test_identifies_the_integration_by_domain(self):
+        self.assertTrue(
+            self.user_agent.startswith(f"{self.manifest['domain']}/"),
+            f"User-Agent should lead with the integration domain: {self.user_agent}",
+        )
+
+    def test_version_matches_the_manifest(self):
+        """A stale version here would misreport which release is calling."""
+        self.assertIn(
+            f"{self.manifest['domain']}/{self.manifest['version']}",
+            self.user_agent,
+            "User-Agent version is out of step with manifest.json",
+        )
+
+    def test_version_is_read_from_the_manifest_not_hardcoded(self):
+        """Bumping a release must not require remembering a second place.
+
+        ``test_version_matches_the_manifest`` cannot catch a regression here on
+        its own: the moment someone pastes the current version back in as a
+        literal it still passes, right up until the next bump. So assert the
+        string is actually interpolated.
+        """
+        with open(os.path.join(_COMPONENT, "const.py"), encoding="utf-8") as f:
+            assignment = next(
+                line for line in f if line.startswith("USER_AGENT")
+            )
+        self.assertNotRegex(
+            assignment,
+            r"\d+\.\d+",
+            f"User-Agent must build its version from the manifest: {assignment.strip()}",
+        )
+        self.assertIn("VERSION", assignment)
+
+    def test_manifest_reader_returns_the_real_manifest(self):
+        """The reader behind VERSION/DOCUMENTATION_URL must actually work."""
+        sys.path.insert(0, _COMPONENT)
+        try:
+            import const
+        finally:
+            sys.path.remove(_COMPONENT)
+        self.assertEqual(const._manifest(), self.manifest)
+
+    def test_carries_contact_information(self):
+        """NOAA asks for a website or email so they can make contact."""
+        self.assertIn(self.manifest["documentation"], self.user_agent)
+
+    def test_documentation_url_is_read_from_the_manifest_not_hardcoded(self):
+        with open(os.path.join(_COMPONENT, "const.py"), encoding="utf-8") as f:
+            assignment = next(
+                line for line in f if line.startswith("USER_AGENT")
+            )
+        self.assertNotIn("https://", assignment)
+        self.assertIn("DOCUMENTATION_URL", assignment)
+
+    def test_does_not_point_at_the_dev_repo(self):
+        self.assertNotIn("dev-noaa_it_all", self.user_agent)
+
+    def test_does_not_claim_to_be_home_assistant_core(self):
+        self.assertFalse(
+            self.user_agent.startswith("HomeAssistant"),
+            "This is a custom integration, not Home Assistant core",
+        )
 
 
 class TestHacsJson(unittest.TestCase):

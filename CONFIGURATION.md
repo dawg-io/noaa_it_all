@@ -4,11 +4,12 @@ This guide provides detailed configuration examples for NOAA It All, including e
 
 ## Table of Contents
 1. [Installation Methods](#installation-methods)
-2. [Entity Configuration](#entity-configuration)
-3. [Device Grouping](#device-grouping)
-4. [Dashboard Card Examples](#dashboard-card-examples)
-5. [Automation Examples](#automation-examples)
-6. [Script Examples](#script-examples)
+2. [Options](#options)
+3. [Entity Configuration](#entity-configuration)
+4. [Device Grouping](#device-grouping)
+5. [Dashboard Card Examples](#dashboard-card-examples)
+6. [Automation Examples](#automation-examples)
+7. [Script Examples](#script-examples)
 
 ## Installation Methods
 
@@ -37,6 +38,74 @@ longitude: -117.1611
 > `noaa_it_all:` is present in `configuration.yaml`, the integration logs an error and sets nothing
 > up. Remove the block and add the integration through **Settings → Devices & Services → Add
 > Integration → NOAA It All**.
+
+## Options
+
+**Settings** → **Devices & Services** → **NOAA It All** → **Configure**. The flow walks through
+latitude and longitude, then the forecast office, then the radar loop. Saving reloads the
+integration so the new values take effect immediately.
+
+| Option | Default | Notes |
+|---|---|---|
+| Latitude / Longitude | Home Assistant's Home location | Used for alerts, surf and aurora |
+| NWS Forecast Office | Nearest office to those coordinates | Determines the radar site |
+| Hours of radar history | `24` | Length of the Radar Loop animation, `0`–`24` |
+
+### Hours of radar history
+
+NOAA's own radar animation is fixed at about 50 minutes, and only its ten most recent frames exist
+on the server — there is no longer version to download. To show more than that, the integration
+saves one frame each time it refreshes and assembles the animation itself.
+
+```yaml
+# Stored in the config entry's options
+office_code: "SGX"
+latitude: 32.7157
+longitude: -117.1611
+radar_loop_hours: 24
+```
+
+- **`0`** — serve NOAA's own ~50 minute loop unchanged and store nothing on disk. This is how the
+  integration behaved before version 0.6.0.
+- **`1`–`24`** — build the loop locally over that window.
+
+What to expect when it is on:
+
+- **The loop fills in over time.** It starts at whatever history has been collected and reaches
+  full length after that many hours of uptime. Until there are at least six frames, the card falls
+  back to NOAA's own loop rather than showing a near-still image.
+- **Frames persist across restarts**, under `<config>/noaa_it_all/radar_frames/<RADAR_SITE>/`, one
+  small GIF per scan. Expect a few megabytes per radar site. Frames outside the window are deleted
+  on every refresh. The directory is removed when you delete the integration, when you switch the
+  entry to a different forecast office, or when you set this option back to `0` — unless another
+  configured office is still building a loop from the same radar site.
+- **Frame spacing follows the window.** The animation is capped at 72 frames and plays through in
+  about ten seconds, so a 24-hour loop steps every 20 minutes while a 6-hour loop keeps roughly one
+  frame per radar scan.
+- **The file is larger than NOAA's**, and every open dashboard re-downloads it whenever it changes.
+  On a wall tablet on a mobile connection, prefer a shorter window.
+
+While the buffer is still filling, each refresh makes two requests instead of one — the latest
+frame, plus NOAA's loop to display in the meantime. That stops once enough frames have been
+collected.
+
+The entity exposes what it is actually doing as attributes:
+
+| Attribute | Meaning |
+|---|---|
+| `loop_mode` | `local` when showing an animation built here, `upstream` when showing NOAA's |
+| `loop_hours` | The configured window |
+| `frame_count` | Frames in the animation currently being served |
+| `window_start` / `window_end` | Times of its oldest and newest frames |
+
+```yaml
+# Alert when the radar loop quietly falls back to NOAA's short animation
+template:
+  - binary_sensor:
+      - name: "Radar loop degraded"
+        state: >
+          {{ state_attr('image.noaa_ilm_weather_radar_loop', 'loop_mode') == 'upstream' }}
+```
 
 ## Entity Configuration
 

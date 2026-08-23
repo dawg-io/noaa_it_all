@@ -11,8 +11,10 @@ from .const import (
     HURRICANE_COORDINATOR_KEY,
     HURRICANE_IMAGES_ADDED_KEY, HURRICANE_SENSORS_ADDED_KEY,
     OFFICE_RADAR_SITES, OFFICE_TIDE_STATIONS, OFFICE_BUOY_STATIONS,
+    RADAR_FRAME_DIR,
 )
 from .entry_config import resolve_entry_config
+from .radar_loop import RadarFrameStore
 from .coordinator import (
     SpaceWeatherCoordinator,
     HurricaneCoordinator,
@@ -185,6 +187,39 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
             hass.data[DOMAIN].pop(HURRICANE_COORDINATOR_KEY, None)
 
     return unload_ok
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Delete the radar frames this entry accumulated.
+
+    Home Assistant calls this when the integration is removed rather than
+    merely unloaded.  A day of radar is a few megabytes per site that nothing
+    else would ever clean up, and it sits in the configuration directory, so it
+    would otherwise ride along in every backup forever.
+    """
+    office_code = resolve_entry_config(entry).get(CONF_OFFICE_CODE)
+    radar_site = OFFICE_RADAR_SITES.get(office_code)
+    if not radar_site:
+        return
+
+    # Frames are keyed by radar site, and neighbouring offices can share one.
+    # Removing this entry must not take another entry's history with it.
+    for other in hass.config_entries.async_entries(DOMAIN):
+        if other.entry_id == entry.entry_id:
+            continue
+        other_office = resolve_entry_config(other).get(CONF_OFFICE_CODE)
+        if OFFICE_RADAR_SITES.get(other_office) == radar_site:
+            _LOGGER.debug(
+                "Keeping stored radar frames for %s; another entry still uses it",
+                radar_site,
+            )
+            return
+
+    store = RadarFrameStore(
+        hass, hass.config.path(DOMAIN, RADAR_FRAME_DIR), radar_site
+    )
+    await store.async_remove_all()
+    _LOGGER.info("Removed stored radar frames for %s", radar_site)
 
 
 # Legacy function for YAML setup
