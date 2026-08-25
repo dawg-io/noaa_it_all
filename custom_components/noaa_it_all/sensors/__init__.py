@@ -51,3 +51,9 @@ from .meteor_showers import (  # noqa: F401
     NextMeteorShowerSensor,
     MeteorViewingScoreSensor,
 )
+from .eclipses import (  # noqa: F401
+    NextEclipseSensor,
+    NextEclipseTimeSensor,
+    EclipseCoverageSensor,
+    EclipseViewingScoreSensor,
+)

@@ -174,9 +174,9 @@ homeassistant:
 
 NOAA It All automatically organizes entities into four device groups:
 
-### 1. NOAA Space (Space Weather & Meteor Showers)
-Entities that monitor space weather conditions worldwide, plus the meteor shower forecast for
-your configured location.
+### 1. NOAA Space (Space Weather, Meteor Showers & Eclipses)
+Entities that monitor space weather conditions worldwide, plus the meteor shower and eclipse
+forecasts for your configured location.
 
 **Entities in this group:**
 - `sensor.noaa_ilm_space_planetary_k_index`
@@ -189,12 +189,27 @@ your configured location.
 - `sensor.noaa_{office}_space_next_meteor_shower`
 - `sensor.noaa_{office}_space_meteor_viewing_score`
 - `binary_sensor.noaa_{office}_space_meteor_shower_active`
+- `sensor.noaa_{office}_space_next_eclipse`
+- `sensor.noaa_{office}_space_next_eclipse_time`
+- `sensor.noaa_{office}_space_eclipse_coverage`
+- `sensor.noaa_{office}_space_eclipse_viewing_score`
+- `binary_sensor.noaa_{office}_space_eclipse_visible_now`
+- `binary_sensor.noaa_{office}_space_eclipse_coming_up`
 - `image.noaa_ilm_space_geoelectric_field_image`
 - `image.noaa_ilm_space_aurora_forecast_image`
 
 > Meteor shower entities require latitude/longitude (Config Flow setup) because the radiant's
 > altitude — the single biggest factor in how many meteors you see — depends on where you are.
 > They are computed locally from a bundled catalog and make no network requests.
+
+> Eclipse entities require latitude/longitude for a stronger reason still: a solar eclipse is a
+> shadow a couple of hundred kilometres wide, so two towns an hour apart can get totality and
+> 60%. They are computed locally from bundled NASA Besselian elements covering 2025–2075 and
+> make no network requests.
+
+> ⚠️ **Never look at a partially eclipsed Sun without ISO 12312-2 eclipse glasses.** Only
+> totality is safe unfiltered; an annular eclipse never is. Every solar eclipse entity carries
+> `eye_protection_required`, `safe_without_filter` and an `eye_safety` string.
 
 ### 2. NOAA Weather (Global & Location Weather)
 Entities for hurricane tracking, forecasts, and weather observations.
@@ -362,6 +377,27 @@ entities:
     attribute: best_window_start
     name: "Best Viewing From"
   - sensor.noaa_ilm_space_next_meteor_shower
+```
+
+### Eclipse Card
+```yaml
+type: entities
+title: "Eclipses"
+entities:
+  - binary_sensor.noaa_ilm_space_eclipse_visible_now
+  - binary_sensor.noaa_ilm_space_eclipse_coming_up
+  - sensor.noaa_ilm_space_next_eclipse
+  - sensor.noaa_ilm_space_next_eclipse_time
+  - sensor.noaa_ilm_space_eclipse_coverage
+  - sensor.noaa_ilm_space_eclipse_viewing_score
+  - type: attribute
+    entity: sensor.noaa_ilm_space_eclipse_viewing_score
+    attribute: rating
+    name: "Conditions"
+  - type: attribute
+    entity: sensor.noaa_ilm_space_eclipse_viewing_score
+    attribute: look_towards
+    name: "Look Towards"
 ```
 
 ## Automation Examples

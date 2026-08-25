@@ -26,6 +26,7 @@ from .coordinator import (
     RadarTimestampCoordinator,
     ForecastDiscussionCoordinator,
     MeteorShowerCoordinator,
+    EclipseCoordinator,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -91,6 +92,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     forecast_coord = None
     cloud_cover_coord = None
     meteor_coord = None
+    eclipse_coord = None
 
     if latitude is not None and longitude is not None:
         alerts_coord = NWSAlertsCoordinator(hass, latitude, longitude)
@@ -106,6 +108,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         # Meteor showers are computed locally from a bundled catalog rather than fetched,
         # but they still need the observer's coordinates to place the radiant in the sky.
         meteor_coord = MeteorShowerCoordinator(
+            hass, office_code, latitude, longitude
+        )
+        # Eclipses are the same story: bundled Besselian elements plus local astronomy, no
+        # feed to poll, but the observer's coordinates decide almost everything about them.
+        eclipse_coord = EclipseCoordinator(
             hass, office_code, latitude, longitude
         )
 
@@ -132,6 +139,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         refresh_tasks.append(cloud_cover_coord.async_refresh())
     if meteor_coord:
         refresh_tasks.append(meteor_coord.async_refresh())
+    if eclipse_coord:
+        refresh_tasks.append(eclipse_coord.async_refresh())
 
     await asyncio.gather(*refresh_tasks, return_exceptions=True)
 
@@ -148,6 +157,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         "forecast_coordinator": forecast_coord,
         "cloud_cover_coordinator": cloud_cover_coord,
         "meteor_coordinator": meteor_coord,
+        "eclipse_coordinator": eclipse_coord,
     }
 
     # Reload the entry whenever its options change. The coordinators capture

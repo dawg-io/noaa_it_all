@@ -19,12 +19,19 @@ entirely acceptable here, because published shower maxima are themselves quoted 
 of solar longitude (1-5 hours), and real maxima wander by hours from year to year. The systematic
 error is well over an order of magnitude smaller than the physical uncertainty it sits inside.
 
-Two things were tried and deliberately rejected. Adding the Meeus-1988 planetary perturbation
+One thing was tried and deliberately rejected: adding the Meeus-1988 planetary perturbation
 terms makes the fit *worse*, because those coefficients are keyed to different mean elements than
-the ch. 25 series used here. Modelling the TT-UT offset (delta-T, currently about 69 s) would be
-false precision an order of magnitude below the truncation error. Julian Days are treated as UT
-throughout. For the same reason VSOP87 / ELP2000 are avoided: they would buy precision that the
-rest of the model cannot use.
+the ch. 25 series used here. For the same reason VSOP87 / ELP2000 are avoided: they would buy
+precision that the rest of the model cannot use.
+
+**Julian Days are treated as UT throughout**, and every function here except
+:func:`delta_t_seconds` ignores the TT-UT offset. For the meteor model that is the right call --
+delta-T is currently about 69 s, an order of magnitude below the truncation error, so modelling it
+would be false precision. Eclipse contact timing is the one consumer for which it is *not* false
+precision, because there the whole point is the instant a shadow edge crosses one spot on a
+rotating Earth: leaving delta-T out shifts computed contacts by up to two minutes. That is why
+:func:`delta_t_seconds` exists, and why it is the only thing in this module that knows about the
+distinction.
 
 All datetimes crossing this module's boundary are timezone-aware. Naive datetimes are rejected
 rather than silently assumed to be UTC, because a silent assumption here would shift every
@@ -53,6 +60,9 @@ DAYS_PER_CENTURY = 36525.0
 #: Mean apparent motion of the Sun in ecliptic longitude, degrees per day. Used to seed and
 #: to differentiate the solar-longitude inversion.
 SUN_DEG_PER_DAY = 0.98564736
+
+#: Reference year for the Espenak-Meeus delta-T polynomials that straddle the present day.
+_DELTA_T_EPOCH = 2000
 
 #: Sun altitude defining astronomical twilight / true darkness.
 ASTRONOMICAL_TWILIGHT_DEG = -18.0
@@ -153,6 +163,45 @@ def datetime_from_jd(jd: float) -> datetime:
 def julian_centuries(jd: float) -> float:
     """Return Julian centuries elapsed since J2000.0."""
     return (jd - J2000_JD) / DAYS_PER_CENTURY
+
+
+def delta_t_seconds(year: float) -> float:
+    """Return an estimate of ``TT - UT`` in seconds for a fractional calendar *year*.
+
+    Earth's rotation is not a clock. It wanders unpredictably, so the offset between the uniform
+    timescale ephemerides are computed in (TT) and the timescale a wall clock keeps (UT) can only
+    be *measured* for the past and *extrapolated* for the future. These are the polynomial fits
+    from Espenak and Meeus, published alongside the Five Millennium Canon of Solar Eclipses --
+    which matters, because the bundled eclipse elements were generated with exactly these fits, so
+    using them here reproduces NASA's published times rather than merely coming close to them.
+
+    Only the segments this integration can reach are implemented. Outside roughly 1900-2150 the
+    nearest segment is extrapolated rather than raising: an eclipse that far out is a curiosity,
+    and returning a slightly wrong second is better than a traceback in a sensor update.
+    """
+    if year < 1986.0:
+        # Espenak-Meeus 1900-1920 and 1920-1941 do not matter here; the 1941-1986 fit is close
+        # enough for anything this integration will be asked about and extrapolates sanely.
+        u = (year - 1975.0) / 1.0
+        return 45.45 + 1.067 * u - u ** 2 / 260.0 - u ** 3 / 718.0
+    if year < 2005.0:
+        t = year - _DELTA_T_EPOCH
+        return (
+            63.86 + 0.3345 * t - 0.060374 * t ** 2 + 0.0017275 * t ** 3
+            + 0.000651814 * t ** 4 + 0.00002373599 * t ** 5
+        )
+    if year < 2050.0:
+        t = year - _DELTA_T_EPOCH
+        return 62.92 + 0.32217 * t + 0.005589 * t ** 2
+    if year < 2150.0:
+        return -20.0 + 32.0 * ((year - 1820.0) / 100.0) ** 2 - 0.5628 * (2150.0 - year)
+    return -20.0 + 32.0 * ((year - 1820.0) / 100.0) ** 2
+
+
+def year_fraction(dt: datetime) -> float:
+    """Return *dt* as a fractional year, the input :func:`delta_t_seconds` expects."""
+    dt = _require_aware(dt)
+    return dt.year + (dt.month - 0.5) / 12.0
 
 
 # ---------------------------------------------------------------------------
