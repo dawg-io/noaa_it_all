@@ -82,10 +82,10 @@ NOAA It All organizes entities into logical device groups for better organizatio
 ### Device Groups Overview
 
 #### 🌌 NOAA Space
-Space weather monitoring — aurora visibility, geomagnetic storms, solar radiation alerts — plus the meteor shower forecast
+Space weather monitoring — aurora visibility, geomagnetic storms, solar radiation alerts — plus the meteor shower and eclipse forecasts
 - **Device ID**: `noaa_space`
-- **Location**: Space weather is global; meteor shower entities use your configured latitude/longitude
-- **Update Frequency**: 10 minutes for space weather, 30 minutes for meteor showers
+- **Location**: Space weather is global; meteor shower and eclipse entities use your configured latitude/longitude
+- **Update Frequency**: 10 minutes for space weather, 30 minutes for meteor showers; eclipses recompute hourly, tightening to every minute while one is under way
 
 <p align="left">
 <img width="330" height="620" alt="image" src="https://github.com/user-attachments/assets/50d6d649-dec7-4a52-a6db-d53488b7bbc3" />
@@ -210,6 +210,33 @@ Meteor shower alerts and a viewing forecast for your exact location *(NOAA Space
 > **Note on the data source**: NOAA publishes no meteor shower data, and neither does anyone else as a live feed — none is needed. Earth crosses the same debris streams at the same point in its orbit every year, so this feature ships a catalog of ~29 showers keyed by **solar longitude** and computes each year's peak time locally. There is no API call, no API key, and no extra dependency, and it keeps working with no internet connection. Computed peak times are accurate to about ±11 minutes, which is far finer than the hours-wide spread of real shower maxima.
 
 > **Note on the score**: The viewing score measures *sky conditions*, not shower strength — it is the fraction of the ideal meteor rate you would actually achieve, so a minor shower riding high under a new moon scores well while the Perseids behind a full moon score badly. Shower strength is reported separately as `expected_per_hour`. The score accounts for radiant altitude, moonlight and astronomical darkness. It does **not** account for cloud cover; pair it with `sensor.noaa_{office}_weather_cloud_cover` if you want that.
+
+### Solar and Lunar Eclipses (Config Flow Only)
+Eclipse alerts and a viewing forecast for your exact location *(NOAA Space)*:
+
+- **Next Eclipse**: The next eclipse visible from where you are, named the way *you* will see it *(sensor.noaa_{office}_space_next_eclipse)*
+  - Attributes include the local start/maximum/end times, how much of the disc you get, where to look, and an `upcoming` list of the next five
+- **Next Eclipse Time**: When to go outside — a real timestamp, so Home Assistant shows "in 3 days" or "8:29 PM" and a time trigger can fire straight off it *(sensor.noaa_{office}_space_next_eclipse_time)*
+  - The moment the eclipse has begun **and** the Sun or Moon is above your horizon, which for an eclipse already under way at moonrise is moonrise. Attributes carry the end of the window, maximum, totality window, and `look_towards`
+  - `unknown` when no eclipse is due, which for a timestamp is the honest answer
+- **Eclipse Coverage**: How much of the Sun or Moon you will actually see covered, 0–100% *(sensor.noaa_{office}_space_eclipse_coverage)*
+  - This is the "will I get 29% or the whole thing" number
+- **Eclipse Viewing Score**: How worthwhile it is from here, 0–100% *(sensor.noaa_{office}_space_eclipse_viewing_score)*
+  - Attributes include `rating`, `watch_from_local`/`watch_until_local`, `look_towards`, the totality window, `limiting_factor`, and the eye-safety notice
+- **Eclipse Visible Now**: Turns on an hour before first contact and off at last contact *(binary_sensor.noaa_{office}_space_eclipse_visible_now)*
+  - The one to trigger an announcement from. Expect it on for a few hours a year at most, and in many years not at all
+- **Eclipse Coming Up**: Turns on two weeks before an eclipse worth planning around *(binary_sensor.noaa_{office}_space_eclipse_coming_up)*
+  - A higher bar than the live alert: a partial eclipse worth glancing at is not one worth booking the day off for
+
+> **⚠️ Eye safety**: Never look at a partially eclipsed Sun without ISO 12312-2 eclipse glasses or a certified solar filter — sunglasses, exposed film and smoked glass are **not** safe. Only during **totality**, between second and third contact, may the Sun be viewed with the naked eye, and the filter goes back on the instant the first sliver reappears. An **annular** eclipse is never safe to view unfiltered: there is still a complete ring of photosphere at maximum. Every solar entity carries `eye_protection_required`, `safe_without_filter` and an `eye_safety` string so an automation can read the warning out.
+
+> **Note on "your" eclipse**: A total solar eclipse is total along a strip a couple of hundred kilometres wide and merely partial across a whole continent either side of it. Everything here reports the eclipse **you** get — a 43% partial is reported as a partial eclipse, with the headline classification kept alongside as `global_type`. Likewise `disc_covered`, the viewing score and `look_towards` are all measured at the best moment the Sun or Moon is actually above your horizon, so a site where the body sets mid-eclipse is not advertised a maximum that happens underground, or pointed at a horizon the Moon has already set behind. `visible_fraction` says how much of the event you get at all, and `altitude_at_maximum` still reports the geometric peak for reference.
+
+> **Note on the two percentages**: `disc_covered` is the fraction of the disc's **area** that is hidden. Eclipse *magnitude*, the figure usually quoted, is the fraction of its **diameter**, and the two are far apart — magnitude 0.5 is only 39% covered. Both are reported so you can compare against a published table.
+
+> **Note on the data source**: Lunar eclipses are computed from first principles and stay correct indefinitely. Solar eclipses need Besselian elements from full planetary ephemerides, so this feature bundles NASA's for **2025–2075** — 114 eclipses — and does the observer-specific geometry locally. There is no API call, no API key and no extra dependency, and it keeps working with no internet connection. Computed contact times land within 20 seconds of NASA's published values, checked against all 114. Regenerate or extend the catalog with `python3 scripts/build_eclipse_catalog.py`. *Eclipse Predictions by Fred Espenak, NASA's GSFC.*
+
+> **Note on the score**: Unlike the meteor viewing score this deliberately does **not** factor out the strength of the event — whether the Moon covers a tenth of the Sun or all of it is the single most important thing about a solar eclipse. It accounts for how much is covered, how high the Sun or Moon sits, and for lunar eclipses how dark the sky is. It does **not** account for cloud cover; pair it with `sensor.noaa_{office}_weather_cloud_cover` if you want that.
 
 ### Optional Secondary Sensors (Config Flow Only)
 These sensors provide additional weather data where available from NOAA/NWS *(NOAA Weather)*:
@@ -381,6 +408,9 @@ Two further IDs are easy to get wrong even though they do follow the rule:
 | Space Weather | `sensor.noaa_{office}_space_{metric}` | `sensor.noaa_ilm_space_aurora_next_time` |
 | Meteor Showers | `sensor.noaa_{office}_space_{metric}` | `sensor.noaa_ilm_space_meteor_viewing_score` |
 | Meteor Shower Binary | `binary_sensor.noaa_{office}_space_meteor_shower_active` | `binary_sensor.noaa_ilm_space_meteor_shower_active` |
+| Eclipses | `sensor.noaa_{office}_space_eclipse_{metric}` | `sensor.noaa_ilm_space_eclipse_coverage` |
+| Eclipse Timing | `sensor.noaa_{office}_space_next_eclipse_time` | `sensor.noaa_ilm_space_next_eclipse_time` |
+| Eclipse Binary | `binary_sensor.noaa_{office}_space_eclipse_{name}` | `binary_sensor.noaa_ilm_space_eclipse_visible_now` |
 | Forecast / Discussion | `sensor.noaa_{office}_weather_{name}` | `sensor.noaa_ilm_weather_extended_forecast` |
 | Weather Entity | `weather.noaa_{office}_weather` | `weather.noaa_ilm_weather` |
 | Hurricane (global) | `sensor.noaa_hurricane_{metric}` | `sensor.noaa_hurricane_activity` |
@@ -616,6 +646,107 @@ automation:
             — up to {{ state_attr('sensor.noaa_ilm_space_next_meteor_shower', 'zhr_max') }} meteors/hour
             under ideal conditions. Radiant in
             {{ state_attr('sensor.noaa_ilm_space_next_meteor_shower', 'constellation') }}.
+```
+
+#### Go Outside, the Eclipse Is Starting
+```yaml
+automation:
+  - alias: "Eclipse Starting"
+    description: "Fires an hour before first contact, and reads the eye-safety warning out"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.noaa_ilm_space_eclipse_visible_now
+        to: "on"
+    action:
+      - service: notify.mobile_app_your_phone
+        data:
+          title: >
+            🌑 {{ state_attr('binary_sensor.noaa_ilm_space_eclipse_visible_now', 'eclipse') }}
+          message: >
+            {{ state_attr('binary_sensor.noaa_ilm_space_eclipse_visible_now', 'disc_covered') }}%
+            covered from here. Watchable from
+            {{ states('sensor.noaa_ilm_space_next_eclipse_time') | as_datetime | as_local | string | truncate(16, true, '') }},
+            maximum
+            {{ state_attr('binary_sensor.noaa_ilm_space_eclipse_visible_now', 'maximum_local') | as_timestamp | timestamp_custom('%-I:%M %p') }}
+            — look
+            {{ state_attr('binary_sensor.noaa_ilm_space_eclipse_visible_now', 'look_towards') }}.
+            {% if state_attr('binary_sensor.noaa_ilm_space_eclipse_visible_now', 'eye_protection_required') %}
+            ⚠️ {{ state_attr('binary_sensor.noaa_ilm_space_eclipse_visible_now', 'eye_safety') }}
+            {% endif %}
+          data:
+            notification_icon: mdi:weather-sunny-alert
+```
+
+#### Order the Eclipse Glasses
+```yaml
+automation:
+  - alias: "Eclipse Coming Up"
+    description: "Two weeks' warning for an eclipse actually worth planning around"
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.noaa_ilm_space_eclipse_coming_up
+        to: "on"
+    action:
+      - service: notify.mobile_app_your_phone
+        data:
+          title: >
+            🌑 {{ state_attr('binary_sensor.noaa_ilm_space_eclipse_coming_up', 'eclipse') }}
+            in {{ state_attr('binary_sensor.noaa_ilm_space_eclipse_coming_up', 'days_until') | round(0) | int }} days
+          message: >
+            {{ state_attr('binary_sensor.noaa_ilm_space_eclipse_coming_up', 'date') }} —
+            {{ state_attr('binary_sensor.noaa_ilm_space_eclipse_coming_up', 'disc_covered') }}%
+            covered from here
+            ({{ state_attr('binary_sensor.noaa_ilm_space_eclipse_coming_up', 'rating') }}).
+            {% if state_attr('binary_sensor.noaa_ilm_space_eclipse_coming_up', 'eye_protection_required') %}
+            Order ISO 12312-2 eclipse glasses now.
+            {% endif %}
+```
+
+#### Remind Me an Hour Before
+```yaml
+automation:
+  - alias: "Eclipse Hour Warning"
+    description: >
+      A timestamp sensor can be used directly as a time trigger, offset and all — no templating,
+      no polling. This is what the Next Eclipse Time entity is for.
+    trigger:
+      - platform: time
+        at:
+          entity_id: sensor.noaa_ilm_space_next_eclipse_time
+          offset: "-01:00:00"
+    action:
+      - service: notify.mobile_app_your_phone
+        data:
+          title: "🌑 Eclipse in an hour"
+          message: >
+            {{ state_attr('sensor.noaa_ilm_space_next_eclipse_time', 'eclipse') }} —
+            {{ state_attr('sensor.noaa_ilm_space_next_eclipse_time', 'disc_covered') }}% covered,
+            look {{ state_attr('sensor.noaa_ilm_space_next_eclipse_time', 'look_towards') }}.
+```
+
+#### Only Bother if the Sky Is Clear
+```yaml
+automation:
+  - alias: "Eclipse Worth Watching"
+    description: >
+      The eclipse entities know nothing about cloud on purpose, so that the percentages stay
+      correct for an eclipse fifty years out. Pair them with the cloud cover sensor yourself.
+    trigger:
+      - platform: state
+        entity_id: binary_sensor.noaa_ilm_space_eclipse_visible_now
+        to: "on"
+    condition:
+      - condition: numeric_state
+        entity_id: sensor.noaa_ilm_weather_cloud_cover
+        below: 40
+    action:
+      - service: notify.mobile_app_your_phone
+        data:
+          title: "🌑 Clear skies for the eclipse"
+          message: >
+            {{ state_attr('binary_sensor.noaa_ilm_space_eclipse_visible_now', 'eclipse') }},
+            {{ state_attr('binary_sensor.noaa_ilm_space_eclipse_visible_now', 'disc_covered') }}%
+            covered, and only {{ states('sensor.noaa_ilm_weather_cloud_cover') }}% cloud.
 ```
 
 ### Multi-Condition Automation with Grouping Logic
@@ -951,6 +1082,74 @@ content: |
   {% for s in showers %}
   **{{ s.name }}** — {{ s.peak_local | as_timestamp | timestamp_custom('%b %-d') }}
   ({{ s.days_until | round(0) | int }} days), up to {{ s.zhr_max }}/hr in {{ s.constellation }}
+  {% endfor %}
+```
+
+#### Eclipse Card (NOAA Space Group)
+```yaml
+type: entities
+title: 🌑 Eclipses
+show_header_toggle: false
+entities:
+  - entity: binary_sensor.noaa_ilm_space_eclipse_visible_now
+    name: Go Outside Now
+  - entity: binary_sensor.noaa_ilm_space_eclipse_coming_up
+    name: Worth Planning For
+  - entity: sensor.noaa_ilm_space_next_eclipse
+    name: Next Eclipse
+  - entity: sensor.noaa_ilm_space_next_eclipse_time
+    name: Go Outside At
+  - entity: sensor.noaa_ilm_space_eclipse_coverage
+    name: How Much You Get
+  - entity: sensor.noaa_ilm_space_eclipse_viewing_score
+    name: Viewing Score
+  - type: attribute
+    entity: sensor.noaa_ilm_space_eclipse_viewing_score
+    attribute: rating
+    name: Conditions
+  - type: attribute
+    entity: sensor.noaa_ilm_space_eclipse_viewing_score
+    attribute: limiting_factor
+    name: Limited By
+  - type: divider
+  - type: attribute
+    entity: sensor.noaa_ilm_space_eclipse_viewing_score
+    attribute: watch_from_local
+    name: Watch From
+  - type: attribute
+    entity: sensor.noaa_ilm_space_eclipse_viewing_score
+    attribute: watch_until_local
+    name: Watch Until
+  - type: attribute
+    entity: sensor.noaa_ilm_space_eclipse_viewing_score
+    attribute: look_towards
+    name: Look Towards
+  - type: attribute
+    entity: sensor.noaa_ilm_space_eclipse_viewing_score
+    attribute: altitude_when_visible
+    name: Height Above Horizon
+    suffix: "°"
+  - type: divider
+  - type: attribute
+    entity: sensor.noaa_ilm_space_next_eclipse
+    attribute: days_until
+    name: Days Away
+```
+
+To list what is coming, read the `upcoming` attribute with a markdown card. It includes eclipses
+that are *not* visible from your location, which is what stops the list from looking empty for
+years at a time:
+
+```yaml
+type: markdown
+title: 🌑 Upcoming Eclipses
+content: |
+  {% set eclipses = state_attr('sensor.noaa_ilm_space_next_eclipse', 'upcoming') or [] %}
+  {% for e in eclipses %}
+  **{{ e.name }}** — {{ e.date }} ({{ e.days_until | round(0) | int }} days)
+  {% if e.visible %}{{ e.disc_covered }}% covered, score {{ e.viewing_score }}
+  {% else %}not visible from here
+  {% endif %}
   {% endfor %}
 ```
 

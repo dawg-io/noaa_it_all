@@ -17,6 +17,14 @@ Comprehensive NOAA data integration providing real-time space weather, hurricane
 - **Upcoming Showers** - The next five showers with peak dates, for dashboard cards and automations
 - **Works Offline** - ~29 showers keyed by solar longitude and computed locally; no API, no key, no extra dependency
 
+### 🌑 Solar & Lunar Eclipses
+- **Go Outside Now** - Binary sensor that turns on an hour before first contact and off at last contact
+- **Coming Up** - A two-week warning for an eclipse actually worth planning around
+- **How Much You Get** - The percentage of the Sun or Moon covered *from where you are*, because a "total" eclipse is total along a strip and partial across a continent
+- **A Real Date** - A timestamp sensor for when to go outside, so Home Assistant shows "in 3 days" and a time trigger can fire straight off it
+- **Eye Safety Built In** - Every solar eclipse carries the ISO 12312-2 warning and flags the one phase, totality, that is safe unfiltered
+- **Works Offline** - Lunar eclipses computed from first principles and correct indefinitely; solar eclipses from bundled NASA elements for 2025-2075, accurate to 20 seconds. No API, no key, no extra dependency
+
 ### 🌊 Surf & Ocean Conditions (Location-Specific)
 - **Rip Current Risk** - Low/Moderate/High risk assessment with safety alerts
 - **Surf Height** - Wave height estimates from NWS surf zone forecasts

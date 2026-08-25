@@ -5,7 +5,96 @@ All notable changes to NOAA It All for Home Assistant will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.6.0] - Current
+## [0.7.0] - Current
+
+### Added
+- **Solar and lunar eclipses, worked out for where you actually are.** Three sensors and two
+  binary sensors on the existing **NOAA {OFFICE} Space** device, answering one question: if you
+  walk outside, what will you see?
+
+  - **Eclipse Visible Now** turns on an hour before first contact and off at last contact. This
+    is the one to trigger an announcement from. Expect it on for a few hours a year at most, and
+    in many years not at all.
+  - **Eclipse Coming Up** turns on two weeks ahead of an eclipse worth planning around — a
+    higher bar, because a partial eclipse worth glancing at is not one worth booking the day off.
+  - **Eclipse Coverage** is the "will I get 29% or the whole thing" number.
+  - **Next Eclipse Time** is the date to put on a dashboard — the moment the eclipse becomes
+    watchable from where you are, published as a real timestamp rather than a string. Home
+    Assistant renders it natively ("in 3 days", "8:29 PM") and a time trigger can fire straight
+    off it, offset and all, with no templating. It reads `unknown` when nothing is due, which for
+    a timestamp is the honest answer rather than a placeholder.
+  - **Eclipse Viewing Score** and **Next Eclipse** fill in the rest.
+
+  Things worth knowing:
+  - **It reports *your* eclipse, not the headline.** A total solar eclipse is total along a strip
+    a couple of hundred kilometres wide and merely partial across a continent either side of it.
+    Telling somebody who will see 43% that there is a Total Solar Eclipse tonight would be the
+    most misleading thing this could do, so the type is always re-derived from your own geometry,
+    with the global classification kept alongside as `global_type`.
+  - **Everything is measured at the moment you can actually watch.** Coverage, the viewing score
+    and `look_towards` all come from the best moment the Sun or Moon is above your horizon, not
+    from the geometric maximum — which, for a site where the body sets mid-eclipse, happens
+    underground. `visible_fraction` says how much of the event you get at all, and
+    `altitude_at_maximum` still reports the geometric peak for reference.
+
+    This is the distinction the whole feature turns on. New York's 2026-03-03 total lunar
+    eclipse is visible there for nearly three hours and then sets before greatest eclipse; scored
+    on the geometry at maximum it comes out as 0, "Poor", with the alert silent throughout, which
+    is the exact opposite of the truth.
+  - **Two percentages, because there are two honest readings.** `disc_covered` is the fraction of
+    the disc's *area* hidden. Eclipse *magnitude*, the figure usually quoted, is the fraction of
+    its *diameter* — magnitude 0.5 is only 39% covered. Both are reported.
+  - **⚠️ Eye safety is part of the data.** Every solar eclipse carries `eye_protection_required`,
+    `safe_without_filter` and an ISO 12312-2 notice, on both binary sensors as well as the score
+    sensor — because the automation that fires from them is exactly the one that sends somebody
+    outside to look at the Sun. Only **totality** is ever safe unfiltered. An **annular** eclipse
+    never is: there is still a complete ring of photosphere at maximum.
+  - **Lunar eclipses need no data at all** and stay correct indefinitely. Solar eclipses need
+    Besselian elements from full planetary ephemerides, so NASA's are bundled for **2025–2075**
+    — 114 eclipses, about 70 KB. Still no API call, no API key and no extra dependency. Extend or
+    regenerate the span with `python3 scripts/build_eclipse_catalog.py`. Past the end of it the
+    solar half says so and the lunar half carries on. *Eclipse Predictions by Fred Espenak,
+    NASA's GSFC.*
+  - **Contact times land within 20 seconds** of NASA's published values, checked against all 114
+    catalogued eclipses. Each entry carries NASA's own answer at greatest eclipse purely so the
+    test-suite can check the solver reproduces it — 114 regression cases with no hand-typed
+    expected values and nothing that goes stale.
+  - **The "go outside" alert gives an hour's warning from first contact**, not from maximum —
+    a lunar eclipse runs nearly three hours between the two, so measuring the lead against
+    maximum would mean no warning at all.
+  - **The Moon gets its own horizon.** It is close enough to have about a degree of horizontal
+    parallax, so the geocentric altitude at which it truly rises and sets sits slightly *above*
+    zero rather than below it (Meeus: `h0 = 0.7275·π − 0.5667`). Using the Sun's figure counts
+    about five minutes per eclipse as watchable while the Moon is really down.
+  - **The eclipse coordinator re-paces itself**, which no other coordinator here does. The others
+    watch conditions that drift over hours; totality lasts two minutes. It recomputes hourly,
+    every five minutes within six hours of first contact, and every minute while one is under way.
+  - **Like the meteor score, it knows nothing about cloud** — deliberately, so the percentages
+    stay correct for an eclipse fifty years out. Pair it with
+    `sensor.noaa_{office}_weather_cloud_cover` in an automation; the README has an example.
+  - **There is no eclipse map image entity.** One was built and then removed: NASA hosts a single
+    static plot per eclipse, so the picture would have been unchanging for months at a time,
+    absent entirely for the third of eclipses that are purely partial, and gone altogether past
+    2050 where NASA's index stops. An image platform is for things that refresh, and eclipse
+    predictions do not. The numbers are the product here.
+
+### Changed
+- The eclipse forecast is computed in an executor rather than on the event loop. A refresh
+  measures 75-100 ms, an order of magnitude more than the meteor forecast whose docstring gives
+  "well under 10 ms" as its reason for running inline — and this one polls every minute while an
+  eclipse is under way, which is exactly when it matters.
+- The watchable window is now reported in UTC as well as local time, and its edges are exact:
+  where the Sun or Moon is above the horizon when the eclipse begins the window starts with the
+  eclipse itself rather than with the next sample of the internal scan grid, which was up to a
+  minute late. That instant is what tells somebody when to walk outside, so a minute matters.
+- `astro.py` gained `delta_t_seconds()`, and the module docstring no longer claims that modelling
+  the TT–UT offset would be false precision. It is, for meteors. It is not for eclipse contact
+  timing, where leaving it out costs up to two minutes — the whole point there being the instant a
+  shadow edge crosses one spot on a rotating Earth.
+- The observer-timezone cache is now shared between the two coordinators that compute rather than
+  fetch, instead of being copied.
+
+## [0.6.0]
 
 ### Added
 - **The radar loop can now cover up to 24 hours instead of NOAA's fixed 50 minutes.** NOAA

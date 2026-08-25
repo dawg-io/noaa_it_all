@@ -450,6 +450,50 @@ METEOR_UPCOMING_COUNT = 5
 METEOR_ACTIVE_MIN_RATE = 5      # predicted meteors/hour at the best moment of the night
 METEOR_ACTIVE_MIN_SCORE = 25    # viewing score out of 100
 
+# Eclipse forecast tuning.
+#
+# Solar eclipses are the one thing here that needs bundled data rather than a feed or a formula:
+# see eclipse_catalog.py. Lunar eclipses need neither and are computed outright. NOAA publishes
+# no eclipse products at all -- eclipses are NASA's beat, and NASA publishes them as documents.
+
+# How often to recompute, in minutes, when the next eclipse is still a long way off. Longer than
+# DEFAULT_SCAN_INTERVAL because nothing is fetched and the answer changes only by a countdown.
+ECLIPSE_SCAN_INTERVAL = 60
+
+# ...and how often once one is close or under way. A meteor shower lasts all night, so a slow
+# poll costs nothing; totality lasts two minutes. Polling every hour would let "go outside now"
+# fire after the event had finished, so the coordinator tightens its own interval as an eclipse
+# approaches. This cannot be solved in the entities: Home Assistant only re-reads their state
+# when the coordinator publishes an update, so a property that checked the clock itself would
+# simply never fire.
+ECLIPSE_APPROACH_SCAN_INTERVAL = 5
+ECLIPSE_ACTIVE_SCAN_INTERVAL = 1
+
+# How close counts as "approaching", in hours before first contact.
+ECLIPSE_APPROACH_WINDOW_HOURS = 6
+
+# How many eclipses to expose for dashboard cards.
+ECLIPSE_UPCOMING_COUNT = 5
+
+# How many catalogued solar eclipses to work through looking for ones visible from here. From a
+# fixed site only about one in three produces any obscuration at all, so the scan has to look
+# past the misses -- but it does not have to look past all of them, and each one costs real work.
+ECLIPSE_MAX_CATALOG_SCAN = 24
+
+# Penumbral lunar eclipses are real, catalogued, and invisible to almost everybody: the Moon
+# passes through the faint outer shadow and dims by an amount most observers cannot detect.
+# They are computed and reported, but excluded from "what's next" so they cannot displace a
+# genuine eclipse in the headline.
+ECLIPSE_INCLUDE_PENUMBRAL = False
+
+# Thresholds for the two eclipse binary sensors. Unlike the meteor equivalents these are not
+# fighting a permanently-on flag -- eclipses are rare -- they are here to stop a 3% nibble at
+# the Sun, which nobody would notice without a filter, from being announced as an event.
+ECLIPSE_VISIBLE_MIN_COVERAGE = 10    # % of the disc covered at the best visible moment
+ECLIPSE_VISIBLE_LEAD_MINUTES = 60    # turn on this long before first contact
+ECLIPSE_UPCOMING_DAYS = 14           # how far ahead "coming up" looks
+ECLIPSE_UPCOMING_MIN_COVERAGE = 25   # % -- worth a calendar entry, not just a glance
+
 # Solar Radiation Storm alert keywords for filtering NOAA alerts
 SOLAR_RADIATION_KEYWORDS = [
     "solar radiation",

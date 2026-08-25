@@ -370,6 +370,10 @@ class TestNamingConventionFormat(unittest.TestCase):
             AuroraNextTimeSensor, AuroraDurationSensor,
             AuroraVisibilityProbabilitySensor, SolarRadiationStormAlertsSensor,
         )
+        from noaa_it_all.sensors.eclipses import (
+            NextEclipseSensor, NextEclipseTimeSensor,
+            EclipseCoverageSensor, EclipseViewingScoreSensor,
+        )
         from noaa_it_all.sensors.surf import (
             RipCurrentRiskSensor, SurfHeightSensor, WaterTemperatureSensor,
         )
@@ -387,7 +391,9 @@ class TestNamingConventionFormat(unittest.TestCase):
         space = [cls(COORD, OFFICE)
                  for cls in (AuroraNextTimeSensor, AuroraDurationSensor,
                              AuroraVisibilityProbabilitySensor,
-                             SolarRadiationStormAlertsSensor)]
+                             SolarRadiationStormAlertsSensor,
+                             NextEclipseSensor, NextEclipseTimeSensor,
+                             EclipseCoverageSensor, EclipseViewingScoreSensor)]
         surf = [cls(COORD, OFFICE)
                 for cls in (RipCurrentRiskSensor, SurfHeightSensor,
                             WaterTemperatureSensor)]
@@ -600,12 +606,20 @@ class TestDeviceInfoGrouping(unittest.TestCase):
         from noaa_it_all.sensors.meteor_showers import (
             MeteorShowerActivitySensor, NextMeteorShowerSensor, MeteorViewingScoreSensor,
         )
+        from noaa_it_all.sensors.eclipses import (
+            NextEclipseSensor, NextEclipseTimeSensor,
+            EclipseCoverageSensor, EclipseViewingScoreSensor,
+        )
         sensors = [
             GeomagneticSensor(COORD, OFFICE),
             AuroraNextTimeSensor(COORD, OFFICE),
             MeteorShowerActivitySensor(COORD, OFFICE),
             NextMeteorShowerSensor(COORD, OFFICE),
             MeteorViewingScoreSensor(COORD, OFFICE),
+            NextEclipseSensor(COORD, OFFICE),
+            NextEclipseTimeSensor(COORD, OFFICE),
+            EclipseCoverageSensor(COORD, OFFICE),
+            EclipseViewingScoreSensor(COORD, OFFICE),
         ]
         expected = self._expected_space()
         for sensor in sensors:
@@ -801,6 +815,50 @@ class TestSuggestedObjectIdFormat(unittest.TestCase):
         for cls, expected in cases:
             self.assertEqual(cls(COORD, OFFICE).unique_id, expected)
 
+    def test_eclipse_suggested_object_ids(self):
+        """Eclipse sensors slug to noaa_{office}_space_* like the rest of the Space device."""
+        from noaa_it_all.sensors.eclipses import (
+            NextEclipseSensor, NextEclipseTimeSensor,
+            EclipseCoverageSensor, EclipseViewingScoreSensor,
+        )
+        cases = [
+            (NextEclipseSensor, f"noaa_{OFFICE.lower()}_space_next_eclipse"),
+            (NextEclipseTimeSensor, f"noaa_{OFFICE.lower()}_space_next_eclipse_time"),
+            (EclipseCoverageSensor, f"noaa_{OFFICE.lower()}_space_eclipse_coverage"),
+            (EclipseViewingScoreSensor, f"noaa_{OFFICE.lower()}_space_eclipse_viewing_score"),
+        ]
+        for cls, expected in cases:
+            self.assertEqual(_entity_id_slug(cls(COORD, OFFICE)), expected)
+
+    def test_eclipse_unique_ids_keep_uppercase_office_and_omit_group(self):
+        """Same asymmetry as the meteor sensors: uppercase office, no 'space' segment."""
+        from noaa_it_all.sensors.eclipses import (
+            NextEclipseSensor, NextEclipseTimeSensor,
+            EclipseCoverageSensor, EclipseViewingScoreSensor,
+        )
+        cases = [
+            (NextEclipseSensor, f"noaa_{OFFICE}_next_eclipse"),
+            (NextEclipseTimeSensor, f"noaa_{OFFICE}_next_eclipse_time"),
+            (EclipseCoverageSensor, f"noaa_{OFFICE}_eclipse_coverage"),
+            (EclipseViewingScoreSensor, f"noaa_{OFFICE}_eclipse_viewing_score"),
+        ]
+        for cls, expected in cases:
+            self.assertEqual(cls(COORD, OFFICE).unique_id, expected)
+
+    def test_the_eclipse_time_sensor_is_the_only_timestamp_in_the_space_device(self):
+        """A guard on the one new convention this feature introduces.
+
+        It is the integration's first non-measurement device class and the first outside the
+        weather observations, so it is worth pinning that it is deliberate and confined.
+        """
+        from noaa_it_all.sensors.eclipses import (
+            NextEclipseSensor, NextEclipseTimeSensor,
+            EclipseCoverageSensor, EclipseViewingScoreSensor,
+        )
+        self.assertEqual(NextEclipseTimeSensor(COORD, OFFICE).device_class, "timestamp")
+        for cls in (NextEclipseSensor, EclipseCoverageSensor, EclipseViewingScoreSensor):
+            self.assertIsNone(getattr(cls(COORD, OFFICE), "device_class", None))
+
     def test_meteor_binary_sensor_object_id(self):
         """The meteor binary sensor opts into has_entity_name so it lands on the Space device."""
         from noaa_it_all.binary_sensor import MeteorShowerActiveBinarySensor
@@ -865,6 +923,8 @@ class TestBinarySensorNaming(unittest.TestCase):
     def _all_binary_sensors(self):
         from noaa_it_all.binary_sensor import (
             ActiveAlertsGeneralBinarySensor,
+            EclipseComingUpBinarySensor,
+            EclipseVisibleNowBinarySensor,
             FloodWinterAlertBinarySensor,
             HeatAirQualityAlertBinarySensor,
             MeteorShowerActiveBinarySensor,
@@ -878,6 +938,8 @@ class TestBinarySensorNaming(unittest.TestCase):
             HeatAirQualityAlertBinarySensor(COORD, OFFICE, LAT, LON),
             ActiveAlertsGeneralBinarySensor(COORD, OFFICE, LAT, LON),
             MeteorShowerActiveBinarySensor(COORD, OFFICE),
+            EclipseVisibleNowBinarySensor(COORD, OFFICE),
+            EclipseComingUpBinarySensor(COORD, OFFICE),
         ]
 
     def test_all_binary_sensors_use_has_entity_name(self):
@@ -922,6 +984,8 @@ class TestBinarySensorNaming(unittest.TestCase):
                 f"noaa_{OFFICE.lower()}_weather_heat_air_quality_alert",
             "ActiveAlertsGeneralBinarySensor": f"noaa_{OFFICE.lower()}_weather_active_alerts",
             "MeteorShowerActiveBinarySensor": f"noaa_{OFFICE.lower()}_space_meteor_shower_active",
+            "EclipseVisibleNowBinarySensor": f"noaa_{OFFICE.lower()}_space_eclipse_visible_now",
+            "EclipseComingUpBinarySensor": f"noaa_{OFFICE.lower()}_space_eclipse_coming_up",
         }
         for sensor in self._all_binary_sensors():
             name = type(sensor).__name__
@@ -936,6 +1000,8 @@ class TestBinarySensorNaming(unittest.TestCase):
             "HeatAirQualityAlertBinarySensor": f"noaa_{OFFICE}_heat_air_quality_alert",
             "ActiveAlertsGeneralBinarySensor": f"noaa_{OFFICE}_active_alerts",
             "MeteorShowerActiveBinarySensor": f"noaa_{OFFICE}_meteor_shower_active",
+            "EclipseVisibleNowBinarySensor": f"noaa_{OFFICE}_eclipse_visible_now",
+            "EclipseComingUpBinarySensor": f"noaa_{OFFICE}_eclipse_coming_up",
         }
         for sensor in self._all_binary_sensors():
             name = type(sensor).__name__

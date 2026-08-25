@@ -12,6 +12,8 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import (
     CONF_OFFICE_CODE, CONF_LATITUDE, CONF_LONGITUDE, DOMAIN,
     METEOR_ACTIVE_MIN_RATE, METEOR_ACTIVE_MIN_SCORE,
+    ECLIPSE_VISIBLE_MIN_COVERAGE, ECLIPSE_VISIBLE_LEAD_MINUTES,
+    ECLIPSE_UPCOMING_DAYS, ECLIPSE_UPCOMING_MIN_COVERAGE,
 )
 from .entry_config import resolve_entry_config
 from .sensors.meteor_showers import space_device_info
@@ -40,6 +42,7 @@ async def async_setup_entry(
     surf_coord = data["surf_coordinator"]
     alerts_coord = data["alerts_coordinator"]
     meteor_coord = data["meteor_coordinator"]
+    eclipse_coord = data["eclipse_coordinator"]
 
     entities = [UnsafeToSwimBinarySensor(surf_coord, office_code)]
 
@@ -53,6 +56,12 @@ async def async_setup_entry(
 
     if meteor_coord:
         entities.append(MeteorShowerActiveBinarySensor(meteor_coord, office_code))
+
+    if eclipse_coord:
+        entities.extend([
+            EclipseVisibleNowBinarySensor(eclipse_coord, office_code),
+            EclipseComingUpBinarySensor(eclipse_coord, office_code),
+        ])
 
     async_add_entities(entities)
 
@@ -595,3 +604,207 @@ class MeteorShowerActiveBinarySensor(CoordinatorEntity, BinarySensorEntity):
     def device_info(self) -> DeviceInfo:
         """Return device information to group this entity."""
         return space_device_info(self._office_code)
+
+
+class _EclipseBinarySensor(CoordinatorEntity, BinarySensorEntity):
+    """Shared plumbing for the two eclipse binary sensors."""
+
+    _attr_has_entity_name = True
+
+    def __init__(self, coordinator, office_code):
+        """Initialize the binary sensor."""
+        super().__init__(coordinator)
+        self._office_code = office_code
+
+    @property
+    def _forecast(self):
+        """Return the coordinator payload, or an empty dict before the first refresh."""
+        return self.coordinator.data or {}
+
+    def _describe(self, eclipse):
+        """Return the attributes both sensors publish about an eclipse."""
+        return {
+            'eclipse': eclipse['name'],
+            'kind': eclipse['kind'],
+            'eclipse_type': eclipse['type'],
+            'disc_covered': eclipse['disc_covered'],
+            'viewing_score': eclipse['viewing_score'],
+            'rating': eclipse['rating'],
+            'starts_local': eclipse['start_local'],
+            'maximum_local': eclipse['max_local'],
+            'ends_local': eclipse['end_local'],
+            'altitude_when_visible': eclipse['altitude_when_visible'],
+            'look_towards': eclipse['direction_when_visible'],
+            'limiting_factor': eclipse['limiting_factor'],
+            # Repeated on both sensors rather than left to the score sensor: an automation that
+            # announces an eclipse is exactly the thing that sends somebody outside to look at
+            # it, so the warning has to be reachable from the entity that fired.
+            'eye_protection_required': eclipse['eye_protection_required'],
+            'safe_without_filter': eclipse['safe_unfiltered'],
+            'eye_safety': eclipse['eye_safety'],
+        }
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information to group this entity."""
+        return space_device_info(self._office_code)
+
+
+class EclipseVisibleNowBinarySensor(_EclipseBinarySensor):
+    """Turns on when there is an eclipse to go outside and look at, right now.
+
+    This is the one to trigger an announcement from. It comes on
+    ``ECLIPSE_VISIBLE_LEAD_MINUTES`` before first contact -- long enough to find the eclipse
+    glasses -- and goes off at last contact.
+
+    Two conditions. The eclipse has to be genuinely visible from here -- which already means the
+    body is above the horizon for some worthwhile part of it, an eclipse happening under your feet
+    being no use -- and it has to cover at least ``ECLIPSE_VISIBLE_MIN_COVERAGE`` of the disc,
+    because a 3% nibble at the edge of the Sun is invisible without a filter and would only teach
+    people to ignore this sensor.
+
+    It deliberately does *not* also require the body to be up at greatest eclipse. That sounds
+    like the same question and is not: when the Moon sets partway through a total lunar eclipse
+    you can still watch most of it, and gating on the instant of maximum turns the alert off for
+    the entire event.
+
+    Expect it on for a few hours a year at most, and in many years not at all.
+    """
+
+    def __init__(self, coordinator, office_code):
+        """Initialize the binary sensor."""
+        super().__init__(coordinator, office_code)
+        self._attr_unique_id = f"noaa_{office_code}_eclipse_visible_now"
+
+    @property
+    def name(self):
+        """Return the local name of the binary sensor."""
+        return "Eclipse Visible Now"
+
+    @property
+    def _eclipse(self):
+        """Return the eclipse under way or about to start, or ``None``."""
+        forecast = self._forecast
+        current = forecast.get('current')
+        if current:
+            return current
+        upcoming = forecast.get('next')
+        if not upcoming:
+            return None
+        # Against first contact, not maximum. A lunar eclipse runs nearly three hours from one to
+        # the other, so measuring the lead against maximum makes this branch unreachable: by the
+        # time it would be within an hour of maximum the eclipse has long since started and is
+        # being reported as 'current' instead. The documented hour of warning became none at all.
+        hours = upcoming.get('hours_until_start')
+        if hours is None or hours < 0:
+            return None
+        if hours * 60.0 <= ECLIPSE_VISIBLE_LEAD_MINUTES:
+            return upcoming
+        return None
+
+    @property
+    def is_on(self):
+        """Return true when an eclipse worth watching is happening or imminent."""
+        eclipse = self._eclipse
+        if not eclipse:
+            return False
+        return (
+            eclipse['visible']
+            and eclipse['disc_covered'] >= ECLIPSE_VISIBLE_MIN_COVERAGE
+        )
+
+    @property
+    def icon(self):
+        """Return the icon."""
+        if self.is_on:
+            return 'mdi:weather-sunny-alert'
+        return 'mdi:weather-sunny-off'
+
+    @property
+    def extra_state_attributes(self):
+        """Return the state attributes."""
+        attrs = {
+            'office_code': self._office_code,
+            'minimum_disc_covered': ECLIPSE_VISIBLE_MIN_COVERAGE,
+            'lead_minutes': ECLIPSE_VISIBLE_LEAD_MINUTES,
+        }
+        eclipse = self._eclipse
+        if not eclipse:
+            return attrs
+        attrs.update(self._describe(eclipse))
+        attrs.update({
+            'in_progress': eclipse['in_progress'],
+            'minutes_until': round(eclipse['hours_until_start'] * 60.0, 1),
+            'watch_from_local': eclipse['visible_start_local'],
+            'watch_until_local': eclipse['visible_end_local'],
+            'totality_starts_local': eclipse['central_start_local'],
+            'totality_ends_local': eclipse['central_end_local'],
+            'totality_seconds': eclipse['central_duration_s'],
+        })
+        return attrs
+
+
+class EclipseComingUpBinarySensor(_EclipseBinarySensor):
+    """Turns on when a worthwhile eclipse is close enough to plan around.
+
+    The companion to Eclipse Visible Now, and deliberately a different question. That one is
+    "look up"; this one is "book the day off, and order the glasses". It comes on
+    ``ECLIPSE_UPCOMING_DAYS`` before an eclipse that will cover at least
+    ``ECLIPSE_UPCOMING_MIN_COVERAGE`` of the disc from here -- a higher bar than the live alert,
+    because a partial eclipse worth glancing at is not a partial eclipse worth a calendar entry.
+    """
+
+    def __init__(self, coordinator, office_code):
+        """Initialize the binary sensor."""
+        super().__init__(coordinator, office_code)
+        self._attr_unique_id = f"noaa_{office_code}_eclipse_coming_up"
+
+    @property
+    def name(self):
+        """Return the local name of the binary sensor."""
+        return "Eclipse Coming Up"
+
+    @property
+    def _eclipse(self):
+        """Return the next visible eclipse, or ``None``."""
+        return self._forecast.get('current') or self._forecast.get('next')
+
+    @property
+    def is_on(self):
+        """Return true when a worthwhile eclipse is within the planning window."""
+        eclipse = self._eclipse
+        if not eclipse:
+            return False
+        days = eclipse.get('days_until')
+        if days is None or days > ECLIPSE_UPCOMING_DAYS:
+            return False
+        return (
+            eclipse['visible']
+            and eclipse['disc_covered'] >= ECLIPSE_UPCOMING_MIN_COVERAGE
+        )
+
+    @property
+    def icon(self):
+        """Return the icon."""
+        if self.is_on:
+            return 'mdi:calendar-star'
+        return 'mdi:calendar-blank'
+
+    @property
+    def extra_state_attributes(self):
+        """Return the state attributes."""
+        attrs = {
+            'office_code': self._office_code,
+            'minimum_disc_covered': ECLIPSE_UPCOMING_MIN_COVERAGE,
+            'window_days': ECLIPSE_UPCOMING_DAYS,
+        }
+        eclipse = self._eclipse
+        if not eclipse:
+            return attrs
+        attrs.update(self._describe(eclipse))
+        attrs.update({
+            'date': eclipse['date'],
+            'days_until': eclipse['days_until'],
+            'visible_fraction': eclipse['visible_fraction'],
+        })
+        return attrs

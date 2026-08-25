@@ -80,6 +80,7 @@ _COORDINATOR_NAMES = (
     "RadarTimestampCoordinator",
     "ForecastDiscussionCoordinator",
     "MeteorShowerCoordinator",
+    "EclipseCoordinator",
 )
 
 # Wilmington, NC — the ILM forecast office.
@@ -195,6 +196,7 @@ class TestSetupEntryUsesSavedOptions(unittest.TestCase):
         coordinators["NWSAlertsCoordinator"].assert_not_called()
         coordinators["ObservationsCoordinator"].assert_not_called()
         coordinators["MeteorShowerCoordinator"].assert_not_called()
+        coordinators["EclipseCoordinator"].assert_not_called()
 
 
 class TestOptionsUpdateListener(unittest.TestCase):
