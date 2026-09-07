@@ -5,7 +5,21 @@ All notable changes to NOAA It All for Home Assistant will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.7.0] - Current
+## [0.7.1] - Current
+
+### Added
+- **East Pacific tropical outlook image.** `image.noaa_hurricane_pacific_outlook_image`, on the
+  existing **NOAA Hurricane** device. The NHC publishes its two-day tropical weather outlook as
+  one graphic per basin, so the Atlantic map that shipped until now showed nothing at all for a
+  storm off Baja California. Both basins now have their own tile.
+
+### Changed
+- The Atlantic outlook image (`image.noaa_hurricane_outlook_image`) now uses NHC's larger
+  `xgtwo_atl_2d0.png` rendering instead of `two_atl_2d0.png`. Same map, more readable on a
+  dashboard. The entity ID and name are unchanged, so existing cards and automations keep
+  working.
+
+## [0.7.0]
 
 ### Added
 - **Solar and lunar eclipses, worked out for where you actually are.** Three sensors and two
@@ -78,16 +92,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     2050 where NASA's index stops. An image platform is for things that refresh, and eclipse
     predictions do not. The numbers are the product here.
 
-- **East Pacific tropical outlook image.** `image.noaa_hurricane_pacific_outlook_image`, on the
-  existing **NOAA Hurricane** device. The NHC publishes its two-day tropical weather outlook as
-  one graphic per basin, so the Atlantic map that shipped until now showed nothing at all for a
-  storm off Baja California. Both basins now have their own tile.
-
 ### Changed
-- The Atlantic outlook image (`image.noaa_hurricane_outlook_image`) now uses NHC's larger
-  `xgtwo_atl_2d0.png` rendering instead of `two_atl_2d0.png`. Same map, more readable on a
-  dashboard. The entity ID and name are unchanged, so existing cards and automations keep
-  working.
 - The eclipse forecast is computed in an executor rather than on the event loop. A refresh
   measures 75-100 ms, an order of magnitude more than the meteor forecast whose docstring gives
   "well under 10 ms" as its reason for running inline — and this one polls every minute while an
