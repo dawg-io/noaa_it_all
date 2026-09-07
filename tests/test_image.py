@@ -271,6 +271,57 @@ class TestHurricaneOutlookImageEntity(unittest.TestCase):
         self.assertIn((DOMAIN, HURRICANE_DEVICE_ID), info["identifiers"])
 
 
+class TestHurricanePacificOutlookImageEntity(unittest.TestCase):
+    """Tests for HurricanePacificOutlookImageEntity properties."""
+
+    def _make(self):
+        from noaa_it_all.image import HurricanePacificOutlookImageEntity
+        return HurricanePacificOutlookImageEntity(HASS)
+
+    def test_name(self):
+        # Local name only; HA prepends "NOAA Hurricane" to form the full name.
+        entity = self._make()
+        self.assertEqual(entity.name, "Pacific Outlook Image")
+
+    def test_unique_id(self):
+        entity = self._make()
+        self.assertEqual(entity.unique_id, "noaa_hurricane_pacific_outlook_image")
+
+    def test_has_entity_name(self):
+        from noaa_it_all.image import HurricanePacificOutlookImageEntity
+        self.assertTrue(HurricanePacificOutlookImageEntity._attr_has_entity_name)
+
+    def test_device_info_uses_hurricane_device(self):
+        from noaa_it_all.const import DOMAIN, HURRICANE_DEVICE_ID
+        entity = self._make()
+        info = entity.device_info
+        self.assertIn((DOMAIN, HURRICANE_DEVICE_ID), info["identifiers"])
+
+
+class TestHurricaneOutlookSources(unittest.TestCase):
+    """The two outlook entities must point at different NHC basins.
+
+    A copy-paste slip that leaves both on the Atlantic graphic would show two
+    identical maps on the dashboard, which is exactly the bug this pair of
+    entities exists to fix, and nothing else in the suite would catch it.
+    """
+
+    def test_each_basin_has_its_own_graphic(self):
+        from noaa_it_all.image import (
+            HurricaneOutlookImageEntity,
+            HurricanePacificOutlookImageEntity,
+        )
+        atlantic = HurricaneOutlookImageEntity(HASS)._url
+        pacific = HurricanePacificOutlookImageEntity(HASS)._url
+        self.assertEqual(
+            atlantic, "https://www.nhc.noaa.gov/xgtwo/xgtwo_atl_2d0.png"
+        )
+        self.assertEqual(
+            pacific, "https://www.nhc.noaa.gov/xgtwo/xgtwo_pac_2d0.png"
+        )
+        self.assertNotEqual(atlantic, pacific)
+
+
 class TestRadarBaseReflectivityImageEntity(unittest.TestCase):
     """Tests for RadarBaseReflectivityImageEntity properties."""
 
@@ -405,11 +456,13 @@ class TestTwoOfficeSetup(unittest.TestCase):
     def _make_hurricane_entities(self):
         from noaa_it_all.image import (
             HurricaneOutlookImageEntity,
+            HurricanePacificOutlookImageEntity,
             GOESAirMassImageEntity,
             GOESGeoColorImageEntity,
         )
         return [
             HurricaneOutlookImageEntity(HASS),
+            HurricanePacificOutlookImageEntity(HASS),
             GOESAirMassImageEntity(HASS),
             GOESGeoColorImageEntity(HASS),
         ]
@@ -442,8 +495,11 @@ class TestTwoOfficeSetup(unittest.TestCase):
         """Hurricane unique_ids are constant — not per-office."""
         entities = self._make_hurricane_entities()
         self.assertEqual(entities[0].unique_id, "noaa_hurricane_outlook_image")
-        self.assertEqual(entities[1].unique_id, "noaa_hurricane_goes_air_mass")
-        self.assertEqual(entities[2].unique_id, "noaa_hurricane_goes_geocolor")
+        self.assertEqual(
+            entities[1].unique_id, "noaa_hurricane_pacific_outlook_image"
+        )
+        self.assertEqual(entities[2].unique_id, "noaa_hurricane_goes_air_mass")
+        self.assertEqual(entities[3].unique_id, "noaa_hurricane_goes_geocolor")
 
     # ------------------------------------------------------------------
     # Radar entities are per-office
@@ -858,6 +914,7 @@ class TestNoStateWriteBeforeAdd(unittest.TestCase):
             GOESGeoColorImageEntity,
             GeoelectricFieldImageEntity,
             HurricaneOutlookImageEntity,
+            HurricanePacificOutlookImageEntity,
             RadarBaseReflectivityImageEntity,
             RadarLoopImageEntity,
         )
@@ -865,6 +922,7 @@ class TestNoStateWriteBeforeAdd(unittest.TestCase):
             GeoelectricFieldImageEntity(HASS, OFFICE),
             AuroraForecastImageEntity(HASS, OFFICE),
             HurricaneOutlookImageEntity(HASS),
+            HurricanePacificOutlookImageEntity(HASS),
             RadarBaseReflectivityImageEntity(HASS, OFFICE, "KNKX"),
             RadarLoopImageEntity(HASS, OFFICE, "KNKX"),
             GOESAirMassImageEntity(HASS),
@@ -931,7 +989,7 @@ class TestNoStateWriteBeforeAdd(unittest.TestCase):
 
 
 class TestContentTypes(unittest.TestCase):
-    """Home Assistant defaults every image to JPEG; five of seven are not."""
+    """Home Assistant defaults every image to JPEG; six of eight are not."""
 
     def test_declared_content_types_match_the_upstream_formats(self):
         from noaa_it_all.image import (
@@ -940,6 +998,7 @@ class TestContentTypes(unittest.TestCase):
             GOESGeoColorImageEntity,
             GeoelectricFieldImageEntity,
             HurricaneOutlookImageEntity,
+            HurricanePacificOutlookImageEntity,
             RadarBaseReflectivityImageEntity,
             RadarLoopImageEntity,
         )
@@ -947,6 +1006,7 @@ class TestContentTypes(unittest.TestCase):
             (GeoelectricFieldImageEntity(HASS, OFFICE), "image/png"),
             (AuroraForecastImageEntity(HASS, OFFICE), "image/jpeg"),
             (HurricaneOutlookImageEntity(HASS), "image/png"),
+            (HurricanePacificOutlookImageEntity(HASS), "image/png"),
             (RadarBaseReflectivityImageEntity(HASS, OFFICE, "KNKX"), "image/gif"),
             (RadarLoopImageEntity(HASS, OFFICE, "KNKX"), "image/gif"),
             (GOESAirMassImageEntity(HASS), "image/jpeg"),
@@ -963,6 +1023,7 @@ class TestContentTypes(unittest.TestCase):
             GOESGeoColorImageEntity,
             GeoelectricFieldImageEntity,
             HurricaneOutlookImageEntity,
+            HurricanePacificOutlookImageEntity,
             RadarBaseReflectivityImageEntity,
             RadarLoopImageEntity,
         )
@@ -970,6 +1031,7 @@ class TestContentTypes(unittest.TestCase):
             GeoelectricFieldImageEntity(HASS, OFFICE)._log_label,
             AuroraForecastImageEntity(HASS, OFFICE)._log_label,
             HurricaneOutlookImageEntity(HASS)._log_label,
+            HurricanePacificOutlookImageEntity(HASS)._log_label,
             RadarBaseReflectivityImageEntity(HASS, OFFICE, "KNKX")._log_label,
             RadarLoopImageEntity(HASS, OFFICE, "KNKX")._log_label,
             GOESAirMassImageEntity(HASS)._log_label,

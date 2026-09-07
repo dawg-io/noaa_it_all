@@ -132,14 +132,15 @@ office code in lower case, leaving the exceptions below untouched.
 
 ### Exceptions to the pattern
 
-These five entity IDs contain **no office code** — they live on the shared, office-independent
+These six entity IDs contain **no office code** — they live on the shared, office-independent
 `NOAA Hurricane` device. Do not substitute into them:
 
 | Entity ID | Why |
 |---|---|
 | `sensor.noaa_hurricane_alerts` | Global NHC data on the shared `NOAA Hurricane` device |
 | `sensor.noaa_hurricane_activity` | Global NHC data on the shared `NOAA Hurricane` device |
-| `image.noaa_hurricane_outlook_image` | Global NHC imagery |
+| `image.noaa_hurricane_outlook_image` | Global NHC imagery (Atlantic) |
+| `image.noaa_hurricane_pacific_outlook_image` | Global NHC imagery (East Pacific) |
 | `image.noaa_hurricane_goes_air_mass` | Global GOES imagery |
 | `image.noaa_hurricane_goes_geocolor` | Global GOES imagery |
 
@@ -250,6 +251,7 @@ regardless of how many offices you configure, and carry **no office code**.
 - `sensor.noaa_hurricane_alerts`
 - `sensor.noaa_hurricane_activity`
 - `image.noaa_hurricane_outlook_image`
+- `image.noaa_hurricane_pacific_outlook_image`
 - `image.noaa_hurricane_goes_air_mass`
 - `image.noaa_hurricane_goes_geocolor`
 

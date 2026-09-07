@@ -52,7 +52,13 @@ AURORA_URL = ('https://services.swpc.noaa.gov/images/animations/ovation/'
               'north/latest.jpg')
 
 # NOAA Hurricane Image Sources
-HURRICANE_OUTLOOK_URL = 'https://www.nhc.noaa.gov/xgtwo/two_atl_2d0.png'
+# The National Hurricane Center publishes its two-day tropical weather
+# outlook as one graphic per basin, so the Atlantic map alone leaves East
+# Pacific systems invisible -- both basins get their own entity.  The
+# ``xgtwo_`` prefix is NHC's larger rendering of the same map as the older
+# ``two_`` graphic.
+HURRICANE_OUTLOOK_URL = 'https://www.nhc.noaa.gov/xgtwo/xgtwo_atl_2d0.png'
+HURRICANE_PACIFIC_OUTLOOK_URL = 'https://www.nhc.noaa.gov/xgtwo/xgtwo_pac_2d0.png'
 
 # NOAA GOES Satellite Image Sources
 GOES_AIRMASS_URL = 'https://cdn.star.nesdis.noaa.gov/GOES19/ABI/CONUS/AirMass/1250x750.jpg'
@@ -193,6 +199,7 @@ async def async_setup_entry(
     if not domain_data.get(HURRICANE_IMAGES_ADDED_KEY):
         entities.extend([
             HurricaneOutlookImageEntity(hass),
+            HurricanePacificOutlookImageEntity(hass),
             GOESAirMassImageEntity(hass),
             GOESGeoColorImageEntity(hass),
         ])
@@ -649,12 +656,17 @@ class AuroraForecastImageEntity(NoaaImageEntity):
 
 
 class HurricaneOutlookImageEntity(NoaaImageEntity):
-    """Representation of the Hurricane Outlook Image.
+    """Representation of the Atlantic Hurricane Outlook Image.
+
+    Covers the Atlantic basin only; East Pacific systems are on the
+    companion :class:`HurricanePacificOutlookImageEntity` map.
 
     Uses ``_attr_has_entity_name = True`` so that Home Assistant
     automatically combines the device name ("NOAA Hurricane") with the
     local entity name ("Outlook Image") to produce the entity ID
-    ``image.noaa_hurricane_outlook_image``.
+    ``image.noaa_hurricane_outlook_image``.  The name is deliberately
+    left basin-neutral so that existing dashboards and automations keep
+    working.
     """
 
     _attr_has_entity_name = True
@@ -679,6 +691,48 @@ class HurricaneOutlookImageEntity(NoaaImageEntity):
     def unique_id(self):
         """Return a unique ID for this entity."""
         return 'noaa_hurricane_outlook_image'
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information."""
+        return _hurricane_device_info()
+
+
+class HurricanePacificOutlookImageEntity(NoaaImageEntity):
+    """Representation of the East Pacific Hurricane Outlook Image.
+
+    The NHC two-day outlook is published per basin, so the Atlantic map
+    never shows an East Pacific system.  This is the same graphic for the
+    Pacific basin.
+
+    Uses ``_attr_has_entity_name = True`` so that Home Assistant
+    automatically combines the device name ("NOAA Hurricane") with the
+    local entity name ("Pacific Outlook Image") to produce the entity ID
+    ``image.noaa_hurricane_pacific_outlook_image``.
+    """
+
+    _attr_has_entity_name = True
+    _attr_content_type = "image/png"
+    _log_label = "Pacific hurricane outlook"
+    _url = HURRICANE_PACIFIC_OUTLOOK_URL
+
+    def __init__(self, hass, office_code=None):
+        """Initialize the image entity.
+
+        ``office_code`` is accepted for backward compatibility but is
+        unused: this entity is global (NHC).
+        """
+        super().__init__(hass)
+
+    @property
+    def name(self):
+        """Return the local entity name."""
+        return 'Pacific Outlook Image'
+
+    @property
+    def unique_id(self):
+        """Return a unique ID for this entity."""
+        return 'noaa_hurricane_pacific_outlook_image'
 
     @property
     def device_info(self) -> DeviceInfo:
