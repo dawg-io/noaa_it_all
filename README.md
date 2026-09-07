@@ -96,7 +96,7 @@ Global hurricane tracking and GOES satellite imagery — **created once**, share
 - **Device ID**: `noaa_weather_hurricane`
 - **Location**: Independent (global NHC/GOES data)
 - **Update Frequency**: 5 minutes
-- **Entities**: `sensor.noaa_hurricane_activity`, `sensor.noaa_hurricane_alerts`, `image.noaa_hurricane_outlook_image`, `image.noaa_hurricane_goes_air_mass`, `image.noaa_hurricane_goes_geocolor`
+- **Entities**: `sensor.noaa_hurricane_activity`, `sensor.noaa_hurricane_alerts`, `image.noaa_hurricane_outlook_image`, `image.noaa_hurricane_pacific_outlook_image`, `image.noaa_hurricane_goes_air_mass`, `image.noaa_hurricane_goes_geocolor`
 
 <p align="left">
   <img width="327" height="380" alt="image" src="https://github.com/user-attachments/assets/7b484039-abe9-4c14-ab37-91b41d084411" />
@@ -287,7 +287,8 @@ Visual representations of current conditions:
 - **Aurora Forecast Image** — Tonight's aurora coverage forecast *(image.noaa_ilm_space_aurora_forecast_image)*
 
 **NOAA Hurricane** (global, created once):
-- **Outlook Image** — 2-day tropical weather outlook from NHC *(image.noaa_hurricane_outlook_image)*
+- **Outlook Image** — 2-day tropical weather outlook from NHC, **Atlantic basin** *(image.noaa_hurricane_outlook_image)*
+- **Pacific Outlook Image** — the same 2-day outlook for the **East Pacific basin** *(image.noaa_hurricane_pacific_outlook_image)*
 - **GOES Air Mass** — GOES-19 Air Mass RGB satellite imagery *(image.noaa_hurricane_goes_air_mass)*
 - **GOES Geocolor** — GOES-19 GeoColor satellite imagery *(image.noaa_hurricane_goes_geocolor)*
 
@@ -351,13 +352,14 @@ replace `ilm` with your office code in lower case — and leave the entities lis
 - `sensor.noaa_ilm_weather_temperature` — Temperature for Wilmington (ILM office)
 - `binary_sensor.noaa_ilm_surf_unsafe_to_swim` — Rip current safety for Wilmington
 - `sensor.noaa_hurricane_activity` — Global hurricane activity (NOAA Hurricane device)
-- `image.noaa_hurricane_outlook_image` — Hurricane outlook image (NOAA Hurricane device)
+- `image.noaa_hurricane_outlook_image` — Atlantic hurricane outlook image (NOAA Hurricane device)
+- `image.noaa_hurricane_pacific_outlook_image` — East Pacific hurricane outlook image (NOAA Hurricane device)
 - `image.noaa_ilm_weather_radar_base_reflectivity` — Radar base reflectivity for Wilmington (ILM)
 - `image.noaa_ilm_weather_radar_loop` — Radar loop for Wilmington (ILM)
 
 ### Exceptions to the pattern
 
-These five entity IDs do **not** contain an office code, because they live on the shared,
+These six entity IDs do **not** contain an office code, because they live on the shared,
 office-independent `NOAA Hurricane` device. When you copy an example and swap the office code,
 skip these — substituting into them produces an entity that does not exist:
 
@@ -366,6 +368,7 @@ skip these — substituting into them produces an entity that does not exist:
 | `sensor.noaa_hurricane_alerts` | Global NHC data, on the shared `NOAA Hurricane` device |
 | `sensor.noaa_hurricane_activity` | Global NHC data, on the shared `NOAA Hurricane` device |
 | `image.noaa_hurricane_outlook_image` | Global NHC data, on the shared `NOAA Hurricane` device |
+| `image.noaa_hurricane_pacific_outlook_image` | Global NHC data, on the shared `NOAA Hurricane` device |
 | `image.noaa_hurricane_goes_air_mass` | Global GOES imagery, on the shared `NOAA Hurricane` device |
 | `image.noaa_hurricane_goes_geocolor` | Global GOES imagery, on the shared `NOAA Hurricane` device |
 
