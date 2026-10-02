@@ -74,6 +74,15 @@ class TestManifest(unittest.TestCase):
         self.assertIn("requirements", self.manifest)
         self.assertIsInstance(self.manifest["requirements"], list)
 
+    def test_requirements_exclude_home_assistant_core_dependencies(self):
+        """hassfest fails a custom integration that lists a package Home Assistant itself depends on.
+
+        aiohttp ships with Home Assistant, and listing it fails hassfest's
+        REQUIREMENTS check with "is a dependency of Home Assistant itself".
+        """
+        self.assertNotIn("aiohttp", self.manifest["requirements"],
+                         "aiohttp ships with Home Assistant; listing it fails hassfest")
+
 
 class TestUserAgent(unittest.TestCase):
     """The User-Agent must stay truthful about who is calling NOAA.
@@ -352,6 +361,19 @@ class TestReadmeImages(unittest.TestCase):
                     f"README.md image URL serves an HTML page, not an image: {url}\n"
                     "Use https://raw.githubusercontent.com/<owner>/<repo>/<branch>/<path> instead."
                 )
+
+    def test_no_install_count_badges(self):
+        """Install-count badges were removed because they never showed a real number.
+
+        The GitHub downloads badge counts release assets, and hacs.json sets
+        zip_release false, so releases carry none and it always read 0. The
+        analytics "Tracked Installs" badge did not render a working count either.
+        """
+        for url in self.urls:
+            self.assertNotIn("img.shields.io/github/downloads", url,
+                             f"README.md has a release-download badge: {url}")
+            self.assertNotIn("analytics.home-assistant.io", url,
+                             f"README.md has an analytics install badge: {url}")
 
 
 if __name__ == "__main__":

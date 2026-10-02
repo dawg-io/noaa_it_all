@@ -5,7 +5,39 @@ All notable changes to NOAA It All for Home Assistant will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.7.1] - Current
+## [0.7.3] - Current
+
+The integration's Python code and entities are unchanged from 0.7.2.
+
+### Fixed
+- `aiohttp` is no longer listed in the manifest's `requirements`. Home Assistant already ships it,
+  and hassfest now fails any custom integration that lists a package Home Assistant itself depends
+  on. Nothing changes at runtime: the integration uses the `aiohttp` that comes with Home Assistant.
+
+### Changed
+- The README no longer shows the GitHub downloads and Tracked Installs badges. Releases carry no
+  download assets, so the downloads badge always read 0, and the Tracked Installs badge never
+  showed a working count.
+- The README's Troubleshooting section now explains the "icon not available" placeholder HACS
+  shows for this integration, in its repository list and under **Settings** → **Updates**. HACS
+  still loads icons from the public brands site, which stopped accepting custom integrations in
+  Home Assistant 2026.3. The section also gives an optional `customize` snippet that puts the
+  icon on the Updates entry.
+
+## [0.7.2]
+
+### Fixed
+- **Observations no longer go unavailable when the nearest station stops answering.** Only the
+  nearest NWS station was kept, so when it failed every observation sensor and the weather
+  entity stayed unavailable for as long as the outage lasted, and a restart picked the same
+  station again. The nearest three are now kept and the first one that answers is used. The
+  nearest is still tried first on every refresh, so it takes over again once it recovers. The
+  `station_id` attribute shows which station the reading came from. A station that keeps
+  answering with an old reading is not detected yet (#42).
+- When every station fails, the error now names each station tried and why, including timeouts,
+  which used to be logged with no reason at all.
+
+## [0.7.1]
 
 ### Added
 - **East Pacific tropical outlook image.** `image.noaa_hurricane_pacific_outlook_image`, on the

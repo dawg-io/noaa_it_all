@@ -7,8 +7,6 @@
 [![HACS Default](https://img.shields.io/badge/HACS-Default-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
 [![GitHub Release](https://img.shields.io/github/v/release/dawg-io/noaa_it_all?style=for-the-badge&color=green)](https://github.com/dawg-io/noaa_it_all/releases)
 [![License](https://img.shields.io/github/license/dawg-io/noaa_it_all?style=for-the-badge&color=green)](https://github.com/dawg-io/noaa_it_all/blob/main/LICENSE)
-![GitHub all releases](https://img.shields.io/github/downloads/dawg-io/noaa_it_all/total?style=for-the-badge&color=gray)
-![Tracked Installs](https://img.shields.io/endpoint?url=https://analytics.home-assistant.io/api/badge_custom_integrations_json/noaa_it_all.json&style=for-the-badge&logo=home-assistant&label=Tracked%20Installs&color=gray)
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/dawg-io/noaa_it_all/main/icon.png" width="120" alt="NOAA It All"><br>
@@ -173,7 +171,7 @@ Real-time weather observations from your local NWS observation station *(NOAA We
 - **Sky Conditions**: Current sky conditions description (Clear, Cloudy, Fog, etc.) *(sensor.noaa_{office}_weather_sky_conditions)*
 - **Feels Like**: Apparent temperature incorporating wind chill or heat index *(sensor.noaa_{office}_weather_feels_like)*
 
-> **Note**: Weather observations update every 10 minutes from the primary observation station for your configured NWS office location. Data includes automatic unit conversions to US customary units.
+> **Note**: Weather observations update every 10 minutes from the NWS observation station nearest your configured coordinates. If that station stops reporting, the next nearest (of up to three) is used until it comes back; the `station_id` attribute shows which one. Data includes automatic unit conversions to US customary units.
 
 ### Aurora Visibility Alerts (Config Flow Only)
 Location-aware aurora visibility predictions *(NOAA Space)*:
@@ -1382,9 +1380,9 @@ content: |
 - Confirm scan interval is running: entities should show a `last_changed` time within the last 10 minutes
 
 ### Incorrect or Missing Weather Data
-- Weather observations are pulled from the nearest NWS station to your configured coordinates
+- Weather observations are pulled from the nearest NWS station to your configured coordinates. If it stops reporting, the next nearest of up to three is used instead, and a warning naming the failed station is logged
 - Confirm your latitude and longitude are accurate (you can reconfigure via **Settings** → **Integrations** → **NOAA It All** → **Configure**)
-- Some NWS offices may not have nearby observation stations; in that case observations will show `unknown`
+- If no nearby station answers, observation entities show `unavailable`. The log line `Error fetching NOAA Observations data` names each station tried and why it failed
 
 ### Binary Sensors Always Off
 - Binary sensors require Config Flow setup with a valid office code and coordinates
@@ -1394,6 +1392,17 @@ content: |
 - Confirm Home Assistant version is **2024.9.1 or newer**
 - Check that required Python packages (`requests`, `aiohttp`) are available (they are bundled with HACS installations)
 - Review Home Assistant logs for specific import or configuration errors
+
+### "icon not available" in HACS
+- HACS shows "icon not available" for NOAA It All in its repository list and on its entry under **Settings** → **Updates**. This is a HACS bug, not a problem with your install. HACS still loads integration icons from the public Home Assistant brands site, which stopped accepting custom integrations in Home Assistant 2026.3. The icon ships in the integration's `brand/` folder, and Home Assistant itself shows it (for example under **Settings** → **Devices & services**) once the integration is installed. HACS is tracking the fix in [HACS issue 5171](https://github.com/hacs/integration/issues/5171) and [HACS frontend PR 937](https://github.com/hacs/frontend/pull/937).
+- The HACS list can't be changed from this integration. To show the icon on the **Settings** → **Updates** entry, add this to `configuration.yaml` and restart Home Assistant. If you renamed the HACS update entity, use its ID from **Settings** → **Entities**.
+
+```yaml
+homeassistant:
+  customize:
+    update.noaa_it_all_update:
+      entity_picture: /api/brands/integration/noaa_it_all/icon.png
+```
 
 ### FAQ
 
