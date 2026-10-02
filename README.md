@@ -1393,6 +1393,17 @@ content: |
 - Check that required Python packages (`requests`, `aiohttp`) are available (they are bundled with HACS installations)
 - Review Home Assistant logs for specific import or configuration errors
 
+### "icon not available" in HACS
+- HACS shows "icon not available" for NOAA It All in its repository list and on its entry under **Settings** → **Updates**. This is a HACS bug, not a problem with your install. HACS still loads integration icons from the public Home Assistant brands site, which stopped accepting custom integrations in Home Assistant 2026.3. The icon ships in the integration's `brand/` folder, and Home Assistant itself shows it (for example under **Settings** → **Devices & services**) once the integration is installed. HACS is tracking the fix in [HACS issue 5171](https://github.com/hacs/integration/issues/5171) and [HACS frontend PR 937](https://github.com/hacs/frontend/pull/937).
+- The HACS list can't be changed from this integration. To show the icon on the **Settings** → **Updates** entry, add this to `configuration.yaml` and restart Home Assistant. If you renamed the HACS update entity, use its ID from **Settings** → **Entities**.
+
+```yaml
+homeassistant:
+  customize:
+    update.noaa_it_all_update:
+      entity_picture: /api/brands/integration/noaa_it_all/icon.png
+```
+
 ### FAQ
 
 **Q: Can I use this integration without configuring latitude/longitude?**
