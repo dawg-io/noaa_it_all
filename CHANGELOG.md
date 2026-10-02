@@ -7,7 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.7.3] - Current
 
-Documentation only. The integration's code and entities are unchanged from 0.7.2.
+The integration's Python code and entities are unchanged from 0.7.2.
+
+### Fixed
+- `aiohttp` is no longer listed in the manifest's `requirements`. Home Assistant already ships it,
+  and hassfest now fails any custom integration that lists a package Home Assistant itself depends
+  on. Nothing changes at runtime: the integration uses the `aiohttp` that comes with Home Assistant.
 
 ### Changed
 - The README no longer shows the GitHub downloads and Tracked Installs badges. Releases carry no
