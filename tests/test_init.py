@@ -6,6 +6,7 @@ option must reload the entry so those coordinators are rebuilt (they capture
 office_code / latitude / longitude at construction and cannot be re-pointed).
 """
 
+import ast
 import asyncio
 import contextlib
 import os
@@ -282,3 +283,35 @@ class TestRemoveEntryCleansUpRadarFrames(unittest.TestCase):
         entry = self._entry("entry_1", "ZZZ")
         removed = self._remove(self._hass([entry]), entry)
         self.assertEqual([], removed)
+
+
+class TestConfigSchema(unittest.TestCase):
+    """hassfest warns when an integration with async_setup or setup has no CONFIG_SCHEMA.
+
+    The check reads __init__.py's module-level assignments, as this test does.
+    YAML setup was removed (the sensor and image platforms have no
+    async_setup_platform), so the schema is config_entry_only_config_schema,
+    which tells anyone with "noaa_it_all:" in YAML to remove it.
+    """
+
+    def setUp(self):
+        with open(os.path.join(_CC, "noaa_it_all", "__init__.py"), encoding="utf-8") as f:
+            self.module = ast.parse(f.read())
+
+    def _config_schema_value(self):
+        for node in self.module.body:
+            if isinstance(node, ast.Assign) and any(
+                getattr(target, "id", None) == "CONFIG_SCHEMA" for target in node.targets
+            ):
+                return node.value
+        return None
+
+    def test_config_schema_is_defined(self):
+        self.assertIsNotNone(self._config_schema_value(),
+                             "__init__.py defines async_setup, so hassfest requires CONFIG_SCHEMA")
+
+    def test_config_schema_rejects_yaml_setup(self):
+        value = self._config_schema_value()
+        self.assertIsInstance(value, ast.Call)
+        self.assertEqual("config_entry_only_config_schema", getattr(value.func, "attr", None))
+        self.assertEqual(["DOMAIN"], [getattr(arg, "id", None) for arg in value.args])

@@ -4,7 +4,7 @@ import logging
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import discovery
+from homeassistant.helpers import config_validation as cv, discovery
 
 from .const import (
     DOMAIN, CONF_OFFICE_CODE, CONF_LATITUDE, CONF_LONGITUDE,
@@ -32,6 +32,11 @@ from .coordinator import (
 _LOGGER = logging.getLogger(__name__)
 
 PLATFORMS = ["sensor", "image", "binary_sensor", "weather"]
+
+# YAML setup was removed: the sensor and image platforms have no
+# async_setup_platform, so "noaa_it_all:" in YAML creates nothing. This logs
+# that and raises a repair telling the user to add the integration instead.
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 
 async def async_setup(hass: HomeAssistant, config: dict):

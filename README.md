@@ -1386,7 +1386,6 @@ content: |
 
 ### Binary Sensors Always Off
 - Binary sensors require Config Flow setup with a valid office code and coordinates
-- Legacy YAML configuration does not support location-specific binary sensors
 
 ### Integration Fails to Load
 - Confirm Home Assistant version is **2024.9.1 or newer**
@@ -1407,7 +1406,7 @@ homeassistant:
 ### FAQ
 
 **Q: Can I use this integration without configuring latitude/longitude?**
-A: Yes. Adding `noaa_it_all:` to `configuration.yaml` provides global sensors (Kp Index, Geomagnetic Storm, Hurricane data) without location-specific features.
+A: No. Setup requires latitude and longitude. They are pre-filled from your Home Assistant Home zone when one is set, and you can enter a different location instead. YAML setup has been removed and creates no entities (see [Legacy YAML Configuration](#legacy-yaml-configuration)).
 
 **Q: How do I find my NWS forecast office code?**
 A: Visit [weather.gov](https://www.weather.gov/) and search for your location. The three-letter office code appears in the URL of your local forecast page (e.g., `forecast.weather.gov/MapClick.php?CityName=San+Diego&state=CA&site=ILM`).
@@ -1454,8 +1453,6 @@ Most sensors update every 10 minutes to provide current conditions while respect
 Meteor shower entities update every 30 minutes. They fetch nothing, so there is no rate limit to
 respect — but the best-of-night result is stable for hours, so a slower cadence keeps the recorder
 database smaller for no loss of accuracy.
-
-**Note:** Legacy YAML configurations without lat/lon will continue to work but will use the fallback office-to-station mapping for weather data. Config Flow setups require the new fields.
 
 ## Changelog
 

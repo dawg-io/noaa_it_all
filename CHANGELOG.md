@@ -7,14 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.7.3] - Current
 
-The integration's Python code and entities are unchanged from 0.7.2.
+Entities are unchanged from 0.7.2.
 
 ### Fixed
 - `aiohttp` is no longer listed in the manifest's `requirements`. Home Assistant already ships it,
   and hassfest now fails any custom integration that lists a package Home Assistant itself depends
   on. Nothing changes at runtime: the integration uses the `aiohttp` that comes with Home Assistant.
+- hassfest no longer warns that the integration has no `CONFIG_SCHEMA`. YAML setup was already
+  removed and creates no entities. If `noaa_it_all:` is still in `configuration.yaml`, Home
+  Assistant now logs that the integration doesn't support YAML setup and adds an entry under
+  **Settings** → **Repairs** with a link to add the integration from the UI.
 
 ### Changed
+- The README no longer says YAML setup provides global sensors or keeps working without
+  coordinates. YAML setup was already removed and creates no entities. The FAQ now says setup
+  requires coordinates, and the stale YAML lines under Binary Sensors Always Off and Update
+  Frequency are gone.
 - The README no longer shows the GitHub downloads and Tracked Installs badges. Releases carry no
   download assets, so the downloads badge always read 0, and the Tracked Installs badge never
   showed a working count.
