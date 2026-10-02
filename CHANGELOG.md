@@ -5,7 +5,21 @@ All notable changes to NOAA It All for Home Assistant will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.7.2] - Current
+## [0.7.3] - Current
+
+Documentation only. The integration's code and entities are unchanged from 0.7.2.
+
+### Changed
+- The README no longer shows the GitHub downloads and Tracked Installs badges. Releases carry no
+  download assets, so the downloads badge always read 0, and the Tracked Installs badge never
+  showed a working count.
+- The README's Troubleshooting section now explains the "icon not available" placeholder HACS
+  shows for this integration, in its repository list and under **Settings** → **Updates**. HACS
+  still loads icons from the public brands site, which stopped accepting custom integrations in
+  Home Assistant 2026.3. The section also gives an optional `customize` snippet that puts the
+  icon on the Updates entry.
+
+## [0.7.2]
 
 ### Fixed
 - **Observations no longer go unavailable when the nearest station stops answering.** Only the
