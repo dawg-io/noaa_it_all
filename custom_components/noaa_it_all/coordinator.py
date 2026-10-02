@@ -227,7 +227,9 @@ class ObservationsCoordinator(DataUpdateCoordinator):
         self.office_code = office_code
         self.latitude = latitude
         self.longitude = longitude
-        # The station the latest observation came from.
+        # The station in use: the office default until the lookup resolves
+        # the nearest, then whichever station last answered. Compared against
+        # to log a station change once rather than on every refresh.
         self.station_id: Optional[str] = OFFICE_STATION_IDS.get(office_code)
         # Nearest first, filled in by _resolve_station.
         self._stations: list[str] = []
@@ -260,6 +262,7 @@ class ObservationsCoordinator(DataUpdateCoordinator):
             )
 
         errors: list[str] = []
+        last_err: Optional[Exception] = None
         for station in stations:
             url = NWS_OBSERVATIONS_URL.format(station=station)
             try:
@@ -270,12 +273,16 @@ class ObservationsCoordinator(DataUpdateCoordinator):
                 ) as resp:
                     resp.raise_for_status()
                     data = await resp.json()
+                # Inside the try: a body that is not a JSON object is a
+                # failed station too, not an escaped AttributeError.
+                properties = data.get("properties", {})
             except Exception as err:
                 _LOGGER.debug(
                     "Error fetching observations from station %s: %s",
                     station, err,
                 )
                 errors.append(f"{station} ({_describe(err)})")
+                last_err = err
                 continue
 
             # Log only when the station changes, not on every refresh.
@@ -292,13 +299,13 @@ class ObservationsCoordinator(DataUpdateCoordinator):
                     )
                 self.station_id = station
             return {
-                "properties": data.get("properties", {}),
+                "properties": properties,
                 "station_id": station,
             }
 
         raise UpdateFailed(
             "Error fetching observations: " + "; ".join(errors)
-        )
+        ) from last_err
 
     async def _resolve_station(self, session, timeout) -> None:
         """Fetch the observation stations nearest lat/lon."""
@@ -331,15 +338,20 @@ class ObservationsCoordinator(DataUpdateCoordinator):
                 resp.raise_for_status()
                 stations_data = await resp.json()
 
-            # The API lists stations nearest first.
+            # The API lists stations nearest first. A malformed entry is
+            # skipped rather than allowed to discard the valid ones.
             stations: list[str] = []
-            for feature in stations_data.get("features", []):
-                sid = feature.get("properties", {}).get("stationIdentifier")
-                if not (sid and isinstance(sid, str) and sid.strip()):
+            for feature in stations_data.get("features") or []:
+                properties = (
+                    feature.get("properties") if isinstance(feature, dict) else None
+                )
+                if not isinstance(properties, dict):
                     continue
-                if sid.strip() not in stations:
-                    stations.append(sid.strip())
-                if len(stations) == OBSERVATION_STATION_CANDIDATES:
+                sid = properties.get("stationIdentifier")
+                sid = sid.strip() if isinstance(sid, str) else ""
+                if sid and sid not in stations:
+                    stations.append(sid)
+                if len(stations) >= OBSERVATION_STATION_CANDIDATES:
                     break
             if stations:
                 self._stations = stations

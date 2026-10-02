@@ -281,14 +281,14 @@ class TestObservationStationFailover(unittest.TestCase):
         from noaa_it_all.coordinator import ObservationsCoordinator
         return ObservationsCoordinator(HASS, "ILM", latitude, longitude)
 
-    def _session(self, latest, station_ids=("KAAA", "KBBB", "KCCC")):
+    def _session(self, latest, station_ids=("KAAA", "KBBB", "KCCC"), features=None):
         """Serve a station list, plus one result per station's latest obs."""
-        stations = {
-            "features": [
+        if features is None:
+            features = [
                 {"properties": {"stationIdentifier": sid}}
                 for sid in station_ids
             ]
-        }
+        stations = {"features": features}
         by_url = {
             "/gridpoints/ILM/1,2/stations": _FakeResponse(stations),
             "/points/": _FakeResponse(self.POINTS),
@@ -358,21 +358,78 @@ class TestObservationStationFailover(unittest.TestCase):
         self.assertIn("KAAA (Exception: 404, message='Not Found')", message)
         self.assertIn("KBBB (TimeoutError)", message)
         self.assertIn("KCCC (OSError: Connection reset)", message)
+        # The underlying error is chained, so its traceback is not lost.
+        self.assertIsInstance(ctx.exception.__cause__, OSError)
 
     def test_keeps_only_the_nearest_valid_stations(self):
-        from noaa_it_all.const import OBSERVATION_STATION_CANDIDATES
         coordinator = self._make()
         session = self._session(
             {"KAAA": _FakeResponse(self.OBSERVATION)},
-            station_ids=("KAAA", "  ", "KAAA", "KBBB", "KCCC", "KDDD"),
+            features=[
+                {"properties": {"stationIdentifier": "KAAA"}},
+                # Malformed entries are skipped, not fatal to the lookup.
+                {"properties": None},
+                None,
+                "KZZZ",
+                {"properties": {"stationIdentifier": "  "}},
+                {"properties": {"stationIdentifier": " KAAA "}},
+                {"properties": {"stationIdentifier": "KBBB"}},
+                {"properties": {"stationIdentifier": "KCCC"}},
+                {"properties": {"stationIdentifier": "KDDD"}},
+            ],
         )
 
-        self._refresh(coordinator, session)
+        with patch("noaa_it_all.coordinator.OBSERVATION_STATION_CANDIDATES", 3):
+            self._refresh(coordinator, session)
 
-        self.assertEqual(
-            coordinator._stations,
-            ["KAAA", "KBBB", "KCCC"][:OBSERVATION_STATION_CANDIDATES],
+        self.assertEqual(coordinator._stations, ["KAAA", "KBBB", "KCCC"])
+        self.assertTrue(coordinator._station_fetched)
+
+    def test_null_station_list_settles_on_the_office_station(self):
+        coordinator = self._make()
+        session = self._session({"KILM": _FakeResponse(self.OBSERVATION)})
+        session._by_url["/gridpoints/ILM/1,2/stations"] = _FakeResponse(
+            {"features": None}
         )
+
+        data = self._refresh(coordinator, session)
+
+        self.assertEqual(data["station_id"], "KILM")
+        # Latched like an empty list, so the lookup is not repeated forever.
+        self.assertTrue(coordinator._station_fetched)
+
+    def test_a_body_that_is_not_an_object_falls_back(self):
+        coordinator = self._make()
+        session = self._session({
+            "KAAA": _FakeResponse(["not", "an", "object"]),
+            "KBBB": _FakeResponse(self.OBSERVATION),
+        })
+
+        data = self._refresh(coordinator, session)
+
+        self.assertEqual(data["station_id"], "KBBB")
+
+    def test_a_station_change_is_logged_once(self):
+        coordinator = self._make()
+        down = {
+            "KAAA": self._not_found(),
+            "KBBB": _FakeResponse(self.OBSERVATION),
+        }
+
+        with self.assertLogs("noaa_it_all.coordinator", level="INFO") as logs:
+            self._refresh(coordinator, self._session(down))
+            self._refresh(coordinator, self._session(down))
+            self._refresh(
+                coordinator,
+                self._session({"KAAA": _FakeResponse(self.OBSERVATION)}),
+            )
+
+        warnings = [r for r in logs.records if r.levelname == "WARNING"]
+        recovered = [r for r in logs.records if "answering again" in r.getMessage()]
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("using KBBB instead", warnings[0].getMessage())
+        self.assertEqual(len(recovered), 1)
+        self.assertIn("KAAA", recovered[0].getMessage())
 
     def test_office_station_is_used_without_coordinates(self):
         coordinator = self._make(latitude=None, longitude=None)
