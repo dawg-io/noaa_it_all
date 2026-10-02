@@ -7,8 +7,6 @@
 [![HACS Default](https://img.shields.io/badge/HACS-Default-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
 [![GitHub Release](https://img.shields.io/github/v/release/dawg-io/noaa_it_all?style=for-the-badge&color=green)](https://github.com/dawg-io/noaa_it_all/releases)
 [![License](https://img.shields.io/github/license/dawg-io/noaa_it_all?style=for-the-badge&color=green)](https://github.com/dawg-io/noaa_it_all/blob/main/LICENSE)
-![GitHub all releases](https://img.shields.io/github/downloads/dawg-io/noaa_it_all/total?style=for-the-badge&color=gray)
-![Tracked Installs](https://img.shields.io/endpoint?url=https://analytics.home-assistant.io/api/badge_custom_integrations_json/noaa_it_all.json&style=for-the-badge&logo=home-assistant&label=Tracked%20Installs&color=gray)
 
 <p align="center">
   <img src="https://raw.githubusercontent.com/dawg-io/noaa_it_all/main/icon.png" width="120" alt="NOAA It All"><br>

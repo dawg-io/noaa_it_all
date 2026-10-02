@@ -353,6 +353,19 @@ class TestReadmeImages(unittest.TestCase):
                     "Use https://raw.githubusercontent.com/<owner>/<repo>/<branch>/<path> instead."
                 )
 
+    def test_no_install_count_badges(self):
+        """Install-count badges were removed because they never showed a real number.
+
+        The GitHub downloads badge counts release assets, and hacs.json sets
+        zip_release false, so releases carry none and it always read 0. The
+        analytics "Tracked Installs" badge did not render a working count either.
+        """
+        for url in self.urls:
+            self.assertNotIn("img.shields.io/github/downloads", url,
+                             f"README.md has a release-download badge: {url}")
+            self.assertNotIn("analytics.home-assistant.io", url,
+                             f"README.md has an analytics install badge: {url}")
+
 
 if __name__ == "__main__":
     unittest.main()
