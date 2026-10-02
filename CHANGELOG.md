@@ -5,6 +5,18 @@ All notable changes to NOAA It All for Home Assistant will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- **Observations no longer go unavailable when the nearest station stops reporting.** Only the
+  nearest NWS station was kept, so when it went quiet every observation sensor and the weather
+  entity stayed unavailable for as long as the outage lasted, and a restart picked the same
+  station again. The nearest three are now kept and the first one that answers is used. The
+  nearest is still tried first on every refresh, so it takes over again once it recovers. The
+  `station_id` attribute shows which station the reading came from.
+- When every station fails, the error now names each station tried and why, including timeouts,
+  which used to be logged with no reason at all.
+
 ## [0.7.1] - Current
 
 ### Added

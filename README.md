@@ -173,7 +173,7 @@ Real-time weather observations from your local NWS observation station *(NOAA We
 - **Sky Conditions**: Current sky conditions description (Clear, Cloudy, Fog, etc.) *(sensor.noaa_{office}_weather_sky_conditions)*
 - **Feels Like**: Apparent temperature incorporating wind chill or heat index *(sensor.noaa_{office}_weather_feels_like)*
 
-> **Note**: Weather observations update every 10 minutes from the primary observation station for your configured NWS office location. Data includes automatic unit conversions to US customary units.
+> **Note**: Weather observations update every 10 minutes from the NWS observation station nearest your configured coordinates. If that station stops reporting, the next nearest (of up to three) is used until it comes back; the `station_id` attribute shows which one. Data includes automatic unit conversions to US customary units.
 
 ### Aurora Visibility Alerts (Config Flow Only)
 Location-aware aurora visibility predictions *(NOAA Space)*:
@@ -1382,9 +1382,9 @@ content: |
 - Confirm scan interval is running: entities should show a `last_changed` time within the last 10 minutes
 
 ### Incorrect or Missing Weather Data
-- Weather observations are pulled from the nearest NWS station to your configured coordinates
+- Weather observations are pulled from the nearest NWS station to your configured coordinates. If it stops reporting, the next nearest of up to three is used instead, and a warning naming the failed station is logged
 - Confirm your latitude and longitude are accurate (you can reconfigure via **Settings** → **Integrations** → **NOAA It All** → **Configure**)
-- Some NWS offices may not have nearby observation stations; in that case observations will show `unknown`
+- If no nearby station answers, observation entities show `unavailable`. The log line `Error fetching NOAA Observations data` names each station tried and why it failed
 
 ### Binary Sensors Always Off
 - Binary sensors require Config Flow setup with a valid office code and coordinates

@@ -152,6 +152,11 @@ COOPS_WATER_TEMP_URL = (
 # NDBC real-time buoy data for wave height
 NDBC_REALTIME_URL = "https://www.ndbc.noaa.gov/data/realtime2/{station}.txt"
 
+# How many of the stations nearest the configured coordinates to keep.
+# Observations come from the nearest one that answers, so a single station
+# going quiet does not leave every observation entity unavailable.
+OBSERVATION_STATION_CANDIDATES = 3
+
 # NWS office to observation station mapping
 # Each office uses the primary weather observation station in their area
 OFFICE_STATION_IDS = {

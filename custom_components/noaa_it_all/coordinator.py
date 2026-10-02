@@ -27,7 +27,7 @@ from .const import (
     NWS_POINTS_URL, NWS_OBSERVATIONS_URL, NWS_ALERTS_URL,
     NWS_SRF_URL, NWS_AFD_URL, NWS_RADAR_BASE_URL,
     COOPS_WATER_TEMP_URL, NDBC_REALTIME_URL,
-    OFFICE_STATION_IDS,
+    OFFICE_STATION_IDS, OBSERVATION_STATION_CANDIDATES,
     METEOR_SCAN_INTERVAL, METEOR_UPCOMING_COUNT,
     ECLIPSE_SCAN_INTERVAL, ECLIPSE_APPROACH_SCAN_INTERVAL, ECLIPSE_ACTIVE_SCAN_INTERVAL,
     ECLIPSE_APPROACH_WINDOW_HOURS, ECLIPSE_UPCOMING_COUNT, ECLIPSE_MAX_CATALOG_SCAN,
@@ -202,7 +202,14 @@ class NWSAlertsCoordinator(DataUpdateCoordinator):
 # -------------------------------------------------------------------
 
 class ObservationsCoordinator(DataUpdateCoordinator):
-    """Resolve nearest station and fetch latest observations."""
+    """Resolve the nearest stations and fetch the latest observation.
+
+    Only the nearest station used to be kept, so when it stopped reporting
+    every refresh failed -- and a restart resolved the same station again --
+    while the next station along was reporting normally. Now the nearest few
+    are kept and the first that answers is used. The nearest is still tried
+    first on every refresh, so it takes over again once it recovers.
+    """
 
     def __init__(
         self,
@@ -220,7 +227,10 @@ class ObservationsCoordinator(DataUpdateCoordinator):
         self.office_code = office_code
         self.latitude = latitude
         self.longitude = longitude
+        # The station the latest observation came from.
         self.station_id: Optional[str] = OFFICE_STATION_IDS.get(office_code)
+        # Nearest first, filled in by _resolve_station.
+        self._stations: list[str] = []
         # If latitude/longitude are provided, always attempt to resolve the nearest
         # station via the NWS Points API on first update, using OFFICE_STATION_IDS
         # only as a fallback if resolution fails.
@@ -241,31 +251,57 @@ class ObservationsCoordinator(DataUpdateCoordinator):
         ):
             await self._resolve_station(session, timeout)
 
-        if not self.station_id:
+        stations = self._stations or (
+            [self.station_id] if self.station_id else []
+        )
+        if not stations:
             raise UpdateFailed(
                 f"No observation station for office {self.office_code}"
             )
 
-        url = NWS_OBSERVATIONS_URL.format(station=self.station_id)
-        try:
-            async with session.get(
-                url,
-                headers={"User-Agent": USER_AGENT},
-                timeout=timeout,
-            ) as resp:
-                resp.raise_for_status()
-                data = await resp.json()
+        errors: list[str] = []
+        for station in stations:
+            url = NWS_OBSERVATIONS_URL.format(station=station)
+            try:
+                async with session.get(
+                    url,
+                    headers={"User-Agent": USER_AGENT},
+                    timeout=timeout,
+                ) as resp:
+                    resp.raise_for_status()
+                    data = await resp.json()
+            except Exception as err:
+                _LOGGER.debug(
+                    "Error fetching observations from station %s: %s",
+                    station, err,
+                )
+                errors.append(f"{station} ({_describe(err)})")
+                continue
+
+            # Log only when the station changes, not on every refresh.
+            if station != self.station_id:
+                if errors:
+                    _LOGGER.warning(
+                        "Nearer observation stations are not answering "
+                        "(%s); using %s instead",
+                        "; ".join(errors), station,
+                    )
+                else:
+                    _LOGGER.info(
+                        "Observation station %s is answering again", station
+                    )
+                self.station_id = station
             return {
                 "properties": data.get("properties", {}),
-                "station_id": self.station_id,
+                "station_id": station,
             }
-        except Exception as err:
-            raise UpdateFailed(
-                f"Error fetching observations: {err}"
-            ) from err
+
+        raise UpdateFailed(
+            "Error fetching observations: " + "; ".join(errors)
+        )
 
     async def _resolve_station(self, session, timeout) -> None:
-        """Fetch the nearest observation station from lat/lon."""
+        """Fetch the observation stations nearest lat/lon."""
         try:
             points_url = NWS_POINTS_URL.format(
                 lat=self.latitude, lon=self.longitude
@@ -295,19 +331,23 @@ class ObservationsCoordinator(DataUpdateCoordinator):
                 resp.raise_for_status()
                 stations_data = await resp.json()
 
-            stations_list = stations_data.get("features", [])
-            if stations_list:
-                sid = (
-                    stations_list[0]
-                    .get("properties", {})
-                    .get("stationIdentifier")
+            # The API lists stations nearest first.
+            stations: list[str] = []
+            for feature in stations_data.get("features", []):
+                sid = feature.get("properties", {}).get("stationIdentifier")
+                if not (sid and isinstance(sid, str) and sid.strip()):
+                    continue
+                if sid.strip() not in stations:
+                    stations.append(sid.strip())
+                if len(stations) == OBSERVATION_STATION_CANDIDATES:
+                    break
+            if stations:
+                self._stations = stations
+                self.station_id = stations[0]
+                _LOGGER.info(
+                    "Found observation stations %s for lat=%s, lon=%s",
+                    ", ".join(stations), self.latitude, self.longitude,
                 )
-                if sid and isinstance(sid, str) and sid.strip():
-                    self.station_id = sid.strip()
-                    _LOGGER.info(
-                        "Found station %s for lat=%s, lon=%s",
-                        self.station_id, self.latitude, self.longitude,
-                    )
             self._station_fetched = True
         except Exception as err:
             # Not latched on failure -- see the note in
