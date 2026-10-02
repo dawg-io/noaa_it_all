@@ -264,6 +264,196 @@ class TestResolveRetryAcrossCoordinators(unittest.TestCase):
         self.assertFalse(coordinator._grid_fetched)
 
 
+class TestObservationStationFailover(unittest.TestCase):
+    """A silent nearest station must not leave observations unavailable.
+
+    Only the nearest station used to be kept, so when it stopped reporting
+    every refresh failed with a 404 for as long as the outage lasted -- a
+    restart resolved the same station again -- while the next station along
+    was reporting normally.
+    """
+
+    STATIONS_URL = "https://api.weather.gov/gridpoints/ILM/1,2/stations"
+    POINTS = {"properties": {"observationStations": STATIONS_URL}}
+    OBSERVATION = {"properties": {"temperature": {"value": 20.0}}}
+
+    def _make(self, latitude=34.2, longitude=-77.9):
+        from noaa_it_all.coordinator import ObservationsCoordinator
+        return ObservationsCoordinator(HASS, "ILM", latitude, longitude)
+
+    def _session(self, latest, station_ids=("KAAA", "KBBB", "KCCC"), features=None):
+        """Serve a station list, plus one result per station's latest obs."""
+        if features is None:
+            features = [
+                {"properties": {"stationIdentifier": sid}}
+                for sid in station_ids
+            ]
+        stations = {"features": features}
+        by_url = {
+            "/gridpoints/ILM/1,2/stations": _FakeResponse(stations),
+            "/points/": _FakeResponse(self.POINTS),
+        }
+        for sid, result in latest.items():
+            by_url[f"/stations/{sid}/observations/latest"] = result
+        return _FakeSession(default=OSError("unexpected URL"), by_url=by_url)
+
+    def _refresh(self, coordinator, session):
+        with _with_session(session):
+            return _run(coordinator._async_update_data())
+
+    @staticmethod
+    def _not_found():
+        return _FakeResponse(raise_for_status=Exception("404, message='Not Found'"))
+
+    @staticmethod
+    def _latest_urls(session):
+        return [url for url, _ in session.calls if url.endswith("/latest")]
+
+    def test_falls_back_to_the_next_station_in_the_same_refresh(self):
+        coordinator = self._make()
+        session = self._session({
+            "KAAA": self._not_found(),
+            "KBBB": _FakeResponse(self.OBSERVATION),
+        })
+
+        data = self._refresh(coordinator, session)
+
+        self.assertEqual(data["station_id"], "KBBB")
+        self.assertEqual(data["properties"], self.OBSERVATION["properties"])
+        self.assertEqual(coordinator.station_id, "KBBB")
+        self.assertEqual(
+            [url.split("/")[4] for url in self._latest_urls(session)],
+            ["KAAA", "KBBB"],
+        )
+
+    def test_returns_to_the_nearest_station_once_it_recovers(self):
+        coordinator = self._make()
+        self._refresh(coordinator, self._session({
+            "KAAA": self._not_found(),
+            "KBBB": _FakeResponse(self.OBSERVATION),
+        }))
+
+        recovered = self._session({"KAAA": _FakeResponse(self.OBSERVATION)})
+        data = self._refresh(coordinator, recovered)
+
+        self.assertEqual(data["station_id"], "KAAA")
+        self.assertEqual(coordinator.station_id, "KAAA")
+        # The station list is kept; the lookup is not repeated.
+        self.assertFalse(any("/points/" in url for url, _ in recovered.calls))
+
+    def test_all_stations_failing_names_each_one_and_why(self):
+        coordinator = self._make()
+        session = self._session({
+            "KAAA": self._not_found(),
+            # str() of a timeout is empty; the reason must still be named.
+            "KBBB": asyncio.TimeoutError(),
+            "KCCC": OSError("Connection reset"),
+        })
+
+        with self.assertRaises(_UpdateFailed) as ctx:
+            self._refresh(coordinator, session)
+
+        message = str(ctx.exception)
+        self.assertIn("Error fetching observations", message)
+        self.assertIn("KAAA (Exception: 404, message='Not Found')", message)
+        self.assertIn("KBBB (TimeoutError)", message)
+        self.assertIn("KCCC (OSError: Connection reset)", message)
+        # The underlying error is chained, so its traceback is not lost.
+        self.assertIsInstance(ctx.exception.__cause__, OSError)
+
+    def test_keeps_only_the_nearest_valid_stations(self):
+        coordinator = self._make()
+        session = self._session(
+            {"KAAA": _FakeResponse(self.OBSERVATION)},
+            features=[
+                {"properties": {"stationIdentifier": "KAAA"}},
+                # Malformed entries are skipped, not fatal to the lookup.
+                {"properties": None},
+                None,
+                "KZZZ",
+                {"properties": {"stationIdentifier": "  "}},
+                {"properties": {"stationIdentifier": " KAAA "}},
+                {"properties": {"stationIdentifier": "KBBB"}},
+                {"properties": {"stationIdentifier": "KCCC"}},
+                {"properties": {"stationIdentifier": "KDDD"}},
+            ],
+        )
+
+        with patch("noaa_it_all.coordinator.OBSERVATION_STATION_CANDIDATES", 3):
+            self._refresh(coordinator, session)
+
+        self.assertEqual(coordinator._stations, ["KAAA", "KBBB", "KCCC"])
+        self.assertTrue(coordinator._station_fetched)
+
+    def test_null_station_list_settles_on_the_office_station(self):
+        coordinator = self._make()
+        session = self._session({"KILM": _FakeResponse(self.OBSERVATION)})
+        session._by_url["/gridpoints/ILM/1,2/stations"] = _FakeResponse(
+            {"features": None}
+        )
+
+        data = self._refresh(coordinator, session)
+
+        self.assertEqual(data["station_id"], "KILM")
+        # Latched like an empty list, so the lookup is not repeated forever.
+        self.assertTrue(coordinator._station_fetched)
+
+    def test_a_body_that_is_not_an_object_falls_back(self):
+        coordinator = self._make()
+        session = self._session({
+            "KAAA": _FakeResponse(["not", "an", "object"]),
+            "KBBB": _FakeResponse(self.OBSERVATION),
+        })
+
+        data = self._refresh(coordinator, session)
+
+        self.assertEqual(data["station_id"], "KBBB")
+
+    def test_a_station_change_is_logged_once(self):
+        coordinator = self._make()
+        down = {
+            "KAAA": self._not_found(),
+            "KBBB": _FakeResponse(self.OBSERVATION),
+        }
+
+        with self.assertLogs("noaa_it_all.coordinator", level="INFO") as logs:
+            self._refresh(coordinator, self._session(down))
+            self._refresh(coordinator, self._session(down))
+            self._refresh(
+                coordinator,
+                self._session({"KAAA": _FakeResponse(self.OBSERVATION)}),
+            )
+
+        warnings = [r for r in logs.records if r.levelname == "WARNING"]
+        recovered = [r for r in logs.records if "answering again" in r.getMessage()]
+        self.assertEqual(len(warnings), 1)
+        self.assertIn("using KBBB instead", warnings[0].getMessage())
+        self.assertEqual(len(recovered), 1)
+        self.assertIn("KAAA", recovered[0].getMessage())
+
+    def test_office_station_is_used_without_coordinates(self):
+        coordinator = self._make(latitude=None, longitude=None)
+        session = self._session({"KILM": _FakeResponse(self.OBSERVATION)})
+
+        data = self._refresh(coordinator, session)
+
+        self.assertEqual(data["station_id"], "KILM")
+        self.assertEqual(
+            [url for url, _ in session.calls],
+            ["https://api.weather.gov/stations/KILM/observations/latest"],
+        )
+
+    def test_office_station_is_used_when_the_lookup_fails(self):
+        coordinator = self._make()
+        session = self._session({"KILM": _FakeResponse(self.OBSERVATION)})
+        session._by_url["/points/"] = OSError("Network unreachable")
+
+        data = self._refresh(coordinator, session)
+
+        self.assertEqual(data["station_id"], "KILM")
+        self.assertFalse(coordinator._station_fetched)
+
+
 class TestUserAgentIsAlwaysSent(unittest.TestCase):
     """Every NOAA request must identify the integration.
 
