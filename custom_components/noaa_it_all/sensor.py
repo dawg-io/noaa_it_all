@@ -29,6 +29,7 @@ from .sensors import (  # noqa: F401
     RipCurrentRiskSensor,
     SurfHeightSensor,
     WaterTemperatureSensor,
+    MarineForecastSensor,
     AuroraNextTimeSensor,
     AuroraDurationSensor,
     AuroraVisibilityProbabilitySensor,
@@ -87,6 +88,7 @@ async def async_setup_entry(
     space_coord = data["space_weather_coordinator"]
     hurricane_coord = data["hurricane_coordinator"]
     surf_coord = data["surf_coordinator"]
+    marine_coord = data.get("marine_forecast_coordinator")
     observations_coord = data["observations_coordinator"]
     forecast_coord = data["forecast_coordinator"]
     alerts_coord = data["alerts_coordinator"]
@@ -204,6 +206,10 @@ async def async_setup_entry(
             EclipseCoverageSensor(eclipse_coord, office_code),
             EclipseViewingScoreSensor(eclipse_coord, office_code),
         ])
+
+    # Marine forecast sensor (only when a marine zone is configured)
+    if marine_coord:
+        entities.append(MarineForecastSensor(marine_coord, office_code, marine_coord.marine_zone))
 
     # Radar timestamp sensor (office-specific, may be None if no radar site)
     if radar_coord:

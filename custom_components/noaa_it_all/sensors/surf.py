@@ -224,3 +224,75 @@ class WaterTemperatureSensor(CoordinatorEntity):
             name=f"NOAA {self._office_code} Surf",
             manufacturer="NOAA"
         )
+
+
+class MarineForecastSensor(CoordinatorEntity):
+    """Nearshore marine forecast (NWS NSH product) for one marine zone.
+
+    The state is the label of the first forecast period (for example
+    "Rest Of Today"); every period is in the ``periods`` attribute as
+    ``{"name", "detailed_forecast"}``. Entity IDs look like
+    ``sensor.noaa_lot_surf_marine_forecast``.
+    """
+
+    _attr_has_entity_name = True
+
+    def __init__(self, coordinator, office_code, marine_zone):
+        """Initialize the sensor."""
+        super().__init__(coordinator)
+        self._office_code = office_code
+        self._marine_zone = marine_zone
+        self._attr_unique_id = f"noaa_{office_code}_{marine_zone.lower()}_marine_forecast"
+
+    @property
+    def name(self):
+        """Return the local name of the sensor."""
+        return "Marine Forecast"
+
+    def _forecast(self):
+        data = self.coordinator.data
+        if not data:
+            return None
+        return data.get("forecast")
+
+    @property
+    def state(self):
+        """Return the label of the first forecast period."""
+        forecast = self._forecast()
+        if not forecast or not forecast.get("periods"):
+            return None
+        return forecast["periods"][0]["name"]
+
+    @property
+    def icon(self):
+        """Return the icon."""
+        return "mdi:sail-boat"
+
+    @property
+    def extra_state_attributes(self):
+        """Return every period plus zone and issuance details."""
+        forecast = self._forecast()
+        if not forecast:
+            return {"periods": []}
+        data = self.coordinator.data
+        return {
+            "zone": forecast.get("zone"),
+            "zone_name": forecast.get("zone_name"),
+            "office_code": self._office_code,
+            "issued": forecast.get("issued"),
+            "issuance_time": data.get("issuance_time"),
+            "product_id": data.get("product_id"),
+            "headlines": forecast.get("headlines", []),
+            "period_count": len(forecast.get("periods", [])),
+            "periods": forecast.get("periods", []),
+            "forecast_source": data.get("source_url", ""),
+        }
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return device information to group this entity."""
+        return DeviceInfo(
+            identifiers={(DOMAIN, f"noaa_{self._office_code}_surf")},
+            name=f"NOAA {self._office_code} Surf",
+            manufacturer="NOAA"
+        )

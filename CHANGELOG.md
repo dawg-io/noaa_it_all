@@ -5,6 +5,17 @@ All notable changes to NOAA It All for Home Assistant will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Optional **Marine Forecast** sensor (`sensor.noaa_{office}_surf_marine_forecast`) for one NWS marine
+  zone, read from the office's Nearshore Marine Forecast (NSH) product on api.weather.gov. Set the
+  zone ID (for example `LMZ741`) under **Configure**; leave it empty to skip the sensor. The state is
+  the first period's label, the `periods` attribute holds every period and `headlines` lists any
+  advisories or warnings in the forecast (for example `SMALL CRAFT ADVISORY IN EFFECT THROUGH LATE TONIGHT`).
+- The options flow has a new "Marine Forecast" step between the office and radar steps. Saved
+  options now always include a `marine_zone` key (empty when unused).
+
 ## [0.7.3] - Current
 
 Entities are unchanged from 0.7.2.

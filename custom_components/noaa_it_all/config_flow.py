@@ -11,6 +11,7 @@ from .const import (
     DOMAIN,
     CONF_LATITUDE,
     CONF_LONGITUDE,
+    CONF_MARINE_ZONE,
     CONF_OFFICE_CODE,
     CONF_RADAR_LOOP_HOURS,
     DEFAULT_RADAR_LOOP_HOURS,
@@ -18,6 +19,7 @@ from .const import (
     RADAR_LOOP_MAX_HOURS,
 )
 from .entry_config import resolve_entry_config
+from .parsers import normalize_marine_zone
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -252,6 +254,7 @@ class NOAAOptionsFlow(config_entries.OptionsFlow):
         self._latitude = None
         self._longitude = None
         self._office_code = None
+        self._marine_zone = ""
 
     async def async_step_init(self, user_input=None):
         """Step 1 of the options flow: latitude / longitude."""
@@ -328,7 +331,7 @@ class NOAAOptionsFlow(config_entries.OptionsFlow):
                     description_placeholders=self._office_placeholders(no_within_radius),
                 )
             self._office_code = office_code
-            return await self.async_step_radar()
+            return await self.async_step_marine()
 
         return self.async_show_form(
             step_id="office",
@@ -338,8 +341,45 @@ class NOAAOptionsFlow(config_entries.OptionsFlow):
             description_placeholders=self._office_placeholders(no_within_radius),
         )
 
+    async def async_step_marine(self, user_input=None):
+        """Step 3 of the options flow: optional nearshore marine forecast zone.
+
+        Leave the field empty to skip the marine forecast sensor. The zone is
+        an NWS marine zone ID such as LMZ741 (Lake Michigan, Wilmette Harbor
+        to Northerly Island); the office chosen in the previous step must
+        issue a Nearshore Marine Forecast (NSH) that covers it.
+        """
+        errors = {}
+        existing = resolve_entry_config(self.config_entry).get(CONF_MARINE_ZONE) or ""
+        suggested = existing
+
+        if user_input is not None:
+            raw = (user_input.get(CONF_MARINE_ZONE) or "").strip()
+            if not raw:
+                self._marine_zone = ""
+                return await self.async_step_radar()
+            zone = normalize_marine_zone(raw)
+            if zone is None:
+                errors[CONF_MARINE_ZONE] = "invalid_marine_zone"
+                suggested = raw
+            else:
+                self._marine_zone = zone
+                return await self.async_step_radar()
+
+        # suggested_value rather than default: with a default, clearing the
+        # field in the UI would silently put the old zone back.
+        return self.async_show_form(
+            step_id="marine",
+            data_schema=vol.Schema({
+                vol.Optional(
+                    CONF_MARINE_ZONE, description={"suggested_value": suggested}
+                ): str,
+            }),
+            errors=errors,
+        )
+
     async def async_step_radar(self, user_input=None):
-        """Step 3 of the options flow: how much radar history to keep.
+        """Step 4 of the options flow: how much radar history to keep.
 
         NOAA's own animation covers about fifty minutes and cannot be made
         longer, so anything beyond that is accumulated locally over time.  The
@@ -372,6 +412,7 @@ class NOAAOptionsFlow(config_entries.OptionsFlow):
                         CONF_OFFICE_CODE: self._office_code,
                         CONF_LATITUDE: self._latitude,
                         CONF_LONGITUDE: self._longitude,
+                        CONF_MARINE_ZONE: self._marine_zone or "",
                         CONF_RADAR_LOOP_HOURS: hours,
                     },
                 )

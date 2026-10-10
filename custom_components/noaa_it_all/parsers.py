@@ -670,3 +670,169 @@ def format_hourly_periods(periods: List[Dict[str, Any]]) -> List[Dict[str, Any]]
             'icon': period.get('icon', ''),
         })
     return formatted
+
+
+# ---------------------------------------------------------------------------
+# Nearshore Marine Forecast (NSH) parsing helpers
+# ---------------------------------------------------------------------------
+
+_MARINE_ZONE_RE = re.compile(r"^[A-Z]{2}Z\d{3}$")
+_UGC_START_RE = re.compile(r"^[A-Z]{2}[ZC]\d{3}")
+_UGC_EXPIRY_RE = re.compile(r"-\d{6}-\s*$")
+_UGC_TOKEN_RE = re.compile(r"^(?:([A-Z]{2}[ZC]))?(\d{3})(?:>(\d{3}))?$")
+# Offices spanning two time zones append the second, e.g. "... 2026 /1001 AM CDT Sat Oct 10 2026/".
+_NSH_ISSUED_RE = re.compile(
+    r"^\d{3,4}\s+[AP]M\s+\S+\s+[A-Za-z]{3}\s+[A-Za-z]{3}\s+\d{1,2}\s+\d{4}(?:\s+/[^/]*/)?$"
+)
+_NSH_PERIOD_RE = re.compile(r"^\.([^.]+)\.\.\.(.*)$")
+
+
+def normalize_marine_zone(value: Any) -> Optional[str]:
+    """Return an upper-case NWS zone ID such as ``LMZ741``, or None if invalid."""
+    if not isinstance(value, str):
+        return None
+    zone = value.strip().upper()
+    return zone if _MARINE_ZONE_RE.match(zone) else None
+
+
+def expand_ugc(ugc: str) -> List[str]:
+    """Expand a UGC header such as ``LMZ740>742-102115-`` into zone IDs.
+
+    The trailing six-digit group is the product expiry time and is ignored.
+    A range (``740>742``) is inclusive, and a bare three-digit number reuses
+    the most recent state/type prefix, e.g. ``LMZ740>742-744-`` is 740-742
+    plus 744.
+    """
+    zones: List[str] = []
+    prefix = ""
+    for token in ugc.replace("\n", "").split("-"):
+        token = token.strip()
+        if not token or re.fullmatch(r"\d{6}", token):
+            continue
+        match = _UGC_TOKEN_RE.match(token)
+        if not match:
+            continue
+        if match.group(1):
+            prefix = match.group(1)
+        if not prefix:
+            continue
+        start = int(match.group(2))
+        end = int(match.group(3)) if match.group(3) else start
+        zones.extend(f"{prefix}{n:03d}" for n in range(start, end + 1))
+    return zones
+
+
+def parse_nearshore_forecast(text: str, zone: str) -> Optional[Dict[str, Any]]:
+    """Parse the block of an NSH product that covers ``zone``.
+
+    Returns None when the text has no block for the zone. Otherwise returns
+    a dict with ``zone``, ``zone_name`` (None if the names cannot be matched
+    to the zone list), ``zone_names``, ``issued``, ``headlines`` and
+    ``periods`` (a list of ``{"name", "detailed_forecast"}`` in forecast
+    order, wrapped lines joined into one string).
+    """
+    zone = (zone or "").strip().upper()
+    if not text or not zone:
+        return None
+
+    lines = text.splitlines()
+    i = 0
+    while i < len(lines):
+        if not _UGC_START_RE.match(lines[i].strip()):
+            i += 1
+            continue
+
+        # The UGC header may wrap over several lines; it ends at the line
+        # carrying the six-digit expiry group.
+        ugc_lines: List[str] = []
+        found_end = False
+        while i < len(lines):
+            ugc_lines.append(lines[i].strip())
+            found_end = bool(_UGC_EXPIRY_RE.search(lines[i]))
+            i += 1
+            if found_end:
+                break
+        body: List[str] = []
+        while i < len(lines) and lines[i].strip() != "$$":
+            body.append(lines[i])
+            i += 1
+        if not found_end:
+            continue
+        zones = expand_ugc("".join(ugc_lines))
+        if zone not in zones:
+            continue
+        return _parse_nsh_block(zone, zones, body)
+    return None
+
+
+def _parse_nsh_block(zone: str, zones: List[str], body: List[str]) -> Dict[str, Any]:
+    """Parse one NSH block body (everything between the UGC header and ``$$``)."""
+    name_lines: List[str] = []
+    issued = None
+    headlines: List[str] = []
+    headline_parts: Optional[List[str]] = None
+    periods: List[Dict[str, str]] = []
+    current: Optional[Dict[str, Any]] = None
+
+    for raw in body:
+        line = raw.strip()
+        if not line:
+            continue
+        period = _NSH_PERIOD_RE.match(line)
+        if period:
+            current = {"label": period.group(1).strip(), "parts": [period.group(2).strip()]}
+            periods.append(current)
+            headline_parts = None
+            continue
+        if current is not None:
+            current["parts"].append(line)
+            continue
+        if issued is None:
+            if _NSH_ISSUED_RE.match(line):
+                issued = line
+            else:
+                name_lines.append(line)
+            continue
+        # Headlines such as "...SMALL CRAFT ADVISORY IN EFFECT..." often wrap
+        # over several lines; collect from the opening to the closing "...".
+        if headline_parts is None:
+            if not line.startswith("..."):
+                continue
+            headline_parts = [line[3:]]
+        else:
+            headline_parts.append(line)
+        if headline_parts[-1].endswith("..."):
+            headline_parts[-1] = headline_parts[-1][:-3]
+            headlines.append(re.sub(r"\s+", " ", " ".join(headline_parts)).strip())
+            headline_parts = None
+
+    # Zone names end with "-" and may wrap mid-name, so join with a space.
+    # A single zone's name is taken whole, since names can contain hyphens
+    # ("Chequamegon Bay-Bayfield to Oak Point WI").
+    joined = " ".join(name_lines)
+    if len(zones) == 1:
+        names = [joined.strip().rstrip("-").strip()] if joined.strip() else []
+    else:
+        names = [n.strip() for n in joined.split("-") if n.strip()]
+    if len(names) == len(zones):
+        zone_name = names[zones.index(zone)]
+    elif len(names) == 1:
+        # One name shared by every zone in the group (e.g. LEZ040-041).
+        zone_name = names[0]
+    else:
+        zone_name = None
+
+    return {
+        "zone": zone,
+        "zone_name": zone_name,
+        "zone_names": names,
+        "issued": issued,
+        "headlines": headlines,
+        "periods": [
+            {
+                "name": p["label"].title(),
+                "detailed_forecast": re.sub(r"\s+", " ", " ".join(p["parts"])).strip(),
+            }
+            for p in periods
+        ],
+    }

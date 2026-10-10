@@ -136,6 +136,7 @@ Location-specific weather observations, forecasts, alerts, and radar — **one d
 ### Location-Specific Sensors (Config Flow Only)
 - **Rip Current Risk**: Current risk level (Low, Moderate, High) from your NWS office's surf zone forecast *(NOAA Surf)*
 - **Surf Height**: Wave height estimates in feet from local surf zone forecasts *(NOAA Surf)*
+- **Marine Forecast** *(optional)*: Nearshore marine forecast for one marine zone (for example `LMZ741` on Lake Michigan). The state is the first period's label and the `periods` attribute lists every period as `name` and `detailed_forecast`. Enable it under **Configure → Marine zone ID**; the NWS office you picked must issue a Nearshore Marine Forecast (NSH) covering that zone *(NOAA Surf)*
 - **Water Temperature**: Local water temperature from surf zone forecasts *(NOAA Surf)*
 - **Unsafe to Swim**: Binary sensor indicating dangerous rip current conditions *(NOAA Surf)*
 

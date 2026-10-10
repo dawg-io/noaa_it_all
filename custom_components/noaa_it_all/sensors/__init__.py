@@ -22,6 +22,7 @@ from .surf import (  # noqa: F401
     RipCurrentRiskSensor,
     SurfHeightSensor,
     WaterTemperatureSensor,
+    MarineForecastSensor,
 )
 from .weather_observations import (  # noqa: F401
     WeatherObservationSensor,

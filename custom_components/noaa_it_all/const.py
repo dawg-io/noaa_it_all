@@ -58,6 +58,7 @@ CONF_OFFICE_CODE = "office_code"
 CONF_LATITUDE = "latitude"
 CONF_LONGITUDE = "longitude"
 CONF_RADAR_LOOP_HOURS = "radar_loop_hours"
+CONF_MARINE_ZONE = "marine_zone"
 
 # Default values
 DEFAULT_SCAN_INTERVAL = 10  # minutes
@@ -140,6 +141,8 @@ NWS_RADAR_LOOP_URL = "https://radar.weather.gov/ridge/standard/{radar}_loop.gif"
 NWS_ALERTS_URL = "https://api.weather.gov/alerts/active?point={lat},{lon}"
 NWS_ALERTS_ZONE_URL = "https://api.weather.gov/alerts/active?zone={zone}"
 NWS_GRIDPOINT_URL = "https://api.weather.gov/gridpoints/{office}/{gridX},{gridY}"
+# Nearshore Marine Forecast (NSH) text product, issued per NWS office (Great Lakes etc.)
+NWS_NSH_URL = "https://api.weather.gov/products/types/NSH/locations/{office}/latest"
 NWS_AFD_URL = "https://forecast.weather.gov/product.php?site={office}&issuedby={office}&product=AFD&format=TXT"
 
 # NOAA CO-OPS API for water temperature (Tides and Currents)

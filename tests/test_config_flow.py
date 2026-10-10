@@ -491,7 +491,7 @@ class TestAsyncStepInit(unittest.TestCase):
         self.assertAlmostEqual(flow._latitude, 34.0)
         self.assertAlmostEqual(flow._longitude, -78.0)
 
-    def test_office_step_advances_to_the_radar_step(self):
+    def test_office_step_advances_to_the_marine_step(self):
         flow = self._make_flow()
         _run(flow.async_step_init(user_input={
             "latitude": 34.0,
@@ -499,17 +499,56 @@ class TestAsyncStepInit(unittest.TestCase):
         }))
         result = _run(flow.async_step_office(user_input={"office_code": "ILM"}))
         self.assertEqual(result["type"], "form")
-        self.assertEqual(result["step_id"], "radar")
+        self.assertEqual(result["step_id"], "marine")
         self.assertEqual(flow._office_code, "ILM")
 
-    def _through_to_radar(self, flow=None, office="ILM"):
-        """Walk the options flow as far as the radar step."""
+    def test_marine_step_with_a_valid_zone_advances_to_radar_normalized(self):
+        flow = self._through_to_marine(office="LOT")
+        result = _run(flow.async_step_marine(user_input={"marine_zone": " lmz741 "}))
+        self.assertEqual(result["type"], "form")
+        self.assertEqual(result["step_id"], "radar")
+        self.assertEqual(flow._marine_zone, "LMZ741")
+
+    def test_marine_step_left_empty_skips_the_feature(self):
+        flow = self._through_to_marine(office="LOT")
+        result = _run(flow.async_step_marine(user_input={}))
+        self.assertEqual(result["step_id"], "radar")
+        self.assertEqual(flow._marine_zone, "")
+
+    def test_marine_step_rejects_a_malformed_zone(self):
+        flow = self._through_to_marine(office="LOT")
+        result = _run(flow.async_step_marine(user_input={"marine_zone": "Lake Michigan"}))
+        self.assertEqual(result["step_id"], "marine")
+        self.assertEqual(result["errors"], {"marine_zone": "invalid_marine_zone"})
+
+    def test_marine_zone_is_saved_in_the_final_entry(self):
+        flow = self._through_to_marine(office="LOT")
+        _run(flow.async_step_marine(user_input={"marine_zone": "LMZ741"}))
+        result = _run(flow.async_step_radar(user_input={"radar_loop_hours": 24}))
+        self.assertEqual(result["type"], "create_entry")
+        self.assertEqual(result["data"]["marine_zone"], "LMZ741")
+
+    def test_clearing_the_marine_zone_saves_an_empty_value(self):
+        flow = self._make_flow(options={"marine_zone": "LMZ741"})
+        self._through_to_marine(flow, office="LOT")
+        _run(flow.async_step_marine(user_input={}))
+        result = _run(flow.async_step_radar(user_input={"radar_loop_hours": 24}))
+        self.assertEqual(result["data"]["marine_zone"], "")
+
+    def _through_to_marine(self, flow=None, office="ILM"):
+        """Walk the options flow as far as the marine step."""
         flow = flow or self._make_flow()
         _run(flow.async_step_init(user_input={
             "latitude": 34.0,
             "longitude": -78.0,
         }))
         _run(flow.async_step_office(user_input={"office_code": office}))
+        return flow
+
+    def _through_to_radar(self, flow=None, office="ILM"):
+        """Walk the options flow as far as the radar step."""
+        flow = self._through_to_marine(flow, office)
+        _run(flow.async_step_marine(user_input={}))
         return flow
 
     def test_the_radar_step_creates_the_entry(self):
@@ -537,7 +576,7 @@ class TestAsyncStepInit(unittest.TestCase):
         self._through_to_radar(flow)
         result = _run(flow.async_step_radar(user_input={"radar_loop_hours": 12}))
         self.assertEqual(
-            {"latitude", "longitude", "office_code", "radar_loop_hours"},
+            {"latitude", "longitude", "office_code", "radar_loop_hours", "marine_zone"},
             set(result["data"]),
         )
         self.assertEqual(result["data"]["radar_loop_hours"], 12)

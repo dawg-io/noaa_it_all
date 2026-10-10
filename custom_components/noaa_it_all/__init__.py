@@ -7,13 +7,14 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv, discovery
 
 from .const import (
-    DOMAIN, CONF_OFFICE_CODE, CONF_LATITUDE, CONF_LONGITUDE,
+    DOMAIN, CONF_OFFICE_CODE, CONF_LATITUDE, CONF_LONGITUDE, CONF_MARINE_ZONE,
     HURRICANE_COORDINATOR_KEY,
     HURRICANE_IMAGES_ADDED_KEY, HURRICANE_SENSORS_ADDED_KEY,
     OFFICE_RADAR_SITES, OFFICE_TIDE_STATIONS, OFFICE_BUOY_STATIONS,
     RADAR_FRAME_DIR,
 )
 from .entry_config import resolve_entry_config
+from .parsers import normalize_marine_zone
 from .radar_loop import RadarFrameStore
 from .coordinator import (
     SpaceWeatherCoordinator,
@@ -21,6 +22,7 @@ from .coordinator import (
     NWSAlertsCoordinator,
     ObservationsCoordinator,
     SurfCoordinator,
+    MarineForecastCoordinator,
     ForecastCoordinator,
     CloudCoverCoordinator,
     RadarTimestampCoordinator,
@@ -85,6 +87,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     surf_coord = SurfCoordinator(hass, office_code, tide_station, buoy_station)
     discussion_coord = ForecastDiscussionCoordinator(hass, office_code)
 
+    # Optional nearshore marine forecast for one marine zone (e.g. LMZ741).
+    marine_zone = None
+    configured_zone = conf.get(CONF_MARINE_ZONE)
+    if configured_zone:
+        marine_zone = normalize_marine_zone(configured_zone)
+        if marine_zone is None:
+            _LOGGER.warning(
+                "Ignoring invalid marine zone %r; expected something like LMZ741",
+                configured_zone,
+            )
+    marine_coord = (
+        MarineForecastCoordinator(hass, office_code, marine_zone)
+        if marine_zone else None
+    )
+
     radar_site = OFFICE_RADAR_SITES.get(office_code)
     radar_coord = (
         RadarTimestampCoordinator(hass, office_code, radar_site)
@@ -132,6 +149,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     # are configured.
     if hurricane_coord_is_new:
         refresh_tasks.append(hurricane_coord.async_refresh())
+    if marine_coord:
+        refresh_tasks.append(marine_coord.async_refresh())
     if radar_coord:
         refresh_tasks.append(radar_coord.async_refresh())
     if alerts_coord:
@@ -155,6 +174,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         "space_weather_coordinator": space_weather_coord,
         "hurricane_coordinator": hurricane_coord,
         "surf_coordinator": surf_coord,
+        "marine_forecast_coordinator": marine_coord,
         "forecast_discussion_coordinator": discussion_coord,
         "radar_timestamp_coordinator": radar_coord,
         "alerts_coordinator": alerts_coord,
