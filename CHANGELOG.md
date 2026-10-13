@@ -7,24 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- **Radar and the forecast discussion follow you too.** While following a person or device, the
-  radar image, radar loop and radar timestamp use the radar site the NWS names for where it is,
-  and the forecast discussion is that area's office's. Away from home the Radar Loop shows NOAA's
-  own ~50 minute loop; the long loop is only built for the home site, whose frames keep being
-  collected meanwhile, so it is back without a gap on return. The radar images and timestamp gain
-  a `radar_site` attribute, and the forecast discussion a `forecast_office` attribute while
-  following. Surf stays on home. (#41)
-- **Weather that follows you.** An optional **Follow a person or device** setting in Configure.
-  Pick a `person` or `device_tracker` and, once it is more than 10 miles from home and somewhere
-  the NWS covers, observations, the hourly and extended forecast, cloud cover and NWS alerts are
-  for its location. Home is used again within 5 miles of home, outside NWS coverage and whenever
-  the entity has no GPS position; moves under 10 miles are ignored. Surf, meteor showers and
-  eclipses stay on home. Entity IDs do not change. While following,
-  the weather entity and the observation, forecast, cloud cover and alert entities gain a
-  `location_source` attribute, and the cloud cover and alert entities' `latitude`/`longitude`
-  show where their data is for, to about 1 km. (#40)
-
 ### Fixed
 - **The weather card's forecast now updates.** New forecasts were never pushed to the card, so it
   kept showing the forecast it loaded with until the dashboard was reloaded.

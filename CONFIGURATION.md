@@ -42,79 +42,14 @@ longitude: -117.1611
 ## Options
 
 **Settings** → **Devices & Services** → **NOAA It All** → **Configure**. The flow walks through
-latitude and longitude (and, optionally, a person or device to follow), then the forecast office,
-then the radar loop. Saving reloads the integration so the new values take effect immediately.
+latitude and longitude, then the forecast office, then the radar loop. Saving reloads the
+integration so the new values take effect immediately.
 
 | Option | Default | Notes |
 |---|---|---|
 | Latitude / Longitude | Home Assistant's Home location | Used for alerts, surf and aurora |
 | NWS Forecast Office | Nearest office to those coordinates | Determines the radar site |
 | Hours of radar history | `24` | Length of the Radar Loop animation, `0`–`24` |
-| Follow a person or device | None | A `person` or `device_tracker` whose location the weather follows |
-
-### Following a person or device
-
-Pick a `person` or `device_tracker` entity on the first step of **Configure** and the weather
-follows it: on a trip, observations, forecasts, cloud cover, NWS alerts, radar and the forecast
-discussion are for where that entity is, not for home. Clear the field to stop.
-
-| Follows the entity | Stays on home |
-|---|---|
-| Weather entity and the observation sensors (temperature, humidity, wind, pressure, dewpoint, visibility, sky conditions, feels like) | Surf, tide and buoy |
-| Hourly and extended forecast | Meteor showers, eclipses, aurora |
-| Cloud cover | |
-| NWS alerts and the alert sensors built on them | |
-| Radar image, radar loop and radar timestamp: the radar site the NWS names for the location | |
-| Forecast discussion: the forecast office the NWS names for the location | |
-
-Surf, tide and buoy come from per-office station tables, and the space data is computed for home,
-so they are not moved.
-
-**The radar loop while away.** The long radar loop is only ever built for the home radar site.
-Away, the Radar Loop shows NOAA's own ~50 minute loop for the local radar instead, while the home
-site's frames keep being collected in the background (one small extra download per refresh). Back
-home, the long loop is shown again straight away, with no gap for the trip.
-
-How it decides where to look:
-
-- **Small moves are ignored.** The location only changes once the entity is 10 miles or more
-  from where the data currently comes from, so a stream of GPS updates does not hammer the NWS
-  API and a position wandering around the 10-mile mark does not flip back and forth.
-- **Leaving home:** once the entity is more than 10 miles from home, its location is used, after
-  the NWS confirms it covers that spot.
-- **Coming back:** within 5 miles of home, home is used again straight away. (A move of 10 miles
-  or more that ends within 10 miles of home also switches back.)
-- **Outside NWS coverage** (outside the US and its territories), home is used.
-- **No GPS position** (the entity is `unavailable`, `unknown`, or has no `latitude` and
-  `longitude` attributes, such as a router-based tracker), home is used.
-- **If the NWS cannot be reached** to check a new location, nothing changes and the check is
-  tried again 10 minutes later. Coming home still switches back straight away in the meantime.
-- **A place found outside coverage** is remembered for 10 minutes, so updates from around it do
-  not each ask the NWS again.
-
-Entity IDs, unique IDs and device names never change, so a trip creates no new entities. The
-entities fed by the followed data show which location their current data is for:
-
-| Attribute | On | Meaning |
-|---|---|---|
-| `location_source` | Weather entity; observation, forecast, cloud cover, NWS alert, radar timestamp and forecast discussion sensors; alert binary sensors; radar images | The followed entity (e.g. `person.alex`) while using its location, `home` otherwise. Absent when nothing is followed. |
-| `latitude` / `longitude` | Cloud cover and NWS alert sensors, alert binary sensors | Where the data is for: home, or the followed location rounded to two decimal places (about 1 km) |
-| `station_id` | Weather entity, observation sensors | The observation station the reading came from |
-| `radar_site` | Radar images, radar timestamp sensor | The radar site the picture or timestamp is from |
-| `forecast_office` | Forecast discussion sensor, while following | The office whose discussion is shown; `office_code` stays the configured office |
-
-The attributes describe the data currently shown, so right after a move they keep describing the
-previous location until the refresh for the new one lands.
-
-```yaml
-# Stored in the config entry's options
-tracked_entity: person.alex
-```
-
-The followed location is sent to `api.weather.gov` in request URLs, in the same way the home
-coordinates already are, rounded to four decimal places (about 11 m). Entity attributes only show
-it to about 1 km. Log lines leave it out, along with the stations and gridpoints near it, including
-the messages for failed NWS requests; only debug logging includes it.
 
 ### Hours of radar history
 

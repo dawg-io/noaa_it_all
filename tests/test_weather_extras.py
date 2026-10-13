@@ -129,16 +129,6 @@ class TestExtendedForecastSensor(unittest.TestCase):
         ids = list(info["identifiers"])[0]
         self.assertIn("weather", ids[1])
 
-    def test_location_source_shown_while_following(self):
-        sensor = self._make(_load_fixture("forecast.json"))
-        sensor.coordinator.data_location = (39.7392, -104.9903, "person.traveler")
-        self.assertEqual(sensor.extra_state_attributes["location_source"], "person.traveler")
-
-    def test_no_location_source_when_not_following(self):
-        sensor = self._make(_load_fixture("forecast.json"))
-        sensor.coordinator.data_location = None
-        self.assertNotIn("location_source", sensor.extra_state_attributes)
-
 
 # ---------------------------------------------------------------
 # Hourly Forecast sensor
@@ -243,15 +233,6 @@ class TestNWSAlertsSensor(unittest.TestCase):
         self.assertIn("latitude", attrs)
         self.assertIn("longitude", attrs)
 
-    def test_attrs_show_where_the_alerts_are_for_while_following(self):
-        sensor = self._make(_load_fixture("nws_alerts.json"))
-        sensor.coordinator.data_location = (39.7392, -104.9903, "person.traveler")
-        attrs = sensor.extra_state_attributes
-        self.assertEqual(attrs["latitude"], 39.74)
-        self.assertEqual(attrs["longitude"], -104.99)
-        self.assertEqual(attrs["location_source"], "person.traveler")
-        self.assertIn("n77_9447", sensor.unique_id)
-
     def test_device_info_weather_group(self):
         sensor = self._make()
         info = sensor.device_info
@@ -311,18 +292,6 @@ class TestCloudCoverSensor(unittest.TestCase):
         ids = list(info["identifiers"])[0]
         self.assertIn("weather", ids[1])
 
-    def test_attrs_show_where_the_cloud_cover_is_for_while_following(self):
-        sensor = self._make(None)
-        sensor.coordinator.data_location = (39.7392, -104.9903, "person.traveler")
-        attrs = sensor.extra_state_attributes
-        self.assertEqual(attrs["latitude"], 39.74)
-        self.assertEqual(attrs["location_source"], "person.traveler")
-
-    def test_attrs_are_home_when_not_following(self):
-        attrs = self._make(None).extra_state_attributes
-        self.assertEqual(attrs["latitude"], LAT)
-        self.assertNotIn("location_source", attrs)
-
 
 # ---------------------------------------------------------------
 # Radar Timestamp sensor
@@ -342,19 +311,6 @@ class TestRadarTimestampSensor(unittest.TestCase):
     def test_unique_id(self):
         sensor = self._make()
         self.assertEqual(sensor.unique_id, f"noaa_{OFFICE}_radar_timestamp")
-
-    def test_location_source_shown_while_following(self):
-        from datetime import datetime, timezone
-        sensor = self._make({
-            "timestamp": datetime(2026, 10, 3, 1, 0, tzinfo=timezone.utc),
-            "radar_site": "KFTG",
-            "radar_url": "https://radar.weather.gov/ridge/standard/KFTG_0.gif",
-        })
-        sensor.coordinator.data_location = ("KFTG", "person.traveler")
-        attrs = sensor.extra_state_attributes
-        self.assertEqual(attrs["radar_site"], "KFTG")
-        self.assertEqual(attrs["location_source"], "person.traveler")
-        self.assertEqual(attrs["office_code"], OFFICE)
 
     def test_state_with_timestamp(self):
         ts = datetime(2025, 4, 7, 18, 0, 0, tzinfo=timezone.utc)
@@ -403,29 +359,6 @@ class TestForecastDiscussionSensor(unittest.TestCase):
     def test_unique_id(self):
         sensor = self._make()
         self.assertEqual(sensor.unique_id, f"noaa_{OFFICE}_forecast_discussion")
-
-    def test_forecast_office_shown_while_following(self):
-        sensor = self._make({"discussion_text": "Synopsis and near-term forecast..."})
-        sensor.coordinator.data_location = ("BOU", "person.traveler")
-        attrs = sensor.extra_state_attributes
-        self.assertEqual(attrs["forecast_office"], "BOU")
-        self.assertEqual(attrs["location_source"], "person.traveler")
-        # office_code still names the configured office, and the device.
-        self.assertEqual(attrs["office_code"], OFFICE)
-
-    def test_an_unparsed_discussion_still_says_whose_it_was(self):
-        sensor = self._make({"discussion_text": None})
-        sensor.coordinator.data_location = ("BOU", "person.traveler")
-        attrs = sensor.extra_state_attributes
-        self.assertEqual(attrs["forecast_office"], "BOU")
-        self.assertEqual(attrs["availability"], "Unable to parse forecast discussion")
-
-    def test_no_forecast_office_when_not_following(self):
-        sensor = self._make({"discussion_text": "Synopsis and near-term forecast..."})
-        sensor.coordinator.data_location = None
-        attrs = sensor.extra_state_attributes
-        self.assertNotIn("forecast_office", attrs)
-        self.assertNotIn("location_source", attrs)
 
     def test_state_available(self):
         sensor = self._make({"discussion_text": "Synopsis and near-term forecast..."})

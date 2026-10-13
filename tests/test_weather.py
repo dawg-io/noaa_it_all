@@ -134,20 +134,6 @@ class TestNOAAWeatherEntity(unittest.TestCase):
         attrs = entity.extra_state_attributes
         self.assertIsInstance(attrs, dict)
 
-    def test_location_source_shown_while_following(self):
-        entity = self._make(obs_data={
-            "properties": {}, "station_id": "KDEN", "location_source": "person.traveler",
-        })
-        attrs = entity.extra_state_attributes
-        self.assertEqual(attrs["station_id"], "KDEN")
-        self.assertEqual(attrs["location_source"], "person.traveler")
-
-    def test_no_location_source_when_not_following(self):
-        entity = self._make(obs_data={
-            "properties": {}, "station_id": "KILM", "location_source": None,
-        })
-        self.assertNotIn("location_source", entity.extra_state_attributes)
-
 
 class TestAsyncAddedToHass(unittest.TestCase):
     """Tests for async_added_to_hass lifecycle."""

@@ -537,86 +537,10 @@ class TestAsyncStepInit(unittest.TestCase):
         self._through_to_radar(flow)
         result = _run(flow.async_step_radar(user_input={"radar_loop_hours": 12}))
         self.assertEqual(
-            {"latitude", "longitude", "office_code", "radar_loop_hours", "tracked_entity"},
+            {"latitude", "longitude", "office_code", "radar_loop_hours"},
             set(result["data"]),
         )
         self.assertEqual(result["data"]["radar_loop_hours"], 12)
-
-    def _with_tracking(self, tracked, flow=None):
-        """Walk the whole options flow, submitting ``tracked`` on the first step."""
-        flow = flow or self._make_flow()
-        user_input = {"latitude": 34.0, "longitude": -78.0}
-        if tracked is not ...:
-            user_input["tracked_entity"] = tracked
-        first = _run(flow.async_step_init(user_input=user_input))
-        if first["step_id"] == "init":
-            return first
-        _run(flow.async_step_office(user_input={"office_code": "ILM"}))
-        return _run(flow.async_step_radar(user_input={"radar_loop_hours": 24}))
-
-    def test_a_tracked_person_is_saved(self):
-        result = self._with_tracking("person.traveler")
-        self.assertEqual(result["type"], "create_entry")
-        self.assertEqual(result["data"]["tracked_entity"], "person.traveler")
-
-    def test_a_tracked_device_is_saved(self):
-        result = self._with_tracking("device_tracker.phone")
-        self.assertEqual(result["data"]["tracked_entity"], "device_tracker.phone")
-
-    def test_clearing_the_tracked_entity_stops_following(self):
-        flow = self._make_flow(options={"tracked_entity": "person.traveler"})
-        # A cleared optional field is absent from user_input altogether.
-        result = self._with_tracking(..., flow=flow)
-        self.assertEqual(result["type"], "create_entry")
-        self.assertIsNone(result["data"]["tracked_entity"])
-
-    def test_an_empty_tracked_entity_is_saved_as_none(self):
-        result = self._with_tracking("")
-        self.assertIsNone(result["data"]["tracked_entity"])
-
-    def test_an_entity_that_cannot_be_followed_is_rejected(self):
-        for value in ("sensor.outdoor_temperature", "person", 42):
-            with self.subTest(value=value):
-                result = self._with_tracking(value)
-                self.assertEqual(result["type"], "form")
-                self.assertEqual(result["step_id"], "init")
-                self.assertEqual(
-                    result["errors"], {"tracked_entity": "invalid_tracked_entity"}
-                )
-
-    def _suggested_after_error(self, saved, submitted):
-        flow = self._make_flow(options={"tracked_entity": saved})
-        vol = _MOCK_MODULES["voluptuous"]
-        vol.Optional.reset_mock()
-        user_input = {"latitude": 95.0, "longitude": -78.0}
-        if submitted is not ...:
-            user_input["tracked_entity"] = submitted
-        result = _run(flow.async_step_init(user_input=user_input))
-        self.assertEqual(result["errors"], {"latitude": "invalid_latitude"})
-        return {
-            call.args[0]: call.kwargs.get("description", {}).get("suggested_value")
-            for call in vol.Optional.call_args_list
-        }["tracked_entity"]
-
-    def test_an_error_keeps_the_entity_just_chosen(self):
-        self.assertEqual(
-            self._suggested_after_error("person.traveler", "device_tracker.phone"),
-            "device_tracker.phone",
-        )
-
-    def test_an_error_keeps_a_cleared_field_cleared(self):
-        self.assertIsNone(self._suggested_after_error("person.traveler", ...))
-
-    def test_the_saved_tracked_entity_is_suggested(self):
-        flow = self._make_flow(options={"tracked_entity": "person.traveler"})
-        vol = _MOCK_MODULES["voluptuous"]
-        vol.Optional.reset_mock()
-        _run(flow.async_step_init(user_input=None))
-        suggested = {
-            call.args[0]: call.kwargs.get("description", {}).get("suggested_value")
-            for call in vol.Optional.call_args_list
-        }
-        self.assertEqual(suggested["tracked_entity"], "person.traveler")
 
     def test_the_radar_step_prefills_the_saved_value(self):
         flow = self._make_flow(options={"radar_loop_hours": 6})

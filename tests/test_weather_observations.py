@@ -132,21 +132,6 @@ class TestTemperatureSensor(unittest.TestCase):
         ids = list(info["identifiers"])[0]
         self.assertIn("weather", ids[1])
 
-    def test_location_source_shown_while_following(self):
-        obs = {**_load_fixture("observations.json"), "location_source": "person.traveler"}
-        attrs = self._make(obs).extra_state_attributes
-        self.assertEqual(attrs["location_source"], "person.traveler")
-
-    def test_no_location_source_when_not_following(self):
-        attrs = self._make(_load_fixture("observations.json")).extra_state_attributes
-        self.assertNotIn("location_source", attrs)
-
-    def test_unique_id_ignores_where_the_data_came_from(self):
-        """Following someone must never create new entities."""
-        home = self._make(_load_fixture("observations.json")).unique_id
-        obs = {**_load_fixture("observations.json"), "location_source": "person.traveler"}
-        self.assertEqual(self._make(obs).unique_id, home)
-
 
 # ---------------------------------------------------------------
 # Humidity sensor

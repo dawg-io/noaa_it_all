@@ -10,7 +10,6 @@ from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from ..const import DOMAIN
-from ..location_tracker import location_attributes, location_source_attribute
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -73,7 +72,8 @@ class CloudCoverSensor(CoordinatorEntity):
         """Return the state attributes."""
         attrs = {
             'office_code': self._office_code,
-            **location_attributes(self.coordinator, self._latitude, self._longitude),
+            'latitude': self._latitude,
+            'longitude': self._longitude,
         }
         if not self.coordinator.data:
             return attrs
@@ -160,7 +160,6 @@ class RadarTimestampSensor(CoordinatorEntity):
             return {
                 'office_code': self._office_code,
                 'radar_site': radar_site,
-                **location_source_attribute(self.coordinator),
                 'timestamp_iso': timestamp.isoformat(),
                 'radar_url': radar_url,
                 'availability': 'Available from NWS radar images'
@@ -168,7 +167,6 @@ class RadarTimestampSensor(CoordinatorEntity):
         return {
             'office_code': self._office_code,
             'radar_site': radar_site,
-            **location_source_attribute(self.coordinator),
             'availability': 'Timestamp not available'
         }
 
@@ -185,18 +183,6 @@ class RadarTimestampSensor(CoordinatorEntity):
             name=f"NOAA {self._office_code} Weather",
             manufacturer="NOAA"
         )
-
-
-def _forecast_office_attributes(coordinator) -> dict:
-    """``forecast_office`` and ``location_source``, while following someone.
-
-    ``office_code`` stays the configured office, which names the device; this
-    says whose discussion is actually shown.
-    """
-    attributes = location_source_attribute(coordinator)
-    if attributes:
-        attributes["forecast_office"] = coordinator.data_location[0]
-    return attributes
 
 
 class ForecastDiscussionSensor(CoordinatorEntity):
@@ -247,8 +233,6 @@ class ForecastDiscussionSensor(CoordinatorEntity):
         if not text:
             return {
                 'office_code': self._office_code,
-                # Says whose discussion failed, which matters most away.
-                **_forecast_office_attributes(self.coordinator),
                 'availability': 'Unable to parse forecast discussion'
             }
         # Extract issue time if available
@@ -260,7 +244,6 @@ class ForecastDiscussionSensor(CoordinatorEntity):
         summary = text[:200] + '...' if len(text) > 200 else text
         return {
             'office_code': self._office_code,
-            **_forecast_office_attributes(self.coordinator),
             'issue_time': issue_time,
             'summary': summary,
             'full_text': text,

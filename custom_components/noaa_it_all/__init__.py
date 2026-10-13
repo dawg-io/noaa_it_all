@@ -7,14 +7,13 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import config_validation as cv, discovery
 
 from .const import (
-    DOMAIN, CONF_OFFICE_CODE, CONF_LATITUDE, CONF_LONGITUDE, CONF_TRACKED_ENTITY,
+    DOMAIN, CONF_OFFICE_CODE, CONF_LATITUDE, CONF_LONGITUDE,
     HURRICANE_COORDINATOR_KEY,
     HURRICANE_IMAGES_ADDED_KEY, HURRICANE_SENSORS_ADDED_KEY,
     OFFICE_RADAR_SITES, OFFICE_TIDE_STATIONS, OFFICE_BUOY_STATIONS,
     RADAR_FRAME_DIR,
 )
 from .entry_config import resolve_entry_config
-from .location_tracker import LocationTracker
 from .radar_loop import RadarFrameStore
 from .coordinator import (
     SpaceWeatherCoordinator,
@@ -122,26 +121,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             hass, office_code, latitude, longitude
         )
 
-    # ---- Optionally follow a person or device tracker ----
-    # Moves the data looked up from coordinates, plus radar and the forecast
-    # discussion, which follow the radar site and office the NWS names for
-    # the followed location. Surf stays on home -- it comes from per-office
-    # station tables -- as do meteor showers and eclipses.
-    location_tracker = None
-    tracked_entity = conf.get(CONF_TRACKED_ENTITY)
-    if tracked_entity and latitude is not None and longitude is not None:
-        location_tracker = LocationTracker(
-            hass,
-            tracked_entity,
-            (latitude, longitude),
-            (alerts_coord, observations_coord, forecast_coord, cloud_cover_coord),
-            radar_coordinator=radar_coord,
-            discussion_coordinator=discussion_coord,
-        )
-        # Before the first refresh, so that refresh is already for the right place.
-        await location_tracker.async_start()
-        entry.async_on_unload(location_tracker.async_stop)
-
     # ---- Initial refresh (non-blocking, errors are logged) ----
     refresh_tasks = [
         space_weather_coord.async_refresh(),
@@ -187,12 +166,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     }
 
     # Reload the entry whenever its options change. The coordinators capture
-    # office_code and the home coordinates at construction, and entities key
-    # their unique IDs on them, so a full reload is what makes a saved option
-    # take effect. (set_location only re-points the location coordinators
-    # while following a tracked entity; it is not a way to apply options.)
-    # Registered via async_on_unload so the reload itself re-registers it
-    # rather than stacking listeners.
+    # office_code/latitude/longitude at construction and offer no way to update
+    # them afterwards, so a full reload is what makes a saved option take
+    # effect. Registered via async_on_unload so the reload itself re-registers
+    # it rather than stacking listeners.
     entry.async_on_unload(entry.add_update_listener(_async_update_listener))
 
     # Load all platforms for the configured location

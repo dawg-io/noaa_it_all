@@ -1,11 +1,11 @@
 """Config flow for NOAA Integration."""
 import logging
+import math
 
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.core import callback, valid_entity_id
-from homeassistant.helpers import selector
+from homeassistant.core import callback
 
 from .const import (
     DOMAIN,
@@ -13,13 +13,11 @@ from .const import (
     CONF_LONGITUDE,
     CONF_OFFICE_CODE,
     CONF_RADAR_LOOP_HOURS,
-    CONF_TRACKED_ENTITY,
     DEFAULT_RADAR_LOOP_HOURS,
     OFFICE_COORDINATES,
     RADAR_LOOP_MAX_HOURS,
 )
 from .entry_config import resolve_entry_config
-from .geo import haversine_miles
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -63,12 +61,21 @@ NWS_OFFICES = {
     "TBW": "Tampa, FL",
 }
 
-# Entity domains the weather can follow; both carry latitude/longitude
-# attributes when they have a GPS fix.
-TRACKABLE_DOMAINS = ("person", "device_tracker")
-
 # Maximum distance (miles) used to filter "nearby" offices.
 NEARBY_OFFICE_RADIUS_MILES = 50.0
+
+# Earth radius in statute miles.
+_EARTH_RADIUS_MILES = 3958.7613
+
+
+def haversine_miles(lat1, lon1, lat2, lon2):
+    """Return the great-circle distance in miles between two points."""
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lon2 - lon1)
+    a = math.sin(dphi / 2.0) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2.0) ** 2
+    return 2.0 * _EARTH_RADIUS_MILES * math.asin(math.sqrt(a))
 
 
 def find_nearby_offices(latitude, longitude, max_miles=NEARBY_OFFICE_RADIUS_MILES):
@@ -101,14 +108,6 @@ def _build_office_options(latitude, longitude):
     options = {code: _format_office_label(code, dist) for code, dist in candidates}
     default_code = candidates[0][0] if candidates else None
     return options, default_code, no_within_radius
-
-
-def _is_trackable(entity_id):
-    """Whether ``entity_id`` names a person or device tracker entity."""
-    if not isinstance(entity_id, str):
-        return False
-    domain, _, object_id = entity_id.partition(".")
-    return domain in TRACKABLE_DOMAINS and bool(object_id) and bool(valid_entity_id(entity_id))
 
 
 def _ha_home_coords(hass):
@@ -253,32 +252,24 @@ class NOAAOptionsFlow(config_entries.OptionsFlow):
         self._latitude = None
         self._longitude = None
         self._office_code = None
-        self._tracked_entity = None
 
     async def async_step_init(self, user_input=None):
-        """Step 1 of the options flow: home coordinates, and who to follow."""
+        """Step 1 of the options flow: latitude / longitude."""
         errors = {}
         ha_lat, ha_lon = _ha_home_coords(getattr(self, "hass", None))
 
         if user_input is not None:
             latitude = user_input.get(CONF_LATITUDE)
             longitude = user_input.get(CONF_LONGITUDE)
-            # Optional, and absent from user_input when the field is cleared.
-            tracked_entity = user_input.get(CONF_TRACKED_ENTITY) or None
 
             if latitude is None or not -90 <= latitude <= 90:
                 errors[CONF_LATITUDE] = "invalid_latitude"
             if longitude is None or not -180 <= longitude <= 180:
                 errors[CONF_LONGITUDE] = "invalid_longitude"
-            # The selector only offers these domains; checked here as well
-            # because the flow tests mock voluptuous and selectors wholesale.
-            if tracked_entity is not None and not _is_trackable(tracked_entity):
-                errors[CONF_TRACKED_ENTITY] = "invalid_tracked_entity"
 
             if not errors:
                 self._latitude = float(latitude)
                 self._longitude = float(longitude)
-                self._tracked_entity = tracked_entity
                 return await self.async_step_office()
 
         # Prefer the previously configured value, then HA Home, then 0.0.
@@ -303,26 +294,11 @@ class NOAAOptionsFlow(config_entries.OptionsFlow):
         else:
             ha_location_text = "not configured"
 
-        # Shown again after an error, keep what was just submitted -- even a
-        # cleared field -- rather than reverting to the saved choice.
-        if user_input is not None:
-            suggested_entity = user_input.get(CONF_TRACKED_ENTITY)
-        else:
-            suggested_entity = existing.get(CONF_TRACKED_ENTITY)
-
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema({
                 vol.Required(CONF_LATITUDE, default=default_lat): vol.Coerce(float),
                 vol.Required(CONF_LONGITUDE, default=default_lon): vol.Coerce(float),
-                # suggested_value rather than default, so the field can be
-                # cleared to stop following anyone.
-                vol.Optional(
-                    CONF_TRACKED_ENTITY,
-                    description={"suggested_value": suggested_entity},
-                ): selector.EntitySelector(
-                    selector.EntitySelectorConfig(domain=list(TRACKABLE_DOMAINS))
-                ),
             }),
             errors=errors,
             description_placeholders={"ha_location": ha_location_text},
@@ -397,7 +373,6 @@ class NOAAOptionsFlow(config_entries.OptionsFlow):
                         CONF_LATITUDE: self._latitude,
                         CONF_LONGITUDE: self._longitude,
                         CONF_RADAR_LOOP_HOURS: hours,
-                        CONF_TRACKED_ENTITY: self._tracked_entity,
                     },
                 )
             default_hours = user_input.get(CONF_RADAR_LOOP_HOURS, default_hours)

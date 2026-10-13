@@ -241,18 +241,11 @@ async def async_setup_entry(
     radar_site = OFFICE_RADAR_SITES.get(office_code)
 
     if radar_site:
-        # Add radar image entities for this location. The radar coordinator
-        # says which site is in use, which differs from radar_site while
-        # following a person or device elsewhere.
-        entry_data = hass.data.get(DOMAIN, {}).get(config_entry.entry_id) or {}
-        radar_coordinator = entry_data.get("radar_timestamp_coordinator")
-        base_reflectivity_image = RadarBaseReflectivityImageEntity(
-            hass, office_code, radar_site, radar_coordinator=radar_coordinator
-        )
+        # Add radar image entities for this location
+        base_reflectivity_image = RadarBaseReflectivityImageEntity(hass, office_code, radar_site)
         loop_hours = radar_loop_hours(config_entry)
         radar_loop_image = RadarLoopImageEntity(
-            hass, office_code, radar_site, loop_hours=loop_hours,
-            radar_coordinator=radar_coordinator,
+            hass, office_code, radar_site, loop_hours=loop_hours
         )
         entities.extend([base_reflectivity_image, radar_loop_image])
         # Setup runs again on every options change, so this is where a switch
@@ -747,88 +740,7 @@ class HurricanePacificOutlookImageEntity(NoaaImageEntity):
         return _hurricane_device_info()
 
 
-class _RadarImageEntity(NoaaImageEntity):
-    """A radar image showing whichever radar site is in use.
-
-    ``radar_site`` is the home office's site. ``radar_coordinator``, when
-    given, names the site in use instead -- another one while following a
-    person or device -- and a change of site there refreshes the picture
-    straight away rather than on the next timer tick.
-    """
-
-    def _init_radar(self, radar_site, radar_coordinator) -> None:
-        """Set up radar state; call before ``super().__init__``."""
-        self._radar_site = radar_site
-        self._radar_coordinator = radar_coordinator
-        # The site and label of the picture on screen, and the site last
-        # asked for.
-        self._shown_site = None
-        self._shown_source = None
-        self._requested_site = None
-        # One refresh at a time: a slow one for the old site must not land
-        # after the one for the new site and put the old picture back.
-        self._refresh_lock = asyncio.Lock()
-
-    def _active_site(self) -> str:
-        site = getattr(self._radar_coordinator, "radar_site", None)
-        return site if isinstance(site, str) and site else self._radar_site
-
-    def _active_source(self):
-        source = getattr(self._radar_coordinator, "location_source", None)
-        return source if isinstance(source, str) else None
-
-    async def async_added_to_hass(self) -> None:
-        await super().async_added_to_hass()
-        if self._radar_coordinator is not None:
-            self.async_on_remove(
-                self._radar_coordinator.async_add_listener(self._handle_radar_update)
-            )
-
-    def _handle_radar_update(self) -> None:
-        """Refresh at once for a new site; relabel for a new label alone."""
-        site = self._active_site()
-        if site != self._requested_site:
-            self.hass.async_create_task(self._async_scheduled_refresh())
-        elif site == self._shown_site and self._active_source() != self._shown_source:
-            self._shown_source = self._active_source()
-            self._write_state_if_added()
-
-    async def _async_scheduled_refresh(self, now=None) -> None:
-        async with self._refresh_lock:
-            await super()._async_scheduled_refresh(now)
-
-    def _note_shown(self, site, source) -> None:
-        self._shown_site = site
-        self._shown_source = source
-
-    def _forget_other_sites(self, keep) -> None:
-        """Drop cached copies of other sites' images.
-
-        The revalidation cache is keyed by URL, so a road trip past a dozen
-        radars would otherwise hold a dozen loops in memory for good.
-        """
-        self._resource_cache = {
-            url: cached for url, cached in self._resource_cache.items()
-            if any(f"/{site}_" in url for site in keep)
-        }
-
-    def _radar_attributes(self) -> dict:
-        """``radar_site`` and, while following someone, ``location_source``.
-
-        Both describe the picture on screen, which lags a change of site
-        until its refresh lands.
-        """
-        if self._shown_site is not None:
-            site, source = self._shown_site, self._shown_source
-        else:
-            site, source = self._active_site(), self._active_source()
-        attributes = {"radar_site": site}
-        if source is not None:
-            attributes["location_source"] = source
-        return attributes
-
-
-class RadarBaseReflectivityImageEntity(_RadarImageEntity):
+class RadarBaseReflectivityImageEntity(NoaaImageEntity):
     """Representation of the Radar Base Reflectivity Image for a specific location.
 
     Uses ``_attr_has_entity_name = True`` so that Home Assistant
@@ -841,35 +753,16 @@ class RadarBaseReflectivityImageEntity(_RadarImageEntity):
     _attr_has_entity_name = True
     _attr_content_type = "image/gif"
 
-    def __init__(self, hass, office_code, radar_site, radar_coordinator=None):
-        """Initialize the radar image entity.
-
-        ``radar_site`` is the home office's site. ``radar_coordinator``, when
-        given, names the site in use instead -- another one while following a
-        person or device.
-        """
+    def __init__(self, hass, office_code, radar_site):
+        """Initialize the radar image entity."""
         self._office_code = office_code
-        self._init_radar(radar_site, radar_coordinator)
+        self._radar_site = radar_site
         self._log_label = f"radar base reflectivity for {office_code}"
         super().__init__(hass)
 
     def _base_url(self) -> str:
-        """Return the NEXRAD base reflectivity URL for the site in use."""
-        return NWS_RADAR_BASE_URL.format(radar=self._active_site())
-
-    async def _async_update_cache(self) -> bool:
-        site, source = self._active_site(), self._active_source()
-        self._requested_site = site
-        self._forget_other_sites({site})
-        changed = await super()._async_update_cache()
-        if changed:
-            self._note_shown(site, source)
-        return changed
-
-    @property
-    def extra_state_attributes(self):
-        """Which radar site the picture is from."""
-        return self._radar_attributes()
+        """Return the NEXRAD base reflectivity URL for this radar site."""
+        return NWS_RADAR_BASE_URL.format(radar=self._radar_site)
 
     @property
     def name(self):
@@ -891,7 +784,7 @@ class RadarBaseReflectivityImageEntity(_RadarImageEntity):
         )
 
 
-class RadarLoopImageEntity(_RadarImageEntity):
+class RadarLoopImageEntity(NoaaImageEntity):
     """An animated NEXRAD loop, either NOAA's own or one assembled here.
 
     NOAA publishes a ready-made animation, but it is fixed at ten frames
@@ -915,16 +808,10 @@ class RadarLoopImageEntity(_RadarImageEntity):
     _attr_has_entity_name = True
     _attr_content_type = "image/gif"
 
-    def __init__(self, hass, office_code, radar_site, loop_hours=0, radar_coordinator=None):
-        """Initialize the radar loop image entity.
-
-        ``radar_site`` is the home office's site, the only one a loop is ever
-        built for locally. While following a person or device elsewhere,
-        ``radar_coordinator`` names another site, and NOAA's own loop for it
-        is shown instead.
-        """
+    def __init__(self, hass, office_code, radar_site, loop_hours=0):
+        """Initialize the radar loop image entity."""
         self._office_code = office_code
-        self._init_radar(radar_site, radar_coordinator)
+        self._radar_site = radar_site
         self._log_label = f"radar loop for {office_code}"
         self._loop_hours = loop_hours
         self._store = None
@@ -945,14 +832,8 @@ class RadarLoopImageEntity(_RadarImageEntity):
 
     @property
     def _building_locally(self) -> bool:
-        """True when this entity assembles the loop rather than proxying it.
-
-        Only ever for the home site. Away, NOAA's own loop is shown: a local
-        one would start empty, and its frames would be deleted on the next
-        reload as belonging to no configured office. The home site's frames
-        keep being collected in the background meanwhile.
-        """
-        return self._store is not None and self._active_site() == self._radar_site
+        """True when this entity assembles the loop rather than proxying it."""
+        return self._store is not None
 
     @property
     def _window(self) -> timedelta:
@@ -967,7 +848,7 @@ class RadarLoopImageEntity(_RadarImageEntity):
         """
         if self._building_locally:
             return NWS_RADAR_BASE_URL.format(radar=self._radar_site)
-        return NWS_RADAR_LOOP_URL.format(radar=self._active_site())
+        return NWS_RADAR_LOOP_URL.format(radar=self._radar_site)
 
     @property
     def extra_state_attributes(self):
@@ -977,7 +858,6 @@ class RadarLoopImageEntity(_RadarImageEntity):
         still filling, or because Pillow is missing -- is otherwise invisible.
         """
         return {
-            **self._radar_attributes(),
             # Describes the animation actually being served, not the setting:
             # a local loop that has fallen back to NOAA's says so.
             "loop_mode": "upstream" if self._serving_upstream else "local",
@@ -999,9 +879,7 @@ class RadarLoopImageEntity(_RadarImageEntity):
         stale frames on disk for another refresh interval.
         """
         await super().async_added_to_hass()
-        # Whether or not the home site is on screen right now: a shorter
-        # window set while away must still take effect on reload.
-        if self._store is not None:
+        if self._building_locally:
             self.async_on_remove(
                 async_call_later(self.hass, 0, self._async_prune)
             )
@@ -1017,57 +895,14 @@ class RadarLoopImageEntity(_RadarImageEntity):
         failure path returns False without touching the cached bytes, so the
         previous loop stays on the dashboard.
         """
-        site, source = self._active_site(), self._active_source()
-        self._requested_site = site
-        self._forget_other_sites(
-            {site, self._radar_site} if self._store is not None else {site}
-        )
         if not self._building_locally:
-            if self._store is not None:
-                # Showing another site: keep the home loop's window continuous
-                # so it does not jump across the trip on the way back. Fetched
-                # first, so the display fetch is the one entity_picture keeps.
-                frame = await self._async_fetch_image(
-                    NWS_RADAR_BASE_URL.format(radar=self._radar_site)
-                )
-                if frame is not None:
-                    await self._async_store_frame(frame)
-            changed = await super()._async_update_cache()
-            if changed:
-                self._note_shown(site, source)
-                self._serving_upstream = True
-                self._frame_count = 0
-                self._window_start = None
-                self._window_end = None
-            return changed
+            return await super()._async_update_cache()
 
         frame = await self._async_fetch_image()
         if frame is None:
             return False
         self._note_success()
-        added = await self._async_store_frame(frame)
-        if (
-            not added
-            and self._last_image_bytes is not None
-            and self._shown_site == self._radar_site
-        ):
-            # Same scan as last time and we already have a loop built from it.
-            # (Back from following someone elsewhere, the picture on screen is
-            # still the other site's, so rebuild regardless.)
-            if self._shown_source != source:
-                self._note_shown(self._radar_site, source)
-            return False
 
-        changed = await self._async_rebuild_loop()
-        if changed:
-            self._note_shown(self._radar_site, source)
-        return changed
-
-    async def _async_store_frame(self, frame: bytes) -> bool:
-        """Store a home-site scan under its published time; True if new.
-
-        Reads ``_last_modified``, so call it straight after the fetch.
-        """
         # Last-Modified is when NOAA published the scan, which puts frames on
         # the real four-to-six minute volume-scan cadence rather than on our
         # arbitrary refresh boundary -- and makes two refreshes that see the
@@ -1086,7 +921,11 @@ class RadarLoopImageEntity(_RadarImageEntity):
         # would otherwise never prune at all, and the window would quietly
         # stretch past what was asked for.
         await self._store.async_prune(self._window, dt_util.utcnow())
-        return added
+        if not added and self._last_image_bytes is not None:
+            # Same scan as last time and we already have a loop built from it.
+            return False
+
+        return await self._async_rebuild_loop()
 
     async def _async_rebuild_loop(self) -> bool:
         """Assemble the stored frames, falling back to NOAA's loop if needed."""

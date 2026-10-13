@@ -339,40 +339,6 @@ class TestHeatAirQualityAlertBinarySensor(unittest.TestCase):
         self.assertIn("weather", ids[1])
 
 
-class TestAlertBinarySensorsFollowTheLocation(unittest.TestCase):
-    """Alert binary sensors say which location their alerts are for."""
-
-    CLASSES = (
-        "SevereWeatherAlertBinarySensor",
-        "FloodWinterAlertBinarySensor",
-        "HeatAirQualityAlertBinarySensor",
-        "ActiveAlertsGeneralBinarySensor",
-    )
-
-    def _attrs(self, name, following):
-        import noaa_it_all.binary_sensor as module
-        coord = _make_coordinator({"features": []})
-        if following:
-            coord.data_location = (39.7392, -104.9903, "person.traveler")
-        return getattr(module, name)(coord, OFFICE, LAT, LON).extra_state_attributes
-
-    def test_followed_location_while_following(self):
-        for name in self.CLASSES:
-            with self.subTest(name=name):
-                attrs = self._attrs(name, following=True)
-                self.assertEqual(attrs["latitude"], 39.74)
-                self.assertEqual(attrs["longitude"], -104.99)
-                self.assertEqual(attrs["location_source"], "person.traveler")
-
-    def test_home_location_otherwise(self):
-        for name in self.CLASSES:
-            with self.subTest(name=name):
-                attrs = self._attrs(name, following=False)
-                self.assertEqual(attrs["latitude"], LAT)
-                self.assertEqual(attrs["longitude"], LON)
-                self.assertNotIn("location_source", attrs)
-
-
 class TestActiveAlertsGeneralBinarySensor(unittest.TestCase):
     """Tests for the ActiveAlertsGeneralBinarySensor."""
 

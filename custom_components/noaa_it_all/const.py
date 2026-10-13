@@ -58,8 +58,6 @@ CONF_OFFICE_CODE = "office_code"
 CONF_LATITUDE = "latitude"
 CONF_LONGITUDE = "longitude"
 CONF_RADAR_LOOP_HOURS = "radar_loop_hours"
-# Optional person.* or device_tracker.* whose location the weather follows.
-CONF_TRACKED_ENTITY = "tracked_entity"
 
 # Default values
 DEFAULT_SCAN_INTERVAL = 10  # minutes
@@ -158,19 +156,6 @@ NDBC_REALTIME_URL = "https://www.ndbc.noaa.gov/data/realtime2/{station}.txt"
 # Observations come from the nearest one that answers, so a single station
 # going quiet does not leave every observation entity unavailable.
 OBSERVATION_STATION_CANDIDATES = 3
-
-# When following a tracked entity, how far it has to move before the
-# location-based data is looked up again. GPS wanders by tens of metres
-# between fixes and each move costs several NWS Points API calls, so small
-# moves are ignored. Within this distance of home, home is used as is.
-TRACKING_MIN_MOVE_MILES = 10
-# Back within this distance of home, home is used again straight away. Smaller
-# than the move threshold so a position wandering around the edge of it does
-# not flip between home and away, and so a GPS fix taken at home that sits a
-# little off the configured coordinates still counts as home.
-TRACKING_RETURN_HOME_MILES = 5
-# location_source while following an entity but using the home coordinates.
-LOCATION_SOURCE_HOME = "home"
 
 # NWS office to observation station mapping
 # Each office uses the primary weather observation station in their area

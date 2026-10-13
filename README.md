@@ -66,14 +66,6 @@ For location-specific rip current, surf zone, and weather data:
 </p>
 **Important:** Starting with version 0.4.0, latitude and longitude are required fields for proper weather entity setup. Weather data is now fetched from the nearest observation station to your specified coordinates using the weather.gov API, rather than defaulting to the Home Assistant location or using a predefined office-to-station mapping.
 
-#### Following a person or device (optional)
-In **Configure**, pick a `person` or `device_tracker` to follow. Once it is more than 10 miles from
-home and somewhere the NWS covers, observations, forecasts, cloud cover, NWS alerts, radar and the
-forecast discussion are for its location instead of home; back within 5 miles of home, home is used
-again. Surf stays on your office. Entity IDs never change; a `location_source` attribute shows which
-location the data is for. See
-[CONFIGURATION.md](CONFIGURATION.md#following-a-person-or-device) for details.
-
 #### Legacy YAML Configuration
 
 > **Removed.** YAML configuration is no longer supported and creates **no entities**. If

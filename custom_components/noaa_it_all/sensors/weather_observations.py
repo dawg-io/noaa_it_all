@@ -83,17 +83,12 @@ class WeatherObservationSensor(CoordinatorEntity):
         if not self.coordinator.data:
             return self._attributes
         properties = self.coordinator.data.get("properties", {})
-        attributes = {
+        return {
             'office_code': self._office_code,
             'station_id': self.coordinator.data.get("station_id"),
             'station_name': properties.get('stationName', 'Unknown'),
             'timestamp': properties.get('timestamp', 'Unknown'),
         }
-        # Only set while following a person or device tracker.
-        location_source = self.coordinator.data.get("location_source")
-        if location_source:
-            attributes['location_source'] = location_source
-        return attributes
 
     @property
     def unique_id(self):
