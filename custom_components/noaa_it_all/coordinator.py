@@ -25,7 +25,7 @@ from .const import (
     DEFAULT_SCAN_INTERVAL,
     REQUEST_TIMEOUT, USER_AGENT,
     NWS_POINTS_URL, NWS_OBSERVATIONS_URL, NWS_ALERTS_URL,
-    NWS_SRF_URL, NWS_AFD_URL, NWS_RADAR_BASE_URL,
+    NWS_SRF_URL, NWS_AFD_URL, NWS_RADAR_BASE_URL, NWS_NSH_URL, NSH_MAX_AGE_HOURS,
     COOPS_WATER_TEMP_URL, NDBC_REALTIME_URL,
     OFFICE_STATION_IDS, OBSERVATION_STATION_CANDIDATES,
     METEOR_SCAN_INTERVAL, METEOR_UPCOMING_COUNT,
@@ -37,7 +37,10 @@ from .meteor import build_meteor_forecast
 from .meteor_catalog import METEOR_SHOWERS
 from .eclipse import build_eclipse_forecast
 from .eclipse_catalog import SOLAR_ECLIPSES
-from .parsers import parse_coops_water_temperature, parse_ndbc_wave_height
+from .parsers import (
+    parse_coops_water_temperature, parse_ndbc_wave_height,
+    parse_nearshore_forecast, product_is_stale,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -468,6 +471,66 @@ class SurfCoordinator(DataUpdateCoordinator):
             _LOGGER.debug("All surf data sources returned no usable data")
 
         return result
+
+
+class MarineForecastCoordinator(DataUpdateCoordinator):
+    """Fetch the NWS Nearshore Marine Forecast (NSH) and pick out one zone.
+
+    The NSH product is issued per forecast office and covers several marine
+    zones in one text. The api.weather.gov zone-forecast endpoint has no data
+    for marine zones, so the product text itself is parsed.
+    """
+
+    def __init__(self, hass: HomeAssistant, office_code: str, marine_zone: str) -> None:
+        super().__init__(
+            hass,
+            _LOGGER,
+            name="NOAA Marine Forecast",
+            update_interval=DEFAULT_UPDATE_INTERVAL,
+        )
+        self.office_code = office_code
+        self.marine_zone = marine_zone
+
+    async def _async_update_data(self) -> dict:
+        session = async_get_clientsession(self.hass)
+        timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+        url = NWS_NSH_URL.format(office=self.office_code)
+
+        try:
+            async with session.get(
+                url,
+                headers={"User-Agent": USER_AGENT, "Accept": "application/json"},
+                timeout=timeout,
+            ) as resp:
+                resp.raise_for_status()
+                product = await resp.json(content_type=None)
+        except Exception as err:
+            raise UpdateFailed(
+                f"Error fetching nearshore marine forecast ({_describe(err)})"
+            ) from err
+
+        product = product or {}
+        issued = product.get("issuanceTime")
+        if product_is_stale(issued, datetime.now(timezone.utc), NSH_MAX_AGE_HOURS):
+            # The office has stopped issuing; NWS still serves its last one.
+            raise UpdateFailed(
+                f"The latest nearshore marine forecast from {self.office_code} "
+                f"was issued at {issued}, over {NSH_MAX_AGE_HOURS} hours ago"
+            )
+        text = product.get("productText") or ""
+        forecast = parse_nearshore_forecast(text, self.marine_zone)
+        if forecast is None:
+            raise UpdateFailed(
+                f"Zone {self.marine_zone} was not found in the latest "
+                f"nearshore marine forecast from {self.office_code}"
+            )
+
+        return {
+            "forecast": forecast,
+            "product_id": product.get("id"),
+            "issuance_time": product.get("issuanceTime"),
+            "source_url": url,
+        }
 
 
 # -------------------------------------------------------------------

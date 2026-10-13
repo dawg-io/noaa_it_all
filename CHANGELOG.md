@@ -5,6 +5,17 @@ All notable changes to NOAA It All for Home Assistant will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0]
+
+### Added
+- **Nearshore marine forecasts for the Great Lakes.** **Add entry → Nearshore marine forecast**
+  takes an NWS marine zone such as `LMZ741` and adds a `NOAA Marine - <zone name>` entry. Its
+  Period sensor is the current forecast period, such as `Rest Of Today`, and its Forecast sensor is
+  that period's forecast, with every period and any advisories in its attributes. Both are
+  unavailable when the office hasn't issued a forecast in 24 hours. NWS supplies the office and
+  name, and setup checks the zone is in that office's Nearshore Marine Forecast. Delete marine
+  entries before going back to 0.8.0. Thanks @gjsiii. (#37)
+
 ## [0.8.0]
 
 ### Added

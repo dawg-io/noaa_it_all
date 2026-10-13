@@ -12,7 +12,7 @@ from homeassistant.helpers import (
 )
 
 from .const import (
-    DOMAIN, CONF_OFFICE_CODE, CONF_LATITUDE, CONF_LONGITUDE,
+    DOMAIN, CONF_OFFICE_CODE, CONF_LATITUDE, CONF_LONGITUDE, CONF_MARINE_ZONE,
     CONF_ENTRY_TYPE, CONF_SURF_OFFICE_CODE,
     ENTRY_TYPE_HURRICANE, ENTRY_TYPE_SURF, ENTRY_TYPE_WEATHER,
     HURRICANE_DEVICE_ID,
@@ -25,6 +25,7 @@ from .offices import (
     ALL_SURF_ENTITIES,
     HURRICANE_ENTITIES,
     is_hurricane_entry,
+    is_marine_entry,
     is_surf_entry,
     radar_site as entry_radar_site,
     surf_entities,
@@ -37,6 +38,7 @@ from .coordinator import (
     NWSAlertsCoordinator,
     ObservationsCoordinator,
     SurfCoordinator,
+    MarineForecastCoordinator,
     ForecastCoordinator,
     CloudCoverCoordinator,
     RadarTimestampCoordinator,
@@ -52,6 +54,8 @@ PLATFORMS = ["sensor", "image", "binary_sensor", "weather"]
 SURF_PLATFORMS = ["sensor", "binary_sensor"]
 # The hurricane entry has the hurricane sensors and the outlook and GOES images.
 HURRICANE_PLATFORMS = ["sensor", "image"]
+# A marine entry has its zone's Period and Forecast sensors.
+MARINE_PLATFORMS = ["sensor"]
 
 
 def _platforms(conf):
@@ -60,6 +64,8 @@ def _platforms(conf):
         return SURF_PLATFORMS
     if is_hurricane_entry(conf):
         return HURRICANE_PLATFORMS
+    if is_marine_entry(conf):
+        return MARINE_PLATFORMS
     return PLATFORMS
 
 
@@ -203,6 +209,20 @@ def _async_adopt_safely(hass: HomeAssistant, entry: ConfigEntry, label: str, *ar
         _LOGGER.exception("Could not move the existing %s entities to their entry", label)
 
 
+async def _async_setup_marine_entry(hass: HomeAssistant, entry: ConfigEntry, conf: dict) -> bool:
+    """Set up a marine entry: one zone's Nearshore Marine Forecast."""
+    marine_coord = MarineForecastCoordinator(
+        hass, conf[CONF_OFFICE_CODE], conf[CONF_MARINE_ZONE]
+    )
+    await marine_coord.async_refresh()
+    hass.data[DOMAIN][entry.entry_id] = {
+        "config": conf,
+        "marine_forecast_coordinator": marine_coord,
+    }
+    await hass.config_entries.async_forward_entry_setups(entry, MARINE_PLATFORMS)
+    return True
+
+
 async def _async_setup_hurricane_entry(hass: HomeAssistant, entry: ConfigEntry, conf: dict) -> bool:
     """Set up the hurricane entry: NHC hurricane feeds and satellite images."""
     _async_adopt_safely(hass, entry, "hurricane", HURRICANE_DEVICE_ID, HURRICANE_ENTITIES)
@@ -270,6 +290,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         return await _async_setup_surf_entry(hass, entry, conf)
     if is_hurricane_entry(conf):
         return await _async_setup_hurricane_entry(hass, entry, conf)
+    if is_marine_entry(conf):
+        return await _async_setup_marine_entry(hass, entry, conf)
 
     office_code = conf[CONF_OFFICE_CODE]
     latitude = conf.get(CONF_LATITUDE)

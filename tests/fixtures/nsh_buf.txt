@@ -1,0 +1,164 @@
+
+000
+FZUS51 KBUF 102004
+NSHBUF
+
+Nearshore Marine Forecast
+National Weather Service Buffalo NY
+404 PM EDT Sat Oct 10 2026
+
+For waters within five nautical miles of shore
+
+Waves are the significant wave height - the average of the highest
+1/3 of the wave spectrum. Occasional wave height is the average of
+the highest 1/10 of the wave spectrum.
+
+LEZ020-110300-
+Upper Niagara River and Buffalo Harbor-
+404 PM EDT Sat Oct 10 2026
+
+.TONIGHT...Southeast winds 10 knots or less becoming south.
+Mostly cloudy. 
+.SUNDAY...Southeast winds 10 knots or less becoming east. Rain.
+.SUNDAY NIGHT...East winds less than 10 knots. A chance of rain
+in the evening. 
+.MONDAY...Light and variable winds becoming southwest 5 to
+10 knots. Mostly cloudy in the morning, then becoming partly
+sunny. 
+.MONDAY NIGHT...Southwest winds 5 to 15 knots. A chance of
+showers overnight. 
+.TUESDAY...Southwest winds 5 to 15 knots becoming west. Showers
+likely with a chance of thunderstorms. 
+.WEDNESDAY...Northwest winds 10 knots or less becoming north.
+Partly to mostly cloudy. 
+.THURSDAY...Northeast winds 5 to 10 knots becoming southeast. A
+chance of showers Thursday night. 
+
+Winds and waves higher in and near thunderstorms.
+
+The water temperature off Buffalo is 63 degrees.
+
+$$
+
+LOZ030-110300-
+Lower Niagara River-
+404 PM EDT Sat Oct 10 2026
+
+.TONIGHT...Southeast winds 10 knots or less becoming south.
+Mostly cloudy. 
+.SUNDAY...Light and variable winds becoming east 5 to 10 knots. A
+chance of rain in the morning, then rain likely in the afternoon.
+.SUNDAY NIGHT...East winds 5 to 10 knots becoming light and
+variable. A chance of rain in the evening. 
+.MONDAY...Light and variable winds becoming southwest 5 to
+10 knots. Mostly cloudy in the morning, then becoming partly
+sunny. 
+.MONDAY NIGHT...Southwest winds 5 to 10 knots. A chance of
+showers overnight. 
+.TUESDAY...Southwest winds 5 to 15 knots becoming northwest.
+Showers likely with a chance of thunderstorms. 
+.WEDNESDAY...Northwest winds 5 to 10 knots becoming north. Partly
+to mostly cloudy. 
+.THURSDAY...Northeast winds 5 to 10 knots becoming southeast. A
+chance of showers Thursday night. 
+
+Winds and waves higher in and near thunderstorms.
+
+$$
+
+LEZ040-041-110300-
+Buffalo to Ripley along Lake Erie-
+404 PM EDT Sat Oct 10 2026
+
+...SMALL CRAFT ADVISORY IN EFFECT FROM 8 PM EDT THIS EVENING
+THROUGH SUNDAY MORNING...
+
+.TONIGHT...Southeast winds 10 to 15 knots becoming south 15 to
+20 knots. Mostly cloudy. Waves 1 foot or less building to 1 to
+3 feet. 
+.SUNDAY...Southeast winds 15 to 20 knots becoming east 5 to
+15 knots. Rain. Waves 2 feet or less. 
+.SUNDAY NIGHT...Northeast winds 10 knots or less becoming north.
+Rain likely in the evening. Waves 1 foot or less. 
+.MONDAY...Northwest winds 10 knots or less becoming southwest.
+Mostly cloudy in the morning, then becoming partly sunny. Waves
+1 foot or less. 
+.MONDAY NIGHT...Southwest winds 5 to 15 knots. A chance of
+showers overnight. Waves 1 to 3 feet. 
+.TUESDAY...Southwest winds 10 to 15 knots becoming west 15 to
+20 knots. Showers likely with a chance of thunderstorms. Waves
+1 to 3 feet building to 2 to 4 feet, then subsiding to 1 to
+3 feet. 
+.WEDNESDAY...Northwest winds 5 to 15 knots becoming north. Mostly
+cloudy. Waves 2 feet or less. 
+.THURSDAY...Northeast winds 5 to 15 knots becoming southeast. A
+chance of showers. Waves 2 feet or less. 
+
+Winds and waves higher in and near thunderstorms.
+
+$$
+
+LOZ042-043-110300-
+Niagara River to Sodus Bay along Lake Ontario
+including Irondequoit Bay-
+404 PM EDT Sat Oct 10 2026
+
+.TONIGHT...East winds 5 to 15 knots becoming southeast. Mostly
+cloudy. Waves 1 to 3 feet subsiding to 1 foot or less. 
+.SUNDAY...Southeast winds 5 to 10 knots becoming east. A chance
+of rain in the morning, then rain in the afternoon. Waves 1 foot
+or less. 
+.SUNDAY NIGHT...East winds 10 knots or less becoming northeast.
+Rain likely in the evening, then a chance of rain overnight.
+Waves 1 foot or less. 
+.MONDAY...Northwest winds 10 knots or less becoming west. Mostly
+cloudy in the morning, then becoming partly sunny. Waves 1 foot
+or less. 
+.MONDAY NIGHT...South winds 5 to 15 knots. A chance of showers
+overnight. Waves 2 feet or less. 
+.TUESDAY...South winds 10 to 15 knots becoming northwest 15 to
+20 knots. Showers with a chance of thunderstorms. Waves 1 to
+3 feet building to 2 to 4 feet. 
+.WEDNESDAY...Northwest winds 5 to 15 knots becoming north. Mostly
+cloudy. Waves 2 to 4 feet subsiding to 1 to 3 feet. 
+.THURSDAY...North winds 5 to 15 knots becoming southeast 15 to
+20 knots. A chance of showers Thursday night. Waves 1 to 3 feet
+building to 2 to 4 feet. 
+
+Winds and waves higher in and near thunderstorms.
+
+The water temperature off Rochester is 63 degrees, and the water
+temperature at the central lake buoy is 60 degrees.
+
+$$
+
+LOZ044-045-110300-
+Sodus Bay to the Saint Lawrence River along Lake Ontario-
+404 PM EDT Sat Oct 10 2026
+
+.TONIGHT...East winds 5 to 15 knots becoming southeast 15 to
+20 knots. Mostly cloudy. Waves 1 foot or less building to 1 to
+3 feet. 
+.SUNDAY...Southeast winds 15 to 20 knots diminishing to 5 to
+15 knots. Rain in the afternoon. Waves 1 to 3 feet. 
+.SUNDAY NIGHT...Southeast winds 10 knots or less becoming
+northeast. Rain. Waves 1 foot or less. 
+.MONDAY...North winds 10 knots or less becoming west. Mostly
+cloudy. Waves 1 foot or less. 
+.MONDAY NIGHT...Southwest winds 5 to 15 knots becoming southeast.
+A chance of showers overnight. Waves 2 feet or less. 
+.TUESDAY...Southeast winds 15 to 20 knots becoming northwest.
+Showers with a chance of thunderstorms. Waves 1 to 3 feet
+building to 3 to 5 feet. Waves occasionally around 6 feet. 
+.WEDNESDAY...Northwest winds 5 to 15 knots becoming north. Mostly
+cloudy. Waves 2 to 4 feet subsiding to 1 to 3 feet. 
+.THURSDAY...North winds 5 to 15 knots becoming southeast 15 to
+20 knots. A chance of showers Thursday night. Waves 1 to 3 feet. 
+
+Winds and waves higher in and near thunderstorms.
+
+The water temperature off Oswego is 62 degrees, and the water
+temperature off Cape Vincent is 58 degrees.
+
+$$
+

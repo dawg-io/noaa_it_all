@@ -1,0 +1,156 @@
+
+000
+FZUS53 KDTX 101938
+NSHDTX
+
+Nearshore Marine Forecast for Michigan
+National Weather Service Detroit/Pontiac MI
+338 PM EDT Sat Oct 10 2026
+
+For waters within five nautical miles of shore
+
+Waves are the significant wave height - the average of the highest
+1/3 of the wave spectrum. Occasional wave height is the average of
+the highest 1/10 of the wave spectrum.
+
+LHZ422-110345-
+Inner Saginaw Bay SW of Point Au Gres to Bay Port MI-
+338 PM EDT Sat Oct 10 2026
+
+.TONIGHT...South winds 15 to 20 knots diminishing to 10 to
+15 knots early in the morning. Partly cloudy in the evening
+becoming mostly cloudy. Waves 1 to 3 feet. 
+.SUNDAY...Southeast winds 5 to 10 knots. Partly cloudy. Waves
+2 feet or less. 
+.SUNDAY NIGHT...Light and variable winds becoming southwest 5 to
+10 knots in the late evening and overnight. Mostly clear. Waves
+2 feet or less. 
+.MONDAY...Southwest winds 5 to 10 knots increasing to 10 to
+15 knots in the late morning and afternoon. Partly cloudy. Waves
+2 feet or less. 
+
+See Lake Huron Open Lake Forecast for days 3 through 5.
+
+$$
+
+LHZ421-110345-
+Outer Saginaw Bay SW of Alabaster to Port Austin MI to Inner
+Saginaw Bay-
+338 PM EDT Sat Oct 10 2026
+
+.TONIGHT...South winds 15 to 20 knots diminishing to 10 to
+15 knots early in the morning. Partly cloudy in the evening
+becoming mostly cloudy. Waves 1 to 3 feet. 
+.SUNDAY...South winds 10 to 15 knots becoming southeast 5 to
+10 knots early in the afternoon. Partly cloudy. Waves 2 feet or
+less. 
+.SUNDAY NIGHT...South winds 5 to 10 knots veering to the
+southwest after midnight. Mostly clear. Waves 2 feet or less. 
+.MONDAY...Southwest winds 10 to 15 knots. Partly cloudy. Waves
+2 feet or less. 
+
+See Lake Huron Open Lake Forecast for days 3 through 5.
+
+$$
+
+LHZ441-110345-
+Port Austin to Harbor Beach MI-
+338 PM EDT Sat Oct 10 2026
+
+...SMALL CRAFT ADVISORY IN EFFECT THROUGH LATE TONIGHT...
+
+.TONIGHT...South winds 15 to 20 knots. Partly cloudy in the
+evening becoming mostly cloudy. Waves 3 to 5 feet. Waves
+occasionally around 7 feet. 
+.SUNDAY...South winds 10 to 15 knots. Mostly cloudy early in the
+morning becoming partly cloudy. Waves 2 to 4 feet subsiding to
+1 to 3 feet in the late morning and afternoon. 
+.SUNDAY NIGHT...South winds 5 to 10 knots veering to the
+southwest after midnight. Partly cloudy. Waves 2 feet or less. 
+.MONDAY...Southwest winds 5 to 10 knots increasing to 10 to
+15 knots in the late morning and afternoon. Partly cloudy. Waves
+2 feet or less. 
+
+See Lake Huron Open Lake Forecast for days 3 through 5.
+
+$$
+
+LHZ442-110345-
+Harbor Beach to Port Sanilac MI-
+338 PM EDT Sat Oct 10 2026
+
+...SMALL CRAFT ADVISORY IN EFFECT THROUGH LATE TONIGHT...
+
+.TONIGHT...South winds 15 to 20 knots. Partly cloudy in the
+evening becoming mostly cloudy. Waves 2 to 4 feet. 
+.SUNDAY...Southeast winds 10 to 15 knots. Partly cloudy early in
+the morning becoming mostly cloudy. A slight chance of light rain
+until late afternoon. Waves 2 to 4 feet subsiding to 1 to 3 feet
+in the late morning and afternoon. 
+.SUNDAY NIGHT...South winds 5 to 10 knots veering to the
+southwest after midnight. Mostly cloudy early in the evening
+becoming partly cloudy. Patchy fog after midnight. Waves 2 feet
+or less. 
+.MONDAY...Southwest winds 5 to 10 knots becoming south 10 to
+15 knots in the late morning and afternoon. Partly cloudy. Waves
+2 feet or less. 
+
+See Lake Huron Open Lake Forecast for days 3 through 5.
+
+$$
+
+LHZ443-110345-
+Port Sanilac to Port Huron MI-
+338 PM EDT Sat Oct 10 2026
+
+.TONIGHT...Southeast winds 15 to 20 knots becoming south 10 to
+15 knots early in the morning. Mostly cloudy. Waves 1 to 3 feet. 
+.SUNDAY...Southeast winds 10 to 15 knots diminishing to 5 to
+10 knots early in the afternoon. Mostly cloudy. A chance of light
+rain until late afternoon, then a slight chance of light rain
+early in the afternoon. Waves 1 to 3 feet. 
+.SUNDAY NIGHT...Southeast winds 5 to 10 knots early in the
+evening becoming light and variable, then becoming southwest 5 to
+10 knots after midnight. Mostly cloudy early in the evening
+becoming partly cloudy. Patchy fog after midnight. Waves 2 feet
+or less. 
+.MONDAY...Southwest winds 5 to 10 knots increasing to 10 to
+15 knots in the late morning and afternoon. Partly cloudy. Waves
+2 feet or less. 
+
+See Lake Huron Open Lake Forecast for days 3 through 5.
+
+$$
+
+LEZ444-110345-
+Michigan Waters of Lake Erie from Detroit River to North Cape MI-
+338 PM EDT Sat Oct 10 2026
+
+.TONIGHT...Southeast winds 10 to 15 knots increasing to 15 to
+20 knots after midnight. Mostly cloudy. A chance of light rain
+after midnight. Waves 1 to 3 feet building to 2 to 4 feet early
+in the morning. 
+.SUNDAY...Southeast winds 15 to 20 knots becoming east 10 to
+15 knots in the late morning and early afternoon, then becoming
+northeast 5 to 10 knots early in the afternoon. Cloudy. Light
+rain likely early in the morning, then a chance of light rain in
+the late morning and early afternoon. Waves 2 to 4 feet subsiding
+to 1 to 3 feet in the late morning and afternoon. 
+.SUNDAY NIGHT...North winds 5 to 10 knots early in the evening
+becoming light and variable, then becoming west 5 to 10 knots
+after midnight. Mostly cloudy early in the evening becoming
+partly cloudy. Waves 2 feet or less. 
+.MONDAY...Southwest winds 5 to 10 knots. Mostly cloudy becoming
+partly cloudy in the late morning and early afternoon becoming
+mostly sunny. Waves 2 feet or less. 
+
+See Lake Erie Open Lake Forecast for days 3 through 5.
+
+The water temperature at Belle Isle is 61 degrees.
+
+$$
+
+AM
+
+You can obtain your latest National Weather Service forecasts online
+a www.weather.gov/greatlakes
