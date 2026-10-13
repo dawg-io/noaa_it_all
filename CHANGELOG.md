@@ -5,6 +5,38 @@ All notable changes to NOAA It All for Home Assistant will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0]
+
+### Added
+- **Space for any office.** Space weather, aurora, meteor showers and eclipses are now a
+  `NOAA Space` entry of their own, one per forecast office, such as `NOAA Space - Marquette, MI`
+  with its `NOAA MQT Space` device. Setting up a location ends by adding its office's Space entry,
+  worked out for that location. An office that already has one is marked **already added** and
+  shared, and **No space data** adds none. **Add entry** → **Space weather, aurora, meteor
+  showers and eclipses** adds Space for another location, such as a cabin up north, with no
+  weather entry for it. It's refused for an office that already has a Space entry, and for a
+  location NWS doesn't name an office for.
+
+### Changed
+- **Space is its own entry.** A weather entry now has only its `NOAA {OFFICE} Weather` device.
+  Upgrading moves each weather entry's `NOAA {OFFICE} Space` device into a `NOAA Space` entry for
+  its office, at that entry's location, keeping the entity IDs and history. Weather entries in the
+  same office share one Space entry. Space entries have nothing to configure, and changing a
+  weather entry's location doesn't move its Space entry. Reload the Home Assistant page afterwards
+  so the new setup screens show. Going back to 0.9.x afterwards needs the integration removed and
+  added again.
+- **Some Space entities show the same values in every Space entry.** Space weather is the same
+  everywhere, so with more than one Space entry these show the same values in each: Planetary
+  K-index and Planetary K-index Rating, Geomagnetic Storm and Geomagnetic Storm Interpretation,
+  Solar Radiation Storm Alerts, and the Geoelectric Field and Aurora Forecast images. The aurora,
+  meteor shower and eclipse entities are worked out for each entry.
+
+### Fixed
+- **A second location in the same office no longer logs an error for each Space entity.** Its
+  Space entities had the same unique IDs as the first location's, so on every start Home Assistant
+  refused all 20 with a "does not generate unique IDs" error. The two locations now share their
+  office's Space entry.
+
 ## [0.9.2]
 
 ### Fixed

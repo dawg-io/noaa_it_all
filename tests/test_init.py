@@ -339,12 +339,18 @@ class TestEntryTypesSetUp(unittest.TestCase):
         self.assertTrue(result)
         return hass, coordinators, adopt
 
-    def test_a_weather_entry_has_no_surf_or_hurricanes(self):
+    def test_a_weather_entry_has_no_surf_hurricanes_or_space(self):
         hass, coordinators, _ = self._setup({**_VEF, "entry_type": "weather"})
-        coordinators["SurfCoordinator"].assert_not_called()
-        coordinators["HurricaneCoordinator"].assert_not_called()
-        self.assertNotIn("surf_coordinator", self._data(hass))
-        self.assertNotIn("hurricane_coordinator", self._data(hass))
+        for name in (
+            "SurfCoordinator", "HurricaneCoordinator", "SpaceWeatherCoordinator",
+            "MeteorShowerCoordinator", "EclipseCoordinator",
+        ):
+            coordinators[name].assert_not_called()
+        for key in (
+            "surf_coordinator", "hurricane_coordinator", "space_weather_coordinator",
+            "meteor_coordinator", "eclipse_coordinator",
+        ):
+            self.assertNotIn(key, self._data(hass))
         hass.config_entries.async_forward_entry_setups.assert_awaited_once_with(
             hass.config_entries.async_forward_entry_setups.call_args.args[0],
             ["sensor", "image", "binary_sensor", "weather"],
@@ -414,6 +420,48 @@ class TestEntryTypesSetUp(unittest.TestCase):
         coordinators["SurfCoordinator"].assert_not_called()
         self.assertEqual(
             hass.config_entries.async_forward_entry_setups.call_args.args[1], ["sensor"]
+        )
+
+    def test_a_space_entry_has_space_weather_meteors_and_eclipses(self):
+        hass, coordinators, adopt = self._setup({**_ILM, "entry_type": "space"})
+        coordinators["SpaceWeatherCoordinator"].assert_called_once()
+        for name in ("MeteorShowerCoordinator", "EclipseCoordinator"):
+            self.assertEqual(
+                coordinators[name].call_args.args[1:], ("ILM", 34.2257, -77.9447)
+            )
+        for name in (
+            "ObservationsCoordinator", "ForecastCoordinator", "NWSAlertsCoordinator",
+            "RadarTimestampCoordinator", "ForecastDiscussionCoordinator", "SurfCoordinator",
+        ):
+            coordinators[name].assert_not_called()
+        self.assertEqual(
+            set(self._data(hass)),
+            {"config", "space_weather_coordinator", "meteor_coordinator", "eclipse_coordinator"},
+        )
+        self.assertEqual(
+            hass.config_entries.async_forward_entry_setups.call_args.args[1],
+            ["sensor", "binary_sensor", "image"],
+        )
+        # Takes over its office's Space device and all twenty of its entities,
+        # under the unique IDs they had in the weather entry.
+        _, _, device_key, entities = adopt.call_args.args
+        self.assertEqual(device_key, "noaa_ILM_space")
+        self.assertEqual(len(entities), 20)
+        self.assertIn(("sensor", "noaa_ILM_planetary_k_index"), entities)
+        self.assertIn(("binary_sensor", "noaa_ILM_eclipse_coming_up"), entities)
+        self.assertIn(("image", "noaa_ILM_aurora_image"), entities)
+
+    def test_unload_uses_the_space_platforms(self):
+        import noaa_it_all
+        from noaa_it_all.const import DOMAIN
+        hass = _make_hass()
+        hass.config_entries.async_unload_platforms = AsyncMock(return_value=True)
+        entry = _make_entry({**_ILM, "entry_type": "space"})
+        hass.data[DOMAIN] = {"entry_1": {}}
+        self.assertTrue(_run(noaa_it_all.async_unload_entry(hass, entry)))
+        self.assertEqual(
+            hass.config_entries.async_unload_platforms.call_args.args[1],
+            ["sensor", "binary_sensor", "image"],
         )
 
     def test_a_failed_takeover_does_not_stop_setup(self):
@@ -621,8 +669,15 @@ class TestAdoptEntities(unittest.TestCase):
         self.assertEqual(regs.calls, [])
 
 
+# The Space entry an upgraded Wilmington weather entry adds.
+_ILM_SPACE = {
+    "entry_type": "space", "office_code": "ILM",
+    "latitude": 34.2257, "longitude": -77.9447, "place": "Wilmington, NC",
+}
+
+
 class TestMigrateEntry(unittest.TestCase):
-    """Upgrading a version 1 entry into weather, surf and hurricane entries."""
+    """Upgrading a version 1 entry into weather, surf, hurricane and Space entries."""
 
     def _migrate(self, data, title="NOAA - Wilmington, NC", version=1, options=None, regs=None,
                  others=()):
@@ -632,8 +687,11 @@ class TestMigrateEntry(unittest.TestCase):
         entry.version = version
         entry.title = title
         hass.config_entries.async_entries = MagicMock(return_value=[entry, *others])
+        by_id = {e.entry_id: e for e in (entry, *others)}
+        hass.config_entries.async_get_entry = by_id.get
         regs = regs or _Registries()
-        with patch.object(noaa_it_all.dr, "async_get", return_value=regs):
+        with patch.object(noaa_it_all.dr, "async_get", return_value=regs), \
+                patch.object(noaa_it_all.er, "async_get", return_value=regs):
             result = _run(noaa_it_all.async_migrate_entry(hass, entry))
         return hass, result
 
@@ -647,10 +705,11 @@ class TestMigrateEntry(unittest.TestCase):
         self.assertEqual(kwargs["data"], {**_ILM, "entry_type": "weather"})
         self.assertEqual(kwargs["options"], {"radar_loop_hours": 6})
         self.assertEqual(kwargs["title"], "NOAA Weather - Wilmington, NC")
-        self.assertEqual(kwargs["version"], 2)
+        self.assertEqual(kwargs["version"], 3)
         self.assertEqual(self._added(hass), [
             {"entry_type": "surf", "office_code": "ILM"},
             {"entry_type": "hurricane"},
+            _ILM_SPACE,
         ])
 
     def test_the_office_in_options_decides_the_surf_office(self):
@@ -683,24 +742,140 @@ class TestMigrateEntry(unittest.TestCase):
         hass, _ = self._migrate(
             {**_VEF, "surf_office_code": None}, title="NOAA - Las Vegas, NV",
         )
-        self.assertEqual(self._added(hass), [{"entry_type": "hurricane"}])
+        self.assertEqual(self._added(hass), [{"entry_type": "hurricane"}, {
+            "entry_type": "space", "office_code": "VEF",
+            "latitude": 36.1699, "longitude": -115.1398, "place": "Las Vegas, NV",
+        }])
 
     def test_only_the_first_entry_to_upgrade_adds_hurricanes(self):
         """A disabled old entry upgrades when enabled, maybe after hurricanes were deleted."""
         upgraded = MagicMock(entry_id="entry_2", version=2)
         hass, _ = self._migrate(dict(_ILM), others=[upgraded])
-        self.assertEqual(self._added(hass), [{"entry_type": "surf", "office_code": "ILM"}])
+        self.assertEqual(
+            self._added(hass), [{"entry_type": "surf", "office_code": "ILM"}, _ILM_SPACE]
+        )
 
     def test_an_entry_from_a_newer_release_is_refused(self):
-        hass, result = self._migrate(dict(_ILM), version=3)
+        hass, result = self._migrate(dict(_ILM), version=4)
         self.assertFalse(result)
         hass.config_entries.async_update_entry.assert_not_called()
 
     def test_a_current_entry_is_left_alone(self):
-        hass, result = self._migrate({**_ILM, "entry_type": "weather"}, version=2)
+        hass, result = self._migrate({**_ILM, "entry_type": "weather"}, version=3)
         self.assertTrue(result)
         hass.config_entries.async_update_entry.assert_not_called()
         hass.config_entries.flow.async_init.assert_not_called()
+
+
+class TestMigrateSpace(unittest.TestCase):
+    """Upgrading a version 2 weather entry moves its Space into a Space entry."""
+
+    _migrate = TestMigrateEntry._migrate
+    _added = TestMigrateEntry._added
+
+    def _upgrade(self, data, title="NOAA Weather - Wilmington, NC", options=None, **kwargs):
+        hass, result = self._migrate(data, title=title, version=2, options=options, **kwargs)
+        self.assertTrue(result)
+        return hass
+
+    @staticmethod
+    def _other(entry_id, data, version, title="NOAA Weather - Wilmington, NC"):
+        other = MagicMock(entry_id=entry_id, version=version, title=title)
+        other.data, other.options = data, {}
+        return other
+
+    def test_a_weather_entry_adds_its_office_space_entry(self):
+        hass = self._upgrade({**_ILM, "entry_type": "weather"})
+        self.assertEqual(self._added(hass), [_ILM_SPACE])
+        # Only the version changes: the weather entry keeps its data and title.
+        hass.config_entries.async_update_entry.assert_called_once_with(
+            hass.config_entries.async_update_entry.call_args.args[0], version=3
+        )
+
+    def test_the_space_entry_is_at_the_location_in_effect(self):
+        """A location changed with Configure is in the options."""
+        hass = self._upgrade(
+            {**_SGX, "entry_type": "weather"},
+            title="NOAA Weather - San Diego, CA", options=dict(_ILM),
+        )
+        # The title still names the office it was set up with, so the Space
+        # entry is named after its own office instead.
+        self.assertEqual(self._added(hass), [{**_ILM_SPACE, "place": None}])
+
+    def test_an_inland_office_takes_its_place_from_the_title(self):
+        hass = self._upgrade({**_VEF, "entry_type": "weather"}, title="NOAA Weather - Las Vegas, NV")
+        self.assertEqual(self._added(hass)[0]["place"], "Las Vegas, NV")
+
+    def test_a_renamed_entry_leaves_the_name_to_the_office(self):
+        hass = self._upgrade({**_VEF, "entry_type": "weather"}, title="Vegas")
+        self.assertIsNone(self._added(hass)[0]["place"])
+
+    def test_an_office_changed_with_configure_takes_no_name_from_the_title(self):
+        hass = self._upgrade(
+            {**_VEF, "entry_type": "weather"}, title="NOAA Weather - Las Vegas, NV",
+            options={"office_code": "LKN", "latitude": 40.83, "longitude": -115.76},
+        )
+        added = self._added(hass)[0]
+        self.assertEqual(added["office_code"], "LKN")
+        self.assertIsNone(added["place"])
+
+    def test_no_space_entry_once_another_entry_in_the_office_has_upgraded(self):
+        """A Space entry deleted after the upgrade stays deleted when another is enabled."""
+        upgraded = self._other("entry_2", {**_ILM, "entry_type": "weather"}, version=3)
+        hass = self._upgrade({**_ILM, "entry_type": "weather"}, others=[upgraded])
+        self.assertEqual(self._added(hass), [])
+        hass.config_entries.async_update_entry.assert_called_once()
+
+    def test_an_upgraded_entry_in_another_office_does_not_count(self):
+        upgraded = self._other("entry_2", {**_VEF, "entry_type": "weather"}, version=3)
+        hass = self._upgrade({**_ILM, "entry_type": "weather"}, others=[upgraded])
+        self.assertEqual(self._added(hass), [_ILM_SPACE])
+
+    def test_the_space_entry_goes_where_its_entities_were(self):
+        """The entry that set up first had the office's Space entities, and their history."""
+        beach = {"office_code": "ILM", "latitude": 33.6891, "longitude": -78.8867,
+                 "entry_type": "weather"}
+        owner = self._other("entry_2", beach, version=2)
+        regs = _Registries()
+        regs.add_entity("sensor.noaa_ilm_space_planetary_k_index", "sensor",
+                        "noaa_ILM_planetary_k_index", "entry_2", "dev_space")
+        hass = self._upgrade({**_ILM, "entry_type": "weather"}, others=[owner], regs=regs)
+        self.assertEqual(self._added(hass), [
+            {**_ILM_SPACE, "latitude": 33.6891, "longitude": -78.8867},
+        ])
+
+    def test_its_own_space_entities_keep_its_own_location(self):
+        regs = _Registries()
+        regs.add_entity("sensor.noaa_ilm_space_planetary_k_index", "sensor",
+                        "noaa_ILM_planetary_k_index", "entry_1", "dev_space")
+        hass = self._upgrade({**_ILM, "entry_type": "weather"}, regs=regs)
+        self.assertEqual(self._added(hass), [_ILM_SPACE])
+
+    def test_an_entry_saved_without_a_location_uses_its_office(self):
+        hass = self._upgrade({"office_code": "ILM", "entry_type": "weather"})
+        from noaa_it_all.const import OFFICE_COORDINATES
+        lat, lon = OFFICE_COORDINATES["ILM"]
+        added = self._added(hass)[0]
+        self.assertEqual((added["latitude"], added["longitude"]), (lat, lon))
+
+    def test_without_any_location_no_space_entry_is_added(self):
+        with self.assertLogs("noaa_it_all", level="WARNING"):
+            hass = self._upgrade({"office_code": "VEF", "entry_type": "weather"})
+        self.assertEqual(self._added(hass), [])
+        hass.config_entries.async_update_entry.assert_called_once()
+
+    def test_other_entries_only_change_version(self):
+        for data in (
+            {"entry_type": "surf", "office_code": "ILM"},
+            {"entry_type": "marine", "office_code": "LOT", "marine_zone": "LMZ741"},
+            {"entry_type": "hurricane"},
+        ):
+            with self.subTest(data=data):
+                hass = self._upgrade(data, title="NOAA")
+                self.assertEqual(self._added(hass), [])
+                self.assertEqual(
+                    hass.config_entries.async_update_entry.call_args.kwargs, {"version": 3}
+                )
 
 
 class TestOfficeHelpers(unittest.TestCase):

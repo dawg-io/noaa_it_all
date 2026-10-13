@@ -37,7 +37,7 @@ from .const import (
     USER_AGENT,
 )
 from .entry_config import resolve_entry_config
-from .offices import is_hurricane_entry, radar_site as entry_radar_site
+from .offices import is_hurricane_entry, is_space_entry, radar_site as entry_radar_site
 from .radar_loop import (
     RadarFrameStore, assemble_gif, parse_http_date, select_frames,
 )
@@ -187,15 +187,15 @@ async def async_setup_entry(
         ])
         return
     office_code = conf[CONF_OFFICE_CODE]
+    if is_space_entry(conf):
+        # Global space weather images, under the office's Space device.
+        async_add_entities([
+            GeoelectricFieldImageEntity(hass, office_code),
+            AuroraForecastImageEntity(hass, office_code),
+        ])
+        return
 
-    # Global image entities (grouped under office device)
-    geoelectric_image_entity = GeoelectricFieldImageEntity(hass, office_code)
-    aurora_image_entity = AuroraForecastImageEntity(hass, office_code)
-
-    entities = [
-        geoelectric_image_entity,
-        aurora_image_entity,
-    ]
+    entities = []
 
     # Location-specific radar image entities
     radar_site = entry_radar_site(conf)

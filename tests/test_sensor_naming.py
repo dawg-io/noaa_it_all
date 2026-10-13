@@ -1015,7 +1015,27 @@ class TestPlatformsByEntryType(unittest.TestCase):
     _HURRICANE = {"HurricaneAlertsSensor", "HurricaneActivitySensor"}
     _SURF = {"RipCurrentRiskSensor", "SurfHeightSensor", "WaterTemperatureSensor"}
 
+    _SPACE = {
+        "GeomagneticSensor", "GeomagneticSensorInterpretation",
+        "PlanetaryKIndexSensor", "PlanetaryKIndexSensorRating",
+        "AuroraNextTimeSensor", "AuroraDurationSensor", "AuroraVisibilityProbabilitySensor",
+        "SolarRadiationStormAlertsSensor",
+        "MeteorShowerActivitySensor", "NextMeteorShowerSensor", "MeteorViewingScoreSensor",
+        "NextEclipseSensor", "NextEclipseTimeSensor", "EclipseCoverageSensor",
+        "EclipseViewingScoreSensor",
+    }
+    _SPACE_BINARY = {
+        "MeteorShowerActiveBinarySensor", "EclipseVisibleNowBinarySensor",
+        "EclipseComingUpBinarySensor",
+    }
+    _SPACE_ENTRY = {
+        "entry_type": "space", "office_code": "ILM", "latitude": 34.2257, "longitude": -77.9447,
+    }
+
     def _added(self, module_name, data, carried=()):
+        return {type(entity).__name__ for entity in self._entities(module_name, data, carried)}
+
+    def _entities(self, module_name, data, carried=()):
         import importlib
         from noaa_it_all.const import DOMAIN
         module = importlib.import_module(f"noaa_it_all.{module_name}")
@@ -1045,7 +1065,7 @@ class TestPlatformsByEntryType(unittest.TestCase):
             loop.run_until_complete(module.async_setup_entry(hass, entry, added.extend))
         finally:
             loop.close()
-        return {type(entity).__name__ for entity in added}
+        return added
 
     _WEATHER = {
         "entry_type": "weather", "office_code": "VEF", "radar_site": "KESX",
@@ -1093,6 +1113,28 @@ class TestPlatformsByEntryType(unittest.TestCase):
 
     def test_the_hurricane_entry_has_only_hurricanes(self):
         self.assertEqual(self._added("sensor", {"entry_type": "hurricane"}), self._HURRICANE)
+
+    def test_a_space_entry_has_only_space(self):
+        self.assertEqual(self._added("sensor", self._SPACE_ENTRY), self._SPACE)
+        self.assertEqual(self._added("binary_sensor", self._SPACE_ENTRY), self._SPACE_BINARY)
+
+    def test_a_weather_entry_has_no_space(self):
+        self.assertFalse(self._SPACE & self._added("sensor", self._WEATHER))
+        self.assertFalse(self._SPACE_BINARY & self._added("binary_sensor", self._WEATHER))
+
+    def test_space_entities_keep_the_unique_ids_the_upgrade_takes_over(self):
+        """SPACE_ENTITIES is what an upgraded Space entry adopts; a miss loses its history."""
+        from noaa_it_all.offices import SPACE_ENTITIES
+        made = set()
+        for platform in ("sensor", "binary_sensor"):
+            for entity in self._entities(platform, self._SPACE_ENTRY):
+                unique_id = getattr(entity, "unique_id", None) or entity._attr_unique_id
+                made.add((platform, unique_id))
+        expected = {
+            (platform, f"noaa_ILM_{suffix}")
+            for platform, suffix in SPACE_ENTITIES if platform != "image"
+        }
+        self.assertEqual(made, expected)
 
 
 if __name__ == "__main__":
