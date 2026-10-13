@@ -388,6 +388,20 @@ class TestForecastDiscussionSensor(unittest.TestCase):
         attrs = sensor.extra_state_attributes
         self.assertIn("availability", attrs)
 
+    def test_issue_time_is_read_from_the_header(self):
+        # The header line NWS issues every discussion with. The month was
+        # missing from the pattern, so this always read "Unknown".
+        text = ("000\nFXUS62 KILM 131835\nAFDILM\n\nArea Forecast Discussion\n"
+                "National Weather Service Wilmington NC\n235 PM EDT Tue Oct 13 2026\n\n"
+                ".WHAT HAS CHANGED...\nNo major changes.")
+        sensor = self._make({"discussion_text": text})
+        self.assertEqual(sensor.extra_state_attributes["issue_time"], "235 PM EDT Tue Oct 13 2026")
+
+    def test_issue_time_with_a_four_letter_zone(self):
+        text = "Area Forecast Discussion\nNational Weather Service Tiyan GU\n1000 AM ChST Wed Oct 14 2026\n"
+        sensor = self._make({"discussion_text": text})
+        self.assertEqual(sensor.extra_state_attributes["issue_time"], "1000 AM ChST Wed Oct 14 2026")
+
     def test_device_info_weather_group(self):
         sensor = self._make()
         info = sensor.device_info

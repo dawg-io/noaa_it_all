@@ -30,6 +30,9 @@ class WeatherObservationSensor(CoordinatorEntity):
     """
 
     _attr_has_entity_name = True
+    # The field whose observation time is this sensor's timestamp, when it is
+    # not the one in observation_field.
+    _time_field = None
 
     def __init__(self, coordinator, office_code, observation_field, sensor_name,
                  latitude=None, longitude=None, unit=None, icon=None, device_class=None):
@@ -83,11 +86,14 @@ class WeatherObservationSensor(CoordinatorEntity):
         if not self.coordinator.data:
             return self._attributes
         properties = self.coordinator.data.get("properties", {})
+        # A value carried from an earlier observation says when it was made.
+        field = self._time_field or self._observation_field.split('.')[0]
+        field_times = self.coordinator.data.get("field_times") or {}
         return {
             'office_code': self._office_code,
             'station_id': self.coordinator.data.get("station_id"),
             'station_name': properties.get('stationName', 'Unknown'),
-            'timestamp': properties.get('timestamp', 'Unknown'),
+            'timestamp': field_times.get(field) or properties.get('timestamp', 'Unknown'),
         }
 
     @property
@@ -325,6 +331,10 @@ class SkyConditionsSensor(WeatherObservationSensor):
 
 class FeelsLikeSensor(WeatherObservationSensor):
     """Feels-like temperature sensor (wind chill or heat index)."""
+
+    # Wind chill, heat index and temperature all come from the observation
+    # the temperature came from.
+    _time_field = 'temperature'
 
     def __init__(self, coordinator, office_code, latitude=None, longitude=None):
         """Initialize the feels-like sensor."""

@@ -145,7 +145,8 @@ NWS_MARINE_ZONE_URL = "https://api.weather.gov/zones/marine/{zone}"
 # Every Surf Zone Forecast issued in about the last week, to tell which offices
 # are issuing one now. Several stop outside their summer season.
 NWS_SRF_PRODUCTS_URL = "https://api.weather.gov/products/types/SRF"
-NWS_OBSERVATIONS_URL = "https://api.weather.gov/stations/{station}/observations/latest"
+# A station's recent observations, newest first, from a start time.
+NWS_OBSERVATIONS_URL = "https://api.weather.gov/stations/{station}/observations"
 NWS_RADAR_BASE_URL = "https://radar.weather.gov/ridge/standard/{radar}_0.gif"
 NWS_RADAR_LOOP_URL = "https://radar.weather.gov/ridge/standard/{radar}_loop.gif"
 NWS_ALERTS_URL = "https://api.weather.gov/alerts/active?point={lat},{lon}"
@@ -176,6 +177,18 @@ NDBC_REALTIME_URL = "https://www.ndbc.noaa.gov/data/realtime2/{station}.txt"
 # Observations come from the nearest one that answers, so a single station
 # going quiet does not leave every observation entity unavailable.
 OBSERVATION_STATION_CANDIDATES = 3
+
+# How far back to read a station's observations. A field the newest one leaves
+# empty is taken from the newest one in this window that has it, and a station
+# with nothing in it is skipped like one that does not answer. NWS often takes
+# tens of minutes, and sometimes longer, to publish an observation.
+OBSERVATION_WINDOW_HOURS = 2
+# A 5-minute station reports 24 times in that window.
+OBSERVATION_LIMIT = 30
+# How long to keep showing the last observation while every station fails,
+# before the observation entities go unavailable. Home Assistant's own NWS
+# integration also keeps observations for an hour.
+OBSERVATION_KEEP_MINUTES = 60
 
 # The issuingOffice NWS gives an office's products, where it is not "K" plus
 # the office code.
