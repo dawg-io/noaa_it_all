@@ -10,10 +10,10 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from datetime import timedelta, datetime, timezone
 
 from ..const import (
-    OFFICE_MAGNETIC_LATITUDES,
     AURORA_KP_THRESHOLDS, SOLAR_RADIATION_STORM_SCALES,
     SOLAR_RADIATION_KEYWORDS, DOMAIN,
 )
+from ..offices import magnetic_latitude
 from ..parsers import (
     interpret_dst_value,
     rate_kp_index,
@@ -243,10 +243,12 @@ class AuroraNextTimeSensor(CoordinatorEntity):
 
     _attr_has_entity_name = True
 
-    def __init__(self, coordinator, office_code):
+    def __init__(self, coordinator, office_code, latitude=None, longitude=None):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self._office_code = office_code
+        self._latitude = latitude
+        self._longitude = longitude
 
     @property
     def name(self):
@@ -266,7 +268,7 @@ class AuroraNextTimeSensor(CoordinatorEntity):
             return 'No Data', {'error': 'No Kp index data available'}
 
         current_kp = kp_data[-1].get('kp_index', 0)
-        office_lat = OFFICE_MAGNETIC_LATITUDES.get(self._office_code, 0)
+        office_lat = magnetic_latitude(self._office_code, self._latitude, self._longitude)
 
         aurora_possible = calculate_aurora_visibility(
             current_kp, office_lat, AURORA_KP_THRESHOLDS
@@ -340,10 +342,12 @@ class AuroraDurationSensor(CoordinatorEntity):
 
     _attr_has_entity_name = True
 
-    def __init__(self, coordinator, office_code):
+    def __init__(self, coordinator, office_code, latitude=None, longitude=None):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self._office_code = office_code
+        self._latitude = latitude
+        self._longitude = longitude
 
     @property
     def name(self):
@@ -362,7 +366,7 @@ class AuroraDurationSensor(CoordinatorEntity):
         if not kp_data or len(kp_data) == 0:
             return None, None
         current_kp = kp_data[-1].get('kp_index', 0)
-        office_lat = OFFICE_MAGNETIC_LATITUDES.get(self._office_code, 0)
+        office_lat = magnetic_latitude(self._office_code, self._latitude, self._longitude)
         return current_kp, office_lat
 
     @property
@@ -420,10 +424,12 @@ class AuroraVisibilityProbabilitySensor(CoordinatorEntity):
 
     _attr_has_entity_name = True
 
-    def __init__(self, coordinator, office_code):
+    def __init__(self, coordinator, office_code, latitude=None, longitude=None):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self._office_code = office_code
+        self._latitude = latitude
+        self._longitude = longitude
 
     @property
     def name(self):
@@ -442,7 +448,7 @@ class AuroraVisibilityProbabilitySensor(CoordinatorEntity):
         if not kp_data or len(kp_data) == 0:
             return None, None
         current_kp = kp_data[-1].get('kp_index', 0)
-        office_lat = OFFICE_MAGNETIC_LATITUDES.get(self._office_code, 0)
+        office_lat = magnetic_latitude(self._office_code, self._latitude, self._longitude)
         return current_kp, office_lat
 
     def _compute_probability(self):
@@ -506,10 +512,12 @@ class SolarRadiationStormAlertsSensor(CoordinatorEntity):
 
     _attr_has_entity_name = True
 
-    def __init__(self, coordinator, office_code):
+    def __init__(self, coordinator, office_code, latitude=None, longitude=None):
         """Initialize the sensor."""
         super().__init__(coordinator)
         self._office_code = office_code
+        self._latitude = latitude
+        self._longitude = longitude
 
     @property
     def name(self):
@@ -561,7 +569,9 @@ class SolarRadiationStormAlertsSensor(CoordinatorEntity):
         alerts = self._get_solar_radiation_alerts()
         if alerts is None:
             return {}
-        office_lat = OFFICE_MAGNETIC_LATITUDES.get(self._office_code, 45.0)
+        office_lat = magnetic_latitude(
+            self._office_code, self._latitude, self._longitude, default=45.0
+        )
         return {
             'alerts': alerts[:5],
             'office_code': self._office_code,

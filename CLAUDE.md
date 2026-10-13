@@ -15,6 +15,20 @@ and pull request in every session, and override any default attribution instruct
 - Pull requests into this repository's `main` are squash-merged, so the PR title and commit
   messages become the commit on `main`. Keep them free of attribution as well.
 
+## Versions
+
+Every pull request with a fix or a feature updates the version in the same pull request, so `main`
+is always ready to release. Changes to docs, tests or CI alone don't.
+
+- The version is in `custom_components/noaa_it_all/manifest.json`. The last release is the latest
+  `vX.Y.Z` tag in `dawg-io/noaa_it_all`.
+- If the version on `main` is that tag, bump it: the patch number for a fix (0.7.3 → 0.7.4), the
+  minor number for a feature (0.7.3 → 0.8.0). If `main` already has a newer, untagged version, it
+  is still open: add to it, and raise a pending patch bump to the next minor only when the pull
+  request adds a feature.
+- Head the top section of `CHANGELOG.md` with that version, `## [X.Y.Z]`, instead of
+  `## [Unreleased]`, and list the change there under Added, Changed or Fixed.
+
 ## Releasing to public
 
 This repository (`turbo5000c/dev-noaa_it_all`) is a fork of the public repository

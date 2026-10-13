@@ -4,6 +4,7 @@ Verifies that all location-specific sensors include the office code in
 their name and unique_id, matching the README documented format.
 """
 
+import asyncio
 import os
 import sys
 import unittest
@@ -1006,6 +1007,81 @@ class TestBinarySensorNaming(unittest.TestCase):
         for sensor in self._all_binary_sensors():
             name = type(sensor).__name__
             self.assertEqual(sensor._attr_unique_id, expected[name], f"{name} unique_id")
+
+
+class TestPlatformsByEntryType(unittest.TestCase):
+    """Each kind of entry gets only its own entities."""
+
+    _HURRICANE = {"HurricaneAlertsSensor", "HurricaneActivitySensor"}
+    _SURF = {"RipCurrentRiskSensor", "SurfHeightSensor", "WaterTemperatureSensor"}
+
+    def _added(self, module_name, data, carried=()):
+        import importlib
+        from noaa_it_all.const import DOMAIN
+        module = importlib.import_module(f"noaa_it_all.{module_name}")
+        entry = MagicMock()
+        entry.entry_id = "entry_1"
+        entry.data = data
+        entry.options = {}
+        hass = MagicMock()
+        hass.data = {DOMAIN: {"entry_1": {
+            key: MagicMock() for key in (
+                "space_weather_coordinator", "hurricane_coordinator",
+                "observations_coordinator", "forecast_coordinator",
+                "alerts_coordinator", "cloud_cover_coordinator",
+                "radar_timestamp_coordinator", "forecast_discussion_coordinator",
+                "meteor_coordinator", "eclipse_coordinator", "surf_coordinator",
+            )
+        }}}
+        if data.get("entry_type") == "surf":
+            from noaa_it_all.offices import surf_entities
+            hass.data[DOMAIN]["entry_1"]["surf_entities"] = (
+                surf_entities(data["office_code"]) + list(carried)
+            )
+        added = []
+        loop = asyncio.new_event_loop()
+        try:
+            loop.run_until_complete(module.async_setup_entry(hass, entry, added.extend))
+        finally:
+            loop.close()
+        return {type(entity).__name__ for entity in added}
+
+    _WEATHER = {
+        "entry_type": "weather", "office_code": "VEF", "radar_site": "KESX",
+        "latitude": 36.1699, "longitude": -115.1398,
+    }
+
+    def test_a_weather_entry_has_no_surf_or_hurricane_sensors(self):
+        added = self._added("sensor", self._WEATHER)
+        self.assertIn("TemperatureSensor", added)
+        self.assertFalse((self._SURF | self._HURRICANE) & added)
+        self.assertNotIn(
+            "UnsafeToSwimBinarySensor", self._added("binary_sensor", self._WEATHER)
+        )
+
+    def test_a_surf_entry_has_only_surf(self):
+        data = {"entry_type": "surf", "office_code": "ILM"}
+        self.assertEqual(self._added("sensor", data), self._SURF)
+        self.assertEqual(self._added("binary_sensor", data), {"UnsafeToSwimBinarySensor"})
+
+    def test_a_surf_entry_leaves_out_what_its_office_has_no_data_for(self):
+        lot = {"entry_type": "surf", "office_code": "LOT"}  # no tide station or buoy
+        self.assertEqual(self._added("sensor", lot), {"RipCurrentRiskSensor"})
+        dlh = {"entry_type": "surf", "office_code": "DLH"}  # tide station, no buoy
+        self.assertEqual(
+            self._added("sensor", dlh), {"RipCurrentRiskSensor", "WaterTemperatureSensor"}
+        )
+
+    def test_a_surf_entry_keeps_entities_carried_over_from_0_7(self):
+        from noaa_it_all.offices import WATER_TEMPERATURE
+        mfr = {"entry_type": "surf", "office_code": "MFR"}  # no tide station
+        self.assertEqual(
+            self._added("sensor", mfr, carried=[WATER_TEMPERATURE]),
+            {"RipCurrentRiskSensor", "WaterTemperatureSensor"},
+        )
+
+    def test_the_hurricane_entry_has_only_hurricanes(self):
+        self.assertEqual(self._added("sensor", {"entry_type": "hurricane"}), self._HURRICANE)
 
 
 if __name__ == "__main__":

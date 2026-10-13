@@ -101,6 +101,10 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
 
     def _handle_forecast_update(self) -> None:
         """Notify HA that forecast data changed (lightweight)."""
+        # Forecast subscribers -- the weather card -- are only sent a new
+        # forecast when told; otherwise they keep whatever they received when
+        # they subscribed.
+        self.hass.async_create_task(self.async_update_listeners(None))
         self.async_write_ha_state()
 
     @property
@@ -460,12 +464,15 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
             return "fog"
         if "overcast" in desc_lower:
             return "cloudy"
-        if "cloudy" in desc_lower:
-            return "cloudy"
         if "partly cloudy" in desc_lower or "mostly clear" in desc_lower or "partly sunny" in desc_lower:
             return "partlycloudy"
-        if "mostly cloudy" in desc_lower or "mostly sunny" in desc_lower:
+        if "mostly sunny" in desc_lower:
             return "partlycloudy"
+        # After the partly-cloudy checks, which it would otherwise swallow.
+        # "Mostly Cloudy" lands here too, as in Home Assistant's own NWS
+        # integration.
+        if "cloudy" in desc_lower:
+            return "cloudy"
         if "clear" in desc_lower or "fair" in desc_lower or "sunny" in desc_lower:
             return "clear-night" if is_night else "sunny"
         if "wind" in desc_lower and ("gust" in desc_lower or "strong" in desc_lower):

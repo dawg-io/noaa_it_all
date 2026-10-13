@@ -113,6 +113,12 @@ class TestHurricaneAlertsSensor(unittest.TestCase):
         self.assertIn("alerts", attrs)
         self.assertIsInstance(attrs["alerts"], list)
 
+    def test_failed_alerts_fetch_is_unknown_not_zero(self):
+        """#33: the coordinator sets a failed feed to None; that is not 0 alerts."""
+        sensor = self._make({"alerts": None, "storms": {"activeStorms": []}})
+        self.assertIsNone(sensor.state)
+        self.assertEqual(sensor.extra_state_attributes, {})
+
     def test_device_info_hurricane_group(self):
         sensor = self._make()
         info = sensor.device_info
@@ -162,6 +168,57 @@ class TestHurricaneActivitySensor(unittest.TestCase):
         ids = list(info["identifiers"])[0]
         self.assertEqual(ids[1], "noaa_hurricane")
         self.assertEqual(info["name"], "NOAA Hurricane")
+
+
+class TestHurricaneActivityWithAFeedMissing(unittest.TestCase):
+    """#33: one failed feed must not read as quiet, or as a lower level."""
+
+    _HURRICANE = {"classification": "HU", "name": "Test"}
+    _TS_WATCH = {"properties": {"event": "Tropical Storm Watch"}}
+    _HU_WARNING = {"properties": {"event": "Hurricane Warning"}}
+
+    def _make(self, alerts, storms):
+        from noaa_it_all.sensors.hurricanes import HurricaneActivitySensor
+        data = {
+            "alerts": None if alerts is None else {"features": alerts},
+            "storms": None if storms is None else {"activeStorms": storms},
+        }
+        return HurricaneActivitySensor(_make_coordinator(data), OFFICE)
+
+    def test_both_feeds_quiet_is_still_quiet(self):
+        sensor = self._make(alerts=[], storms=[])
+        self.assertEqual(sensor.state, "Quiet - No Active Storms or Alerts")
+
+    def test_failed_alerts_with_no_storms_is_unknown_not_quiet(self):
+        sensor = self._make(alerts=None, storms=[])
+        self.assertIsNone(sensor.state)
+
+    def test_failed_storms_below_high_is_unknown(self):
+        """A watch alone reads Low, but an active hurricane may be unseen."""
+        sensor = self._make(alerts=[self._TS_WATCH], storms=None)
+        self.assertIsNone(sensor.state)
+
+    def test_a_hurricane_is_high_even_with_alerts_missing(self):
+        sensor = self._make(alerts=None, storms=[self._HURRICANE])
+        self.assertEqual(sensor.state, "High - 1 Active Hurricane(s)")
+
+    def test_a_hurricane_warning_is_high_even_with_storms_missing(self):
+        sensor = self._make(alerts=[self._HU_WARNING], storms=None)
+        self.assertEqual(sensor.state, "High - Hurricane Warnings Active")
+
+    def test_failed_alerts_counts_are_unknown_not_zero(self):
+        attrs = self._make(alerts=None, storms=[self._HURRICANE]).extra_state_attributes
+        for key in ("hurricane_warnings", "hurricane_watches", "tropical_warnings",
+                    "tropical_watches", "total_alerts"):
+            self.assertIsNone(attrs[key], key)
+        self.assertEqual(attrs["hurricanes"], 1)
+
+    def test_failed_storms_counts_are_unknown_not_zero(self):
+        attrs = self._make(alerts=[self._TS_WATCH], storms=None).extra_state_attributes
+        for key in ("total_active_storms", "hurricanes", "tropical_storms",
+                    "other_storms", "storm_details"):
+            self.assertIsNone(attrs[key], key)
+        self.assertEqual(attrs["tropical_watches"], 1)
 
 
 if __name__ == "__main__":

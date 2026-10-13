@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 import unittest
 
 _REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -47,16 +48,34 @@ class TestTranslationsValid(unittest.TestCase):
         self.assertIn("step", self.en["config"])
         self.assertIn("user", self.en["config"]["step"])
 
-    def test_user_step_has_required_fields(self):
-        user = self.en["config"]["step"]["user"]
-        self.assertIn("title", user)
-        self.assertIn("description", user)
-        self.assertIn("data", user)
+    def test_user_step_is_the_menu_of_entry_types(self):
+        """Add entry starts by choosing weather, surf or hurricanes."""
+        options = self.en["config"]["step"]["user"]["menu_options"]
+        self.assertEqual({"location", "surf", "hurricane"}, set(options))
 
-    def test_user_data_has_required_keys(self):
-        data = self.en["config"]["step"]["user"]["data"]
+    def test_location_step_has_required_fields(self):
+        location = self.en["config"]["step"]["location"]
+        self.assertIn("title", location)
+        self.assertIn("description", location)
+        self.assertIn("data", location)
+
+    def test_location_data_has_required_keys(self):
+        data = self.en["config"]["step"]["location"]["data"]
         self.assertIn("latitude", data)
         self.assertIn("longitude", data)
+
+    def test_every_step_and_abort_the_flow_uses_has_a_string(self):
+        """A missing string shows the raw key in Home Assistant's dialogs."""
+        with open(os.path.join(_COMPONENT, "config_flow.py")) as f:
+            source = f.read()
+        config_class, options_class = source.split("class NOAAOptionsFlow")
+        for section, code in (("config", config_class), ("options", options_class)):
+            for step in set(re.findall(r'step_id="(\w+)"', code)):
+                with self.subTest(section=section, step=step):
+                    self.assertIn(step, self.en[section]["step"])
+        for reason in set(re.findall(r'(?:reason|error)="(\w+)"', config_class)):
+            with self.subTest(abort=reason):
+                self.assertIn(reason, self.en["config"]["abort"])
 
     def test_office_step_present(self):
         self.assertIn("office", self.en["config"]["step"])

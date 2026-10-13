@@ -5,6 +5,65 @@ All notable changes to NOAA It All for Home Assistant will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0]
+
+### Added
+- **Surf for any coast.** Setting up a location ends by choosing the coastal office whose surf
+  forecast you want, nearest first, so an inland location can follow the beach you visit. Each
+  office shows its distance, whether it has water temperature and surf height as well as rip
+  current risk, and **no forecast this week** when NWS hasn't issued one lately (the Great Lakes
+  offices only do in summer). **No surf data** adds none. More beaches can be added on their own
+  with **Add entry**.
+
+### Changed
+- **Weather, surf and hurricanes are separate entries.** A location is now `NOAA Weather - <office>`
+  (forecast, alerts, radar and space), each surf office is `NOAA Surf - <office>`, and the hurricane
+  and satellite entities are in `NOAA Hurricane`. Locations that use the same surf office share
+  its entry. A location set up as the integration's first entry adds the hurricane entry; delete it
+  and nothing adds it back. **Add entry** asks which kind to add. Configure is only on weather
+  entries.
+- **A new surf entry only has the entities its office has data for.** Water Temperature needs a
+  tide station and Surf Height a buoy; an office without one no longer gets an entity stuck at
+  unknown.
+- **Upgrading splits existing entries once.** Each becomes a weather entry, and its surf and the
+  hurricane entities move to their own entries, keeping their entity IDs and history. Every surf
+  entity is kept, including ones that read the forecast text where the office has no station.
+  Reload the Home Assistant page afterwards so the new setup screens show. Going back to 0.7.x
+  afterwards needs the integration removed and added again.
+
+### Fixed
+- **Inland locations get their own forecast office.** Setup only listed the 36 coastal offices
+  that issue Surf Zone Forecasts, so a location like Las Vegas was offered San Diego or Los Angeles,
+  and its forecast discussion, radar and aurora estimates came from there. Setup now asks NWS which
+  office covers the location and pre-selects it (VEF for Las Vegas), with its own radar site. The
+  coastal offices are still listed, and are all that's offered if NWS can't be reached.
+- **Aurora estimates work for any office.** Offices missing from the magnetic latitude table read
+  as the equator, so aurora never looked possible. Their magnetic latitude is now worked out from
+  the configured location.
+- **The weather card's forecast now updates.** New forecasts were never pushed to the card, so it
+  kept showing the forecast it loaded with until the dashboard was reloaded.
+- **Errors from NWS alerts, cloud cover, the radar timestamp and the forecast discussion say why.**
+  A timeout used to be logged with no reason at all. (#43)
+- **NWS error messages no longer include coordinates.** Failed requests were logged with the
+  request URL, and failed lookups with the latitude and longitude, which for the alerts and
+  location lookups is where you are. The status and reason are still logged; the coordinates only
+  appear with debug logging.
+- **A failed surf zone forecast no longer reads as a safe beach.** When the forecast couldn't be
+  fetched, Rip Current Risk showed `Low` and Unsafe to Swim showed `off`, whatever the actual risk.
+  Both are now `unknown` until the next successful fetch, and Unsafe to Swim's `risk_level`
+  attribute is `Unknown`. Water temperature and surf height from the tide station and buoy still
+  update. (#33)
+- **A failed hurricane feed no longer reads as quiet.** Hurricane data comes from two feeds, NWS
+  watches and warnings and the NHC's active storms. When one failed, its part counted as zero, so
+  Hurricane Alerts showed `0` and Hurricane Activity could show `Quiet - No Active Storms or Alerts`
+  or a level below the real one. Now Hurricane Alerts is `unknown` while the NWS feed is down, and
+  Hurricane Activity is `unknown` unless the feed that worked already shows a `High` level, which
+  the missing one can't change. The missing feed's counts in Activity's attributes have no value
+  rather than `0`. (#33)
+- **"Partly Cloudy" no longer shows as cloudy.** The weather entity and its forecasts mapped the
+  NWS "Partly Cloudy" to `cloudy`; it is now `partlycloudy`. "Mostly Cloudy" stays `cloudy`, as in
+  Home Assistant's own NWS integration. (#33)
+
 ## [0.7.3] - Current
 
 Entities are unchanged from 0.7.2.
