@@ -55,33 +55,33 @@ The integration has four kinds of entry, each listed separately under **Settings
 | Hurricanes and satellite images | `NOAA Hurricane` | `NOAA Hurricane` |
 
 <p align="left">
-<img width="560" alt="The NOAA It All page under Devices &amp; services, with a Hurricane, a Marine, a Surf and a Weather entry" src="https://raw.githubusercontent.com/dawg-io/noaa_it_all/main/docs/images/entries.png" />
+<img width="560" alt="The NOAA It All page under Devices &amp; services, with a Hurricane, a Marine, a Surf and a Weather entry" src="docs/images/entries.png" />
 </p>
 
 #### Add a location
 
 1. Go to **Settings** → **Devices & services** → **Add integration**, search for "NOAA It All", and choose **Weather for a location**.
 
-   <img width="420" alt="The NOAA It All setup menu: Weather for a location, Surf forecast for a coast, Nearshore marine forecast for a Great Lakes zone, Hurricanes and satellite images" src="https://raw.githubusercontent.com/dawg-io/noaa_it_all/main/docs/images/setup-menu.png" />
+   <img width="420" alt="The NOAA It All setup menu: Weather for a location, Surf forecast for a coast, Nearshore marine forecast for a Great Lakes zone, Hurricanes and satellite images" src="docs/images/setup-menu.png" />
 
 2. Enter the **latitude and longitude** (required). They're pre-filled from your Home Assistant Home zone; change them to use another location. Observations come from the NWS station nearest to them, and alerts, forecasts, cloud cover, aurora, meteor shower and eclipse entities use them too.
 
-   <img width="420" alt="Weather for a Location step with latitude and longitude fields" src="https://raw.githubusercontent.com/dawg-io/noaa_it_all/main/docs/images/setup-location.png" />
+   <img width="420" alt="Weather for a Location step with latitude and longitude fields" src="docs/images/setup-location.png" />
 
 3. Select your **NWS Forecast Office**. The office NWS names for your location is pre-selected (e.g., ILM for Wilmington, VEF for Las Vegas, BOU for Denver), followed by any coastal offices within 50 miles. If NWS can't be reached, only coastal offices are listed.
 
-   <img width="420" alt="Choose NWS Forecast Office step with ILM - Wilmington, NC selected" src="https://raw.githubusercontent.com/dawg-io/noaa_it_all/main/docs/images/setup-office.png" />
+   <img width="420" alt="Choose NWS Forecast Office step with ILM - Wilmington, NC selected" src="docs/images/setup-office.png" />
 
 4. Choose a **surf forecast office**. Only coastal offices issue Surf Zone Forecasts, so this is the coast whose rip current risk, surf height and water temperature you want, added as its own `NOAA Surf` entry. The nearest is pre-selected; pick another to follow a beach you visit, or choose **No surf data**. Each office is listed with its distance and what it provides, e.g. `ILM - Wilmington, NC (4.0 mi) - rip current, water temp, surf height`:
    - Every office gives rip current risk. Water temperature needs a tide station and surf height a buoy; a new surf entry for an office without one doesn't get that entity, so nothing sits at unknown. See [NWS Forecast Offices](#nws-forecast-offices) for which offices have which.
    - **no forecast this week** means NWS hasn't issued one for that office in the last 7 days. Some offices, such as the Great Lakes ones, only issue them in their summer season.
    - **already added** means another entry already uses that office's surf entry, which is shared rather than added twice.
 
-   <img width="420" alt="Choose Surf Forecast Office step with ILM - Wilmington, NC selected" src="https://raw.githubusercontent.com/dawg-io/noaa_it_all/main/docs/images/setup-surf.png" />
+   <img width="420" alt="Choose Surf Forecast Office step with ILM - Wilmington, NC selected" src="docs/images/setup-surf.png" />
 
 5. Assign the devices to areas, or choose **Skip and finish**. A weather entry has two devices, `NOAA ILM Weather` and `NOAA ILM Space`. The surf entry, and the hurricane entry on a first setup, are added alongside it.
 
-   <img width="420" alt="Name and assign step listing the NOAA ILM Space and NOAA ILM Weather devices" src="https://raw.githubusercontent.com/dawg-io/noaa_it_all/main/docs/images/setup-devices.png" />
+   <img width="420" alt="Name and assign step listing the NOAA ILM Space and NOAA ILM Weather devices" src="docs/images/setup-devices.png" />
 
 A location set up as the integration's first entry also adds the `NOAA Hurricane` entry. Delete it if you don't want hurricane and satellite entities; nothing adds it back.
 
@@ -91,18 +91,18 @@ Use **Add entry** on the NOAA It All page and pick from the same menu. **Hurrica
 
 - **Surf forecast for a coast** lists every coastal office that doesn't have a surf entry yet, nearest to your Home zone first.
 
-  <img width="420" alt="Surf forecast office list: MHX, CHS, AKQ and more, each with its distance and what it provides, some marked no forecast this week" src="https://raw.githubusercontent.com/dawg-io/noaa_it_all/main/docs/images/add-surf-offices.png" />
+  <img width="420" alt="Surf forecast office list: MHX, CHS, AKQ and more, each with its distance and what it provides, some marked no forecast this week" src="docs/images/add-surf-offices.png" />
 
 - **Nearshore marine forecast for a Great Lakes zone** takes an NWS marine zone ID such as `LMZ741`. NWS supplies the zone's office and name, and setup checks the zone is in that office's Nearshore Marine Forecast. To find a zone ID, open the zone's [marine forecast](https://forecast.weather.gov/shmrn.php?mz=lmz741) on weather.gov; the ID is in the page address (`mz=lmz741`). Open-lake and ocean zones aren't covered.
 
-  <img width="420" alt="Nearshore Marine Forecast step with LMZ741 entered as the marine zone ID" src="https://raw.githubusercontent.com/dawg-io/noaa_it_all/main/docs/images/setup-marine.png" />
+  <img width="420" alt="Nearshore Marine Forecast step with LMZ741 entered as the marine zone ID" src="docs/images/setup-marine.png" />
 
 #### Change a location
 
 **Configure** (the gear on a `NOAA Weather` entry) walks through the latitude and longitude, the forecast office, then how many hours the radar loop covers (see [Radar loop history](#image-entities)). Surf, marine and hurricane entries have nothing to configure: add or delete them instead.
 
 <p align="left">
-<img width="420" alt="Radar Loop History options step with Hours of radar history set to 24" src="https://raw.githubusercontent.com/dawg-io/noaa_it_all/main/docs/images/options-radar.png" />
+<img width="420" alt="Radar Loop History options step with Hours of radar history set to 24" src="docs/images/options-radar.png" />
 </p>
 
 #### Upgrading from 0.7.x
@@ -130,7 +130,7 @@ Location-specific weather observations, forecasts, alerts and radar, in the `NOA
 - **Entities**: 22: nine observations, two forecasts, the weather entity, Active NWS Alerts and four alert binary sensors, cloud cover, the forecast discussion, and the radar timestamp, image and loop
 
 <p align="left">
-  <img width="270" alt="NOAA ILM Weather device: weather entity, alert binary sensors, observations, forecasts and radar images" src="https://raw.githubusercontent.com/dawg-io/noaa_it_all/main/docs/images/device-weather.png" />
+  <img width="270" alt="NOAA ILM Weather device: weather entity, alert binary sensors, observations, forecasts and radar images" src="docs/images/device-weather.png" />
 </p>
 
 #### 🌌 NOAA {OFFICE} Space
@@ -141,7 +141,7 @@ Space weather (geomagnetic storms, Kp, aurora, solar radiation storms) plus the 
 - **Entities**: 20: eight space weather sensors, three meteor shower and four eclipse sensors, three binary sensors, and two images
 
 <p align="left">
-  <img width="295" alt="NOAA ILM Space device: aurora, eclipse, geomagnetic, meteor shower, Kp and solar radiation entities" src="https://raw.githubusercontent.com/dawg-io/noaa_it_all/main/docs/images/device-space.png" />
+  <img width="295" alt="NOAA ILM Space device: aurora, eclipse, geomagnetic, meteor shower, Kp and solar radiation entities" src="docs/images/device-space.png" />
 </p>
 
 #### 🌊 NOAA {OFFICE} Surf
@@ -152,7 +152,7 @@ Rip current risk, surf height and water temperature for one coastal office, in i
 - **Entities**: 2 to 4: Rip Current Risk and Unsafe to Swim, plus Water Temperature and Surf Height where available
 
 <p align="left">
-  <img width="320" alt="NOAA ILM Surf device: Rip Current Risk, Surf Height, Unsafe to Swim, Water Temperature" src="https://raw.githubusercontent.com/dawg-io/noaa_it_all/main/docs/images/device-surf.png" />
+  <img width="320" alt="NOAA ILM Surf device: Rip Current Risk, Surf Height, Unsafe to Swim, Water Temperature" src="docs/images/device-surf.png" />
 </p>
 
 #### ⛵ NOAA {ZONE} Marine
@@ -163,7 +163,7 @@ The nearshore marine forecast for one Great Lakes marine zone, in its `NOAA Mari
 - **Entities**: `sensor.noaa_{zone}_marine_period` and `sensor.noaa_{zone}_marine_forecast`
 
 <p align="left">
-  <img width="320" alt="NOAA LMZ741 Marine device: Forecast and Period sensors" src="https://raw.githubusercontent.com/dawg-io/noaa_it_all/main/docs/images/device-marine.png" />
+  <img width="320" alt="NOAA LMZ741 Marine device: Forecast and Period sensors" src="docs/images/device-marine.png" />
 </p>
 
 #### 🌀 NOAA Hurricane
@@ -174,7 +174,7 @@ Global hurricane tracking and GOES satellite imagery, in the `NOAA Hurricane` en
 - **Entities**: `sensor.noaa_hurricane_activity`, `sensor.noaa_hurricane_alerts`, `image.noaa_hurricane_outlook_image`, `image.noaa_hurricane_pacific_outlook_image`, `image.noaa_hurricane_goes_air_mass`, `image.noaa_hurricane_goes_geocolor`
 
 <p align="left">
-  <img width="320" alt="NOAA Hurricane device: Activity, Alerts, GOES Air Mass, GOES Geocolor, Outlook Image, Pacific Outlook Image" src="https://raw.githubusercontent.com/dawg-io/noaa_it_all/main/docs/images/device-hurricane.png" />
+  <img width="320" alt="NOAA Hurricane device: Activity, Alerts, GOES Air Mass, GOES Geocolor, Outlook Image, Pacific Outlook Image" src="docs/images/device-hurricane.png" />
 </p>
 
 > **Important**: Hurricane and GOES satellite entities live under **NOAA Hurricane** only, in its own entry. There is one, however many locations are configured.
@@ -1129,7 +1129,7 @@ entities:
     name: "Any Active Alerts"
     icon: mdi:bell-alert
 ```
-<img width="400" alt="Weather alerts card: one active alert, with the heat/air quality and any-alert rows showing Unsafe" src="https://raw.githubusercontent.com/dawg-io/noaa_it_all/main/docs/images/card-weather-alerts.png" />
+<img width="400" alt="Weather alerts card: one active alert, with the heat/air quality and any-alert rows showing Unsafe" src="docs/images/card-weather-alerts.png" />
 
 #### Beach Conditions Card (NOAA Surf Group)
 ```yaml
@@ -1151,7 +1151,7 @@ entities:
     name: "Water Temperature"
     icon: mdi:thermometer-water
 ```
-<img width="400" alt="Beach conditions card: rip current risk, swimming Unsafe, surf height and water temperature" src="https://raw.githubusercontent.com/dawg-io/noaa_it_all/main/docs/images/card-beach.png" />
+<img width="400" alt="Beach conditions card: rip current risk, swimming Unsafe, surf height and water temperature" src="docs/images/card-beach.png" />
 
 #### Current Weather Card (NOAA Weather Group)
 The next three forecast periods with NWS's icons. Home Assistant's markdown card drops inline styles, so the layout is a table.
@@ -1169,7 +1169,7 @@ content: |
   _Forecast loading…_
   {% endif %}
 ```
-<img width="400" alt="Forecast card: This Afternoon, Tonight and Wednesday, each with an NWS icon, temperature and detailed forecast" src="https://raw.githubusercontent.com/dawg-io/noaa_it_all/main/docs/images/card-current-weather.png" />
+<img width="400" alt="Forecast card: This Afternoon, Tonight and Wednesday, each with an NWS icon, temperature and detailed forecast" src="docs/images/card-current-weather.png" />
 
 #### Meteor Shower Card (NOAA Space Group)
 ```yaml
@@ -1217,7 +1217,7 @@ entities:
     attribute: days_until
     name: Days Away
 ```
-<img width="400" alt="Meteor shower card: tonight's shower, viewing score and conditions, best viewing window, moon illumination and the next shower" src="https://raw.githubusercontent.com/dawg-io/noaa_it_all/main/docs/images/card-meteor.png" />
+<img width="400" alt="Meteor shower card: tonight's shower, viewing score and conditions, best viewing window, moon illumination and the next shower" src="docs/images/card-meteor.png" />
 
 To list the upcoming showers, read the `upcoming` attribute with a markdown card:
 
@@ -1230,7 +1230,7 @@ content: |
   **{{ s.name }}** — {{ as_timestamp(s.peak_local) | timestamp_custom('%b %-d') }} ({{ s.days_until | round(0) | int }} days), up to {{ s.zhr_max }}/hr in {{ s.constellation }}
   {% endfor %}
 ```
-<img width="400" alt="Upcoming meteor showers: the next five with peak date, days away, rate and constellation" src="https://raw.githubusercontent.com/dawg-io/noaa_it_all/main/docs/images/card-meteor-upcoming.png" />
+<img width="400" alt="Upcoming meteor showers: the next five with peak date, days away, rate and constellation" src="docs/images/card-meteor-upcoming.png" />
 
 #### Eclipse Card (NOAA Space Group)
 ```yaml
@@ -1282,7 +1282,7 @@ entities:
     attribute: days_until
     name: Days Away
 ```
-<img width="400" alt="Eclipse card: next eclipse, when to go outside, coverage, viewing score, watch window, direction and height" src="https://raw.githubusercontent.com/dawg-io/noaa_it_all/main/docs/images/card-eclipse.png" />
+<img width="400" alt="Eclipse card: next eclipse, when to go outside, coverage, viewing score, watch window, direction and height" src="docs/images/card-eclipse.png" />
 
 To list what is coming, read the `upcoming` attribute with a markdown card. It includes eclipses
 that are *not* visible from your location, which is what stops the list from looking empty for
@@ -1297,7 +1297,7 @@ content: |
   **{{ e.name }}** — {{ e.date }} ({{ e.days_until | round(0) | int }} days){% if e.visible %}: {{ e.disc_covered }}% covered, score {{ e.viewing_score }}{% endif %}
   {% endfor %}
 ```
-<img width="400" alt="Upcoming eclipses: the next five, with coverage and score for the ones visible from here" src="https://raw.githubusercontent.com/dawg-io/noaa_it_all/main/docs/images/card-eclipse-upcoming.png" />
+<img width="400" alt="Upcoming eclipses: the next five, with coverage and score for the ones visible from here" src="docs/images/card-eclipse-upcoming.png" />
 
 #### Space Weather Card (NOAA Space Group)
 ```yaml
@@ -1326,7 +1326,7 @@ entities:
     name: Solar Radiation Alerts
     icon: mdi:radioactive
 ```
-<img width="400" alt="Space weather card: Kp index, geomagnetic storm level, aurora probability, timing and duration, and solar radiation alerts" src="https://raw.githubusercontent.com/dawg-io/noaa_it_all/main/docs/images/card-space-weather.png" />
+<img width="400" alt="Space weather card: Kp index, geomagnetic storm level, aurora probability, timing and duration, and solar radiation alerts" src="docs/images/card-space-weather.png" />
 
 #### Hurricane Tracking Card (NOAA Hurricane Group)
 Activity covers every basin the NHC tracks, so the card lists the active storms from the `storm_details` attribute (intensity is in knots) and shows both outlook maps.
@@ -1361,7 +1361,7 @@ cards:
         name: "East Pacific"
         show_state: false
 ```
-<img width="400" alt="Hurricane card: activity level, watches and warnings, the list of active storms, and the Atlantic and East Pacific two-day outlook maps" src="https://raw.githubusercontent.com/dawg-io/noaa_it_all/main/docs/images/card-hurricane.png" />
+<img width="400" alt="Hurricane card: activity level, watches and warnings, the list of active storms, and the Atlantic and East Pacific two-day outlook maps" src="docs/images/card-hurricane.png" />
 
 #### Comprehensive Weather Dashboard View
 Alerts and beach safety at the top only while they're active, then current conditions, details and the space weather images.
@@ -1446,7 +1446,7 @@ cards:
         name: "Aurora Forecast"
         show_state: false
 ```
-<img width="400" alt="Dashboard: alert and rip current banners, temperature, humidity and Kp gauges, weather details, and the geoelectric field and aurora forecast images" src="https://raw.githubusercontent.com/dawg-io/noaa_it_all/main/docs/images/card-dashboard.png" />
+<img width="400" alt="Dashboard: alert and rip current banners, temperature, humidity and Kp gauges, weather details, and the geoelectric field and aurora forecast images" src="docs/images/card-dashboard.png" />
 
 #### Glance Card for Quick Overview
 ```yaml
@@ -1473,7 +1473,7 @@ entities:
   - entity: sensor.noaa_ilm_surf_rip_current_risk
     name: "Rip Risk"
 ```
-<img width="400" alt="Glance card: temperature, wind, surf, swimming, Kp, alerts, hurricanes and rip risk" src="https://raw.githubusercontent.com/dawg-io/noaa_it_all/main/docs/images/card-glance.png" />
+<img width="400" alt="Glance card: temperature, wind, surf, swimming, Kp, alerts, hurricanes and rip risk" src="docs/images/card-glance.png" />
 
 #### Mobile-Optimized Card
 ```yaml
@@ -1504,7 +1504,7 @@ cards:
       icon: mdi:alert-circle
       color: red
 ```
-<img width="400" alt="Mobile card: Wilmington Weather header with update time, temperature, feels like and conditions, and a View Active Alerts tile" src="https://raw.githubusercontent.com/dawg-io/noaa_it_all/main/docs/images/card-mobile.png" />
+<img width="400" alt="Mobile card: Wilmington Weather header with update time, temperature, feels like and conditions, and a View Active Alerts tile" src="docs/images/card-mobile.png" />
 
 #### Forecast Discussion Card
 The discussion keeps NWS's line breaks in a code block. It's long, so give it a view or a popup of its own.
@@ -1516,7 +1516,7 @@ content: |
   {{ state_attr('sensor.noaa_ilm_weather_forecast_discussion', 'full_text') or 'No discussion yet.' }}
   ~~~
 ```
-<img width="400" alt="Forecast discussion card showing the start of the NWS Wilmington Area Forecast Discussion in monospace" src="https://raw.githubusercontent.com/dawg-io/noaa_it_all/main/docs/images/card-discussion.png" />
+<img width="400" alt="Forecast discussion card showing the start of the NWS Wilmington Area Forecast Discussion in monospace" src="docs/images/card-discussion.png" />
 
 #### Marine Forecast Card (NOAA Marine Group)
 ```yaml
@@ -1531,7 +1531,7 @@ content: |
   **{{ p.name }}**: {{ p.detailed_forecast }}
   {% endfor %}
 ```
-<img width="400" alt="Marine forecast card: Rest Of Today, Tonight, Wednesday and Wednesday Night forecasts for the LMZ741 zone" src="https://raw.githubusercontent.com/dawg-io/noaa_it_all/main/docs/images/card-marine.png" />
+<img width="400" alt="Marine forecast card: Rest Of Today, Tonight, Wednesday and Wednesday Night forecasts for the LMZ741 zone" src="docs/images/card-marine.png" />
 
 ## Troubleshooting & FAQ
 
