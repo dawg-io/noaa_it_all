@@ -16,6 +16,7 @@ from .const import (
     ECLIPSE_UPCOMING_DAYS, ECLIPSE_UPCOMING_MIN_COVERAGE,
 )
 from .entry_config import resolve_entry_config
+from .offices import is_surf_entry
 from .sensors.meteor_showers import space_device_info
 
 _LOGGER = logging.getLogger(__name__)
@@ -39,12 +40,15 @@ async def async_setup_entry(
     longitude = conf.get(CONF_LONGITUDE)
 
     data = hass.data[DOMAIN][config_entry.entry_id]
-    surf_coord = data["surf_coordinator"]
+    if is_surf_entry(conf):
+        async_add_entities([UnsafeToSwimBinarySensor(data["surf_coordinator"], office_code)])
+        return
+
     alerts_coord = data["alerts_coordinator"]
     meteor_coord = data["meteor_coordinator"]
     eclipse_coord = data["eclipse_coordinator"]
 
-    entities = [UnsafeToSwimBinarySensor(surf_coord, office_code)]
+    entities = []
 
     if alerts_coord and latitude is not None and longitude is not None:
         entities.extend([

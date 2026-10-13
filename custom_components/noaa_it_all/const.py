@@ -39,25 +39,27 @@ DOCUMENTATION_URL = (
 HURRICANE_DEVICE_ID = "noaa_hurricane"
 HURRICANE_DEVICE_NAME = "NOAA Hurricane"
 
-# Key used in hass.data[DOMAIN] to track whether the global hurricane
-# entities have already been added by an earlier config entry, so they
-# are not duplicated when multiple offices are configured. The value
-# stored is the ``entry_id`` of the *owning* config entry (not just a
-# boolean), so that if the owner is unloaded while other entries
-# remain we can detect ownership transfer and re-create the entities.
-HURRICANE_SENSORS_ADDED_KEY = "_hurricane_sensors_added"
-HURRICANE_IMAGES_ADDED_KEY = "_hurricane_images_added"
-
-# Key for the single shared HurricaneCoordinator. Hurricane data is
-# global (NHC) so all config entries share one coordinator instead of
-# each entry creating its own and triggering redundant API calls.
-HURRICANE_COORDINATOR_KEY = "_hurricane_coordinator"
-
 # Configuration keys
 CONF_OFFICE_CODE = "office_code"
 CONF_LATITUDE = "latitude"
 CONF_LONGITUDE = "longitude"
 CONF_RADAR_LOOP_HOURS = "radar_loop_hours"
+# What a config entry is: weather for a location (forecast, alerts, radar and
+# space), or the surf forecast of one coastal office. Entries from before 0.8.0
+# have no type; migrating them adds it.
+CONF_ENTRY_TYPE = "entry_type"
+ENTRY_TYPE_WEATHER = "weather"
+ENTRY_TYPE_SURF = "surf"
+# The national hurricane feeds and satellite images, in one entry of their own.
+ENTRY_TYPE_HURRICANE = "hurricane"
+HURRICANE_ENTRY_TITLE = "NOAA Hurricane"
+# The surf office chosen on the surf step. A 0.8.0 test build also saved it on
+# weather entries, before surf became its own entry; that copy is only read
+# when migrating them.
+CONF_SURF_OFFICE_CODE = "surf_office_code"
+# The NEXRAD site for the radar images, from the NWS Points API at setup.
+# OFFICE_RADAR_SITES covers only the offices in the table, not inland ones.
+CONF_RADAR_SITE = "radar_site"
 
 # Default values
 DEFAULT_SCAN_INTERVAL = 10  # minutes
@@ -134,6 +136,10 @@ RADAR_FRAME_FUTURE_SLACK_MINUTES = 60
 NWS_SRF_URL = "https://forecast.weather.gov/product.php?site={office}&issuedby={office}&product=SRF&format=TXT"
 NWS_API_BASE = "https://api.weather.gov"
 NWS_POINTS_URL = "https://api.weather.gov/points/{lat},{lon}"
+NWS_OFFICE_URL = "https://api.weather.gov/offices/{office}"
+# Every Surf Zone Forecast issued in about the last week, to tell which offices
+# are issuing one now. Several stop outside their summer season.
+NWS_SRF_PRODUCTS_URL = "https://api.weather.gov/products/types/SRF"
 NWS_OBSERVATIONS_URL = "https://api.weather.gov/stations/{station}/observations/latest"
 NWS_RADAR_BASE_URL = "https://radar.weather.gov/ridge/standard/{radar}_0.gif"
 NWS_RADAR_LOOP_URL = "https://radar.weather.gov/ridge/standard/{radar}_loop.gif"
@@ -156,6 +162,14 @@ NDBC_REALTIME_URL = "https://www.ndbc.noaa.gov/data/realtime2/{station}.txt"
 # Observations come from the nearest one that answers, so a single station
 # going quiet does not leave every observation entity unavailable.
 OBSERVATION_STATION_CANDIDATES = 3
+
+# The issuingOffice NWS gives an office's products, where it is not "K" plus
+# the office code.
+OFFICE_ISSUING_IDS = {
+    "GUM": "PGUM",
+    "HFO": "PHFO",
+    "SJU": "TJSJ",
+}
 
 # NWS office to observation station mapping
 # Each office uses the primary weather observation station in their area
@@ -382,6 +396,11 @@ OFFICE_MAGNETIC_LATITUDES = {
     "TAE": 30.4,  # Tallahassee, FL
     "TBW": 27.8,  # Tampa, FL
 }
+
+# Geomagnetic north pole (dipole axis, about 2025), for estimating the
+# magnetic latitude of an office missing from OFFICE_MAGNETIC_LATITUDES.
+GEOMAGNETIC_POLE_LAT = 80.8
+GEOMAGNETIC_POLE_LON = -72.8
 
 # Aurora visibility thresholds based on Kp index and magnetic latitude
 AURORA_KP_THRESHOLDS = {

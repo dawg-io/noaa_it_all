@@ -49,18 +49,34 @@ This Home Assistant integration provides comprehensive NOAA data through sensors
 ### Configuration
 
 #### Config Flow (Recommended - New!)
-For location-specific rip current, surf zone, and weather data:
+The integration has three kinds of entry, each listed separately under **Settings → Devices & Services → NOAA It All**:
+
+| Entry | Title | Devices |
+|---|---|---|
+| Weather for a location | `NOAA Weather - Las Vegas, NV` | `NOAA VEF Weather`, `NOAA VEF Space` |
+| Surf forecast for a coast | `NOAA Surf - Wilmington, NC` | `NOAA ILM Surf` |
+| Hurricanes and satellite images | `NOAA Hurricane` | `NOAA Hurricane` |
+
+Add a location first:
 1. Go to **Settings** → **Integrations** → **Add Integration**
-2. Search for "NOAA It All"
+2. Search for "NOAA It All" and choose **Weather for a location**
 3. **Enter your Latitude and Longitude** (required) - Weather observations will be fetched from the nearest station to this location
 <p align="left">
 <img width="485" height="409" alt="image" src="https://github.com/user-attachments/assets/556faa39-2eee-45e7-8ba0-6771a334ef0a" />
 </p>
-4. Select your **NWS Forecast Office** from the dropdown (e.g., ILM for Wilmington, LOX for Los Angeles)
+4. Select your **NWS Forecast Office** from the dropdown. The office NWS names for your location is pre-selected (e.g., ILM for Wilmington, VEF for Las Vegas, BOU for Denver), followed by the nearby coastal offices. If NWS can't be reached, only the coastal offices are listed.
+5. Choose a **surf forecast office**. Only coastal offices issue Surf Zone Forecasts, so this is the coast whose rip current risk, surf height and water temperature you want, added as its own `NOAA Surf` entry. The nearest is pre-selected; pick another to follow a beach you visit, or choose **No surf data**. Each office is listed with its distance and what it provides, e.g. `SGX - San Diego, CA (260.6 mi) - rip current, water temp, surf height`:
+   - Every office gives rip current risk. Water temperature needs a tide station and surf height a buoy; a new surf entry for an office without one doesn't get that entity, so nothing sits at unknown.
+   - **no forecast this week** means NWS hasn't issued one for that office in the last 7 days. The Great Lakes offices, for example, only issue them in summer.
+   - **already added** means another entry already uses that office's surf entry, which is shared rather than added twice.
+
+A location set up as the integration's first entry also adds the `NOAA Hurricane` entry. Delete it if you don't want hurricane and satellite entities; nothing adds it back. To add another beach, or hurricanes again, use **Add entry** and choose **Surf forecast for a coast** or **Hurricanes and satellite images**.
+
+Upgrading from 0.7.x splits each existing entry the same way, once: the location becomes a `NOAA Weather` entry, and its surf and the hurricane entities move to their own entries, keeping their entity IDs and history. Every surf entity you had is kept, including Water Temperature or Surf Height read from the forecast text where the office has no station. After upgrading, going back to 0.7.x needs the integration removed and added again, and the Home Assistant page needs a reload for the new setup screens to show.
 <p align="left">
 <img width="490" height="222" alt="image" src="https://github.com/user-attachments/assets/0c9711bc-9c7b-428d-b7de-a405e07299e8" />
 </p>
-5. Complete the setup
+6. Complete the setup
 <p align="left">
 <img width="480" height="794" alt="image" src="https://github.com/user-attachments/assets/2688c4dd-b6c6-4449-9ce2-37f5552335a8" />
 </p>
@@ -81,7 +97,7 @@ NOAA It All organizes entities into logical device groups for better organizatio
 
 #### 🌌 NOAA Space
 Space weather monitoring — aurora visibility, geomagnetic storms, solar radiation alerts — plus the meteor shower and eclipse forecasts
-- **Device ID**: `noaa_space`
+- **Device ID**: `noaa_{office}_space`
 - **Location**: Space weather is global; meteor shower and eclipse entities use your configured latitude/longitude
 - **Update Frequency**: 10 minutes for space weather, 30 minutes for meteor showers; eclipses recompute hourly, tightening to every minute while one is under way
 
@@ -90,8 +106,8 @@ Space weather monitoring — aurora visibility, geomagnetic storms, solar radiat
 </p>
 
 #### 🌀 NOAA Hurricane
-Global hurricane tracking and GOES satellite imagery — **created once**, shared across all configured NWS offices
-- **Device ID**: `noaa_weather_hurricane`
+Global hurricane tracking and GOES satellite imagery, in the `NOAA Hurricane` entry
+- **Device ID**: `noaa_hurricane`
 - **Location**: Independent (global NHC/GOES data)
 - **Update Frequency**: 5 minutes
 - **Entities**: `sensor.noaa_hurricane_activity`, `sensor.noaa_hurricane_alerts`, `image.noaa_hurricane_outlook_image`, `image.noaa_hurricane_pacific_outlook_image`, `image.noaa_hurricane_goes_air_mass`, `image.noaa_hurricane_goes_geocolor`
@@ -100,12 +116,12 @@ Global hurricane tracking and GOES satellite imagery — **created once**, share
   <img width="327" height="380" alt="image" src="https://github.com/user-attachments/assets/7b484039-abe9-4c14-ab37-91b41d084411" />
 </p>
 
-> **Important**: Hurricane and GOES satellite entities live under **NOAA Hurricane** only. They are never duplicated under office-specific devices, even if multiple NWS offices are configured.
+> **Important**: Hurricane and GOES satellite entities live under **NOAA Hurricane** only, in its own entry. There is one, however many locations are configured.
 
-#### 🌊 NOAA Surf
-Location-specific surf conditions, rip currents, and water temperature
-- **Device ID**: `noaa_surf`
-- **Location**: Specific to configured NWS office
+#### 🌊 NOAA {OFFICE} Surf
+Surf conditions, rip currents, and water temperature for one coastal office, in its `NOAA Surf - <office>` entry
+- **Device ID**: `noaa_{office}_surf` (e.g., `noaa_ILM_surf`)
+- **Location**: The coastal office's surf zones. A new surf entry only gets Water Temperature and Surf Height where the office has a tide station or buoy
 - **Update Frequency**: 5 minutes
 
 <p align="left">
@@ -114,7 +130,7 @@ Location-specific surf conditions, rip currents, and water temperature
 
 #### 📍 NOAA {OFFICE} Weather
 Location-specific weather observations, forecasts, alerts, and radar — **one device per configured NWS office** (e.g., "NOAA ILM Weather" for Wilmington, NC, "NOAA ILM Weather" for Wilmington)
-- **Device ID**: `noaa_{office}_weather` (e.g., `noaa_ilm_weather`, `noaa_ilm_weather`)
+- **Device ID**: `noaa_{office}_weather` (e.g., `noaa_ILM_weather`)
 - **Location**: Specific to configured NWS office and coordinates
 - **Update Frequency**: 5 minutes
 - **Radar image**: `image.noaa_{office}_weather_radar_base_reflectivity` (e.g., `image.noaa_ilm_weather_radar_base_reflectivity`)
