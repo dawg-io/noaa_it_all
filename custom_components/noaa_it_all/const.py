@@ -262,27 +262,29 @@ OFFICE_TIDE_STATIONS = {
 }
 
 # NWS office to NDBC buoy station mapping (wave height)
-# Station IDs from https://www.ndbc.noaa.gov
+# Station IDs from https://www.ndbc.noaa.gov, with NDBC's station names.
+# tests/test_buoy_stations_live.py checks that each one still reports.
+# BRO has none: 42020 was recovered in May 2026, and no other buoy near
+# Brownsville reports wave height.
 OFFICE_BUOY_STATIONS = {
     "AKQ": "44014",   # Virginia Beach, VA
     "BOX": "44013",   # Boston 16 NM east of Boston, MA
-    "BRO": "42020",   # Corpus Christi area
     "CHS": "41004",   # EDISTO - 41 NM southeast of Charleston, SC
-    "CRP": "42020",   # Corpus Christi, TX
+    "CRP": "42092",   # Aransas Pass Channel Entrance S, TX
     "EKA": "46022",   # Eel River, CA
     "GYX": "44007",   # Portland, ME
-    "HFO": "51202",   # Waimea Bay, HI
-    "ILM": "41110",   # Wrightsville Beach Nearshore, NC
-    "JAX": "41112",   # St. Augustine, FL
+    "HFO": "51202",   # Mokapu Point, HI
+    "ILM": "41110",   # Masonboro Inlet, NC
+    "JAX": "41112",   # Offshore Fernandina Beach, FL
     "LOX": "46222",   # San Pedro, CA
-    "MFL": "41047",   # Canaveral East, FL
-    "MHX": "41159",   # Cape Lookout Nearshore, NC
+    "MFL": "41122",   # Hollywood Beach, FL
+    "MHX": "41159",   # Onslow Bay Outer, NC
     "MLB": "41113",   # Cape Canaveral Nearshore, FL
-    "MOB": "42040",   # Mobile South, AL
+    "MOB": "42012",   # Orange Beach - 44 NM SE of Mobile, AL
     "MTR": "46026",   # San Francisco, CA
     "OKX": "44025",   # Long Island, NY
     "PQR": "46029",   # Columbia River Bar, OR
-    "SGX": "46235",   # Point Loma South, CA
+    "SGX": "46232",   # Point Loma South, CA
     "SJU": "41053",   # San Juan, PR
     "TAE": "42039",   # Pensacola, FL
     "TBW": "42036",   # West Tampa, FL
