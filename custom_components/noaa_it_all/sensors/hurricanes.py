@@ -9,6 +9,21 @@ from ..parsers import classify_hurricane_activity
 
 _LOGGER = logging.getLogger(__name__)
 
+# The HurricaneCoordinator sets a feed to None when its fetch failed. These are
+# the Activity attributes each feed's counts go into, so a failed feed reads
+# as unknown rather than as zero.
+_ALERT_COUNT_ATTRIBUTES = (
+    'hurricane_warnings', 'hurricane_watches', 'tropical_warnings',
+    'tropical_watches', 'total_alerts',
+)
+_STORM_COUNT_ATTRIBUTES = (
+    'total_active_storms', 'hurricanes', 'tropical_storms', 'other_storms',
+    'storm_details',
+)
+# The top activity level. Seen in one feed it holds whatever the other says,
+# so it is the only level that is still certain with a feed missing.
+_HIGHEST_LEVEL_PREFIX = 'High - '
+
 
 def _hurricane_device_info() -> "DeviceInfo":
     """Return the shared device info for all NOAA Hurricane entities.
@@ -59,6 +74,9 @@ class HurricaneAlertsSensor(CoordinatorEntity):
         """Return the state of the sensor."""
         if not self.coordinator.data:
             return self._state
+        if self.coordinator.data.get("alerts") is None:
+            # The alerts fetch failed: unknown, not "0 alerts".
+            return None
         alerts_data = self.coordinator.data.get("alerts") or {}
         features = alerts_data.get("features", [])
         return len(features)
@@ -66,7 +84,7 @@ class HurricaneAlertsSensor(CoordinatorEntity):
     @property
     def extra_state_attributes(self):
         """Return the state attributes."""
-        if not self.coordinator.data:
+        if not self.coordinator.data or self.coordinator.data.get("alerts") is None:
             return self._attributes
         alerts_data = self.coordinator.data.get("alerts") or {}
         features = alerts_data.get("features", [])
@@ -131,6 +149,10 @@ class HurricaneActivitySensor(CoordinatorEntity):
         if not self.coordinator.data:
             return self._state
         state, _ = self._compute_activity()
+        if self._missing_feeds() and not state.startswith(_HIGHEST_LEVEL_PREFIX):
+            # Anything below High is only a lower bound with a feed missing,
+            # and "Quiet" would claim there are no alerts it could not fetch.
+            return None
         return state
 
     @property
@@ -139,7 +161,19 @@ class HurricaneActivitySensor(CoordinatorEntity):
         if not self.coordinator.data:
             return self._attributes
         _, attrs = self._compute_activity()
+        missing = self._missing_feeds()
+        if "alerts" in missing:
+            attrs.update(dict.fromkeys(_ALERT_COUNT_ATTRIBUTES))
+        if "storms" in missing:
+            attrs.update(dict.fromkeys(_STORM_COUNT_ATTRIBUTES))
         return attrs
+
+    def _missing_feeds(self):
+        """Return the feeds whose fetch failed this cycle."""
+        return {
+            key for key in ("alerts", "storms")
+            if self.coordinator.data.get(key) is None
+        }
 
     def _compute_activity(self):
         """Compute hurricane activity state and attributes from coordinator data."""

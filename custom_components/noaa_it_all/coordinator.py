@@ -44,13 +44,19 @@ _LOGGER = logging.getLogger(__name__)
 DEFAULT_UPDATE_INTERVAL = timedelta(minutes=DEFAULT_SCAN_INTERVAL)
 
 
+# aiohttp's ClientResponseError ends its message with the request URL. For
+# the location lookups that URL holds the coordinates, and the status and
+# reason already say what went wrong.
+_URL_SUFFIX = re.compile(r",\s*url=.*$", re.DOTALL)
+
+
 def _describe(err: Exception) -> str:
-    """Render an exception for an UpdateFailed message.
+    """Render an exception for a log line or an UpdateFailed message.
 
     Several aiohttp errors have an empty ``str()``, which would otherwise
-    reduce the reason to nothing at all.
+    reduce the reason to nothing at all. The request URL is left out.
     """
-    text = str(err)
+    text = _URL_SUFFIX.sub("", str(err))
     return f"{type(err).__name__}: {text}" if text else type(err).__name__
 
 
@@ -194,7 +200,7 @@ class NWSAlertsCoordinator(DataUpdateCoordinator):
                 data = await resp.json()
             return {"features": data.get("features", [])}
         except Exception as err:
-            raise UpdateFailed(f"Error fetching NWS alerts: {err}") from err
+            raise UpdateFailed(f"Error fetching NWS alerts: {_describe(err)}") from err
 
 
 # -------------------------------------------------------------------
@@ -323,10 +329,8 @@ class ObservationsCoordinator(DataUpdateCoordinator):
 
             stations_url = data.get("properties", {}).get("observationStations")
             if not stations_url:
-                _LOGGER.error(
-                    "No observation stations URL for lat=%s, lon=%s",
-                    self.latitude, self.longitude,
-                )
+                _LOGGER.error("The NWS Points API gave no observation stations URL")
+                _LOGGER.debug("That lookup was for lat=%s, lon=%s", self.latitude, self.longitude)
                 self._station_fetched = True
                 return
 
@@ -366,10 +370,10 @@ class ObservationsCoordinator(DataUpdateCoordinator):
             # ForecastCoordinator._resolve_forecast_urls. A transient failure
             # here would otherwise leave station_id None for good.
             _LOGGER.warning(
-                "Could not resolve observation station for lat=%s, lon=%s, "
-                "will retry on the next update: %s",
-                self.latitude, self.longitude, err,
+                "Could not resolve the observation stations, will retry on the "
+                "next update: %s", _describe(err),
             )
+            _LOGGER.debug("That lookup was for lat=%s, lon=%s", self.latitude, self.longitude)
 
 
 # -------------------------------------------------------------------
@@ -414,8 +418,10 @@ class SurfCoordinator(DataUpdateCoordinator):
                 result["forecast_text"] = (await resp.text()).lower()
                 result["source_url"] = srf_url
         except Exception as err:
+            # Leave ``forecast_text`` out rather than empty: empty text parses
+            # as Low risk, which would report a safe beach during a hazard.
+            # No UpdateFailed either, so water temp and waves still update.
             _LOGGER.warning("Error fetching SRF forecast: %s", err)
-            result["forecast_text"] = ""
             result["source_url"] = srf_url
 
         # 2. CO-OPS water temperature
@@ -515,7 +521,7 @@ class ForecastCoordinator(DataUpdateCoordinator):
                     resp.raise_for_status()
                     data["extended"] = await resp.json()
             except Exception as err:
-                _LOGGER.warning("Error fetching extended forecast: %s", err)
+                _LOGGER.warning("Error fetching extended forecast: %s", _describe(err))
                 errors.append(f"extended forecast ({_describe(err)})")
                 data["extended"] = None
         else:
@@ -531,7 +537,7 @@ class ForecastCoordinator(DataUpdateCoordinator):
                     resp.raise_for_status()
                     data["hourly"] = await resp.json()
             except Exception as err:
-                _LOGGER.warning("Error fetching hourly forecast: %s", err)
+                _LOGGER.warning("Error fetching hourly forecast: %s", _describe(err))
                 errors.append(f"hourly forecast ({_describe(err)})")
                 data["hourly"] = None
         else:
@@ -580,10 +586,10 @@ class ForecastCoordinator(DataUpdateCoordinator):
             # 10 minutes, so simply retrying next cycle is the right backoff.
             self._resolve_error = _describe(err)
             _LOGGER.warning(
-                "Could not resolve forecast URLs for lat=%s, lon=%s, will "
-                "retry on the next update: %s",
-                self.latitude, self.longitude, err,
+                "Could not resolve forecast URLs, will retry on the next "
+                "update: %s", _describe(err),
             )
+            _LOGGER.debug("That lookup was for lat=%s, lon=%s", self.latitude, self.longitude)
 
 
 # -------------------------------------------------------------------
@@ -621,7 +627,7 @@ class CloudCoverCoordinator(DataUpdateCoordinator):
 
         if not self._gridpoint_url:
             raise UpdateFailed(
-                f"No gridpoint URL for lat={self.latitude}, lon={self.longitude}"
+                "No gridpoint URL resolved for the cloud cover location"
             )
 
         try:
@@ -635,7 +641,7 @@ class CloudCoverCoordinator(DataUpdateCoordinator):
             return {"properties": data.get("properties", {})}
         except Exception as err:
             raise UpdateFailed(
-                f"Error fetching cloud cover: {err}"
+                f"Error fetching cloud cover: {_describe(err)}"
             ) from err
 
     async def _resolve_gridpoint_url(self, session, timeout) -> None:
@@ -665,10 +671,10 @@ class CloudCoverCoordinator(DataUpdateCoordinator):
             # Not latched on failure -- see the note in
             # ForecastCoordinator._resolve_forecast_urls.
             _LOGGER.warning(
-                "Could not resolve gridpoint URL for lat=%s, lon=%s, will "
-                "retry on the next update: %s",
-                self.latitude, self.longitude, err,
+                "Could not resolve the gridpoint URL, will retry on the next "
+                "update: %s", _describe(err),
             )
+            _LOGGER.debug("That lookup was for lat=%s, lon=%s", self.latitude, self.longitude)
 
 
 # -------------------------------------------------------------------
@@ -720,7 +726,7 @@ class RadarTimestampCoordinator(DataUpdateCoordinator):
             }
         except Exception as err:
             raise UpdateFailed(
-                f"Error fetching radar timestamp: {err}"
+                f"Error fetching radar timestamp: {_describe(err)}"
             ) from err
 
 
@@ -771,7 +777,7 @@ class ForecastDiscussionCoordinator(DataUpdateCoordinator):
             return {"discussion_text": None}
         except Exception as err:
             raise UpdateFailed(
-                f"Error fetching forecast discussion: {err}"
+                f"Error fetching forecast discussion: {_describe(err)}"
             ) from err
 
 

@@ -254,6 +254,14 @@ class TestRipCurrentRiskSensor(unittest.TestCase):
         sensor = self._make(text)
         self.assertEqual(sensor.state, "Moderate")
 
+    def test_failed_forecast_fetch_is_unknown_not_low(self):
+        """#33 P1.2: a failed SRF fetch must not read as Low risk."""
+        from noaa_it_all.sensors.surf import RipCurrentRiskSensor
+        # What the surf coordinator returns when only the SRF fetch failed.
+        coord = _make_coordinator({"source_url": "", "wave_height_ft": 3.0})
+        sensor = RipCurrentRiskSensor(coord, OFFICE)
+        self.assertIsNone(sensor.state)
+
 
 class TestSurfHeightSensor(unittest.TestCase):
     """Tests for SurfHeightSensor state computation."""

@@ -49,7 +49,10 @@ class RipCurrentRiskSensor(CoordinatorEntity):
         """Return the state of the sensor."""
         if not self.coordinator.data:
             return self._state
-        text = self.coordinator.data.get("forecast_text", "")
+        text = self.coordinator.data.get("forecast_text")
+        if text is None:
+            # The surf zone forecast could not be fetched: unknown, not Low.
+            return None
         return parse_rip_current_risk(text)
 
     @property

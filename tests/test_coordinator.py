@@ -525,6 +525,77 @@ class TestFailureMessagesNameTheCause(unittest.TestCase):
         self.assertIsNone(data["alerts"])
         self.assertIsNotNone(data["storms"])
 
+    def test_the_remaining_coordinators_name_an_unnamed_failure(self):
+        """#43: a timeout's empty message used to leave the reason blank."""
+        from noaa_it_all.coordinator import (
+            CloudCoverCoordinator, ForecastDiscussionCoordinator,
+            NWSAlertsCoordinator, RadarTimestampCoordinator,
+        )
+
+        class _HeadSession(_FakeSession):
+            def head(self, url, **kwargs):
+                return self.get(url, **kwargs)
+
+        cloud = CloudCoverCoordinator(HASS, "ILM", 34.2, -77.9)
+        cloud._gridpoint_url = "https://api.weather.gov/gridpoints/ILM/1,2"
+        cloud._grid_fetched = True
+        for coordinator, label in (
+            (NWSAlertsCoordinator(HASS, 34.2, -77.9), "Error fetching NWS alerts"),
+            (cloud, "Error fetching cloud cover"),
+            (RadarTimestampCoordinator(HASS, "ILM", "KLTX"), "Error fetching radar timestamp"),
+            (ForecastDiscussionCoordinator(HASS, "ILM"), "Error fetching forecast discussion"),
+        ):
+            with self.subTest(label=label):
+                session = _HeadSession(default=asyncio.TimeoutError())
+                with _with_session(session), self.assertRaises(_UpdateFailed) as ctx:
+                    _run(coordinator._async_update_data())
+                self.assertEqual(f"{label}: TimeoutError", str(ctx.exception))
+
+    def test_describe_leaves_out_the_request_url(self):
+        """The URL of a location lookup holds the (followed) coordinates."""
+        from noaa_it_all.coordinator import _describe
+
+        class ClientResponseError(Exception):
+            pass
+
+        err = ClientResponseError(
+            "503, message='Service Unavailable', "
+            "url='https://api.weather.gov/alerts/active?point=39.7392,-104.9903'"
+        )
+        self.assertEqual(
+            "ClientResponseError: 503, message='Service Unavailable'", _describe(err)
+        )
+
+    def test_failed_lookups_log_no_coordinates(self):
+        from noaa_it_all.coordinator import (
+            CloudCoverCoordinator, ForecastCoordinator, ObservationsCoordinator,
+        )
+        error = OSError("Cannot reach api.weather.gov")
+        for coordinator, resolve in (
+            (ObservationsCoordinator(HASS, "ILM", 39.7392, -104.9903), "_resolve_station"),
+            (ForecastCoordinator(HASS, "ILM", 39.7392, -104.9903), "_resolve_forecast_urls"),
+            (CloudCoverCoordinator(HASS, "ILM", 39.7392, -104.9903), "_resolve_gridpoint_url"),
+        ):
+            with self.subTest(resolve=resolve):
+                session = _FakeSession(default=error)
+                with _with_session(session), \
+                        self.assertLogs("noaa_it_all.coordinator", level="DEBUG") as logs:
+                    _run(getattr(coordinator, resolve)(session, {}))
+                loud = [r.getMessage() for r in logs.records if r.levelname != "DEBUG"]
+                self.assertTrue(loud)
+                for message in loud:
+                    self.assertNotIn("39.7392", message)
+                    self.assertNotIn("104.9903", message)
+
+    def test_a_missing_gridpoint_does_not_name_the_coordinates(self):
+        from noaa_it_all.coordinator import CloudCoverCoordinator
+        coordinator = CloudCoverCoordinator(HASS, "ILM", 39.7392, -104.9903)
+        coordinator._grid_fetched = True  # resolved, but to nothing
+        with _with_session(_FakeSession(default=OSError("unused"))), \
+                self.assertRaises(_UpdateFailed) as ctx:
+            _run(coordinator._async_update_data())
+        self.assertNotIn("39.7392", str(ctx.exception))
+
     def test_describe_handles_an_empty_exception_string(self):
         """Several aiohttp errors stringify to '' and would say nothing."""
         from noaa_it_all.coordinator import _describe
@@ -534,6 +605,50 @@ class TestFailureMessagesNameTheCause(unittest.TestCase):
 
         self.assertEqual(_describe(_Silent()), "_Silent")
         self.assertEqual(_describe(_Silent("why")), "_Silent: why")
+
+
+class TestSurfForecastFailure(unittest.TestCase):
+    """#33 P1.2: a failed surf zone forecast must not look like a calm one."""
+
+    class _Response:
+        def __init__(self, text="", payload=None):
+            self._text = text
+            self._payload = payload or {}
+
+        def raise_for_status(self):
+            pass
+
+        async def text(self):
+            return self._text
+
+        async def json(self, **kwargs):
+            return self._payload
+
+    def _fetch(self, srf_result):
+        from noaa_it_all.coordinator import SurfCoordinator
+        session = _FakeSession(by_url={
+            "product=SRF": srf_result,
+            "tidesandcurrents": self._Response(payload={"data": []}),
+            "ndbc.noaa.gov": self._Response(text="#YY MM DD"),
+        })
+        coordinator = SurfCoordinator(HASS, "ILM", tide_station="8658163", buoy_station="41110")
+        with _with_session(session):
+            return _run(coordinator._async_update_data())
+
+    def test_failed_fetch_leaves_the_forecast_text_out(self):
+        """Empty text parses as Low rip current risk, so it must be absent."""
+        data = self._fetch(asyncio.TimeoutError())
+        self.assertNotIn("forecast_text", data)
+
+    def test_failed_fetch_keeps_the_other_sources(self):
+        """No UpdateFailed: water temperature and wave height still update."""
+        data = self._fetch(OSError("503"))
+        self.assertIn("water_temp_f", data)
+        self.assertIn("wave_height_ft", data)
+
+    def test_successful_fetch_still_returns_the_text(self):
+        data = self._fetch(self._Response(text="HIGH RIP CURRENT RISK"))
+        self.assertEqual(data["forecast_text"], "high rip current risk")
 
 
 class TestEclipseCoordinator(unittest.TestCase):

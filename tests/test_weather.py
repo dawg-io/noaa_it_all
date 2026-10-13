@@ -187,10 +187,24 @@ class TestAsyncAddedToHass(unittest.TestCase):
     def test_forecast_update_calls_write_ha_state(self):
         """Forecast listener should call async_write_ha_state, not re-parse obs."""
         entity = self._make()
+        entity.hass = MagicMock()
+        entity.async_update_listeners = MagicMock()
         self._run(entity.async_added_to_hass())
         with patch.object(entity, "async_write_ha_state") as mock_write:
             entity._handle_forecast_update()
             mock_write.assert_called_once()
+
+    def test_forecast_update_pushes_the_new_forecast_to_subscribers(self):
+        """Without this the weather card keeps the forecast it subscribed with."""
+        entity = self._make()
+        entity.hass = MagicMock()
+        entity.async_update_listeners = MagicMock(return_value="update-coroutine")
+        self._run(entity.async_added_to_hass())
+
+        entity._handle_forecast_update()
+
+        entity.async_update_listeners.assert_called_once_with(None)
+        entity.hass.async_create_task.assert_called_once_with("update-coroutine")
 
     def test_no_forecast_coordinator_no_listener(self):
         """Entity should not crash when forecast coordinator is None."""
@@ -206,6 +220,39 @@ class TestAsyncAddedToHass(unittest.TestCase):
         self._run(entity.async_added_to_hass())
         self.assertFalse(hasattr(entity, '_attr_native_temperature')
                          and entity._attr_native_temperature is not None)
+
+
+class TestMapCondition(unittest.TestCase):
+    """#33 P3.1: the sky descriptions NWS uses most must map correctly."""
+
+    def _map(self, description, timestamp=None):
+        from noaa_it_all.weather import NOAAWeather
+        return NOAAWeather._map_condition(description, timestamp)
+
+    def test_partly_cloudy_is_partlycloudy_not_cloudy(self):
+        self.assertEqual(self._map("Partly Cloudy"), "partlycloudy")
+
+    def test_partly_cloudy_night_is_partlycloudy(self):
+        self.assertEqual(self._map("Partly Cloudy", "2026-10-03T04:00:00Z"), "partlycloudy")
+
+    def test_mostly_cloudy_stays_cloudy(self):
+        """As in Home Assistant's own NWS integration."""
+        self.assertEqual(self._map("Mostly Cloudy"), "cloudy")
+
+    def test_cloudy_and_overcast_are_cloudy(self):
+        self.assertEqual(self._map("Cloudy"), "cloudy")
+        self.assertEqual(self._map("Overcast"), "cloudy")
+
+    def test_partly_and_mostly_sunny_are_partlycloudy(self):
+        self.assertEqual(self._map("Partly Sunny"), "partlycloudy")
+        self.assertEqual(self._map("Mostly Sunny"), "partlycloudy")
+
+    def test_precipitation_still_wins_over_clouds(self):
+        self.assertEqual(self._map("Partly Cloudy then Chance Rain Showers"), "rainy")
+
+    def test_clear_by_day_and_night(self):
+        self.assertEqual(self._map("Clear", "2026-10-03T15:00:00Z"), "sunny")
+        self.assertEqual(self._map("Clear", "2026-10-03T03:00:00Z"), "clear-night")
 
 
 if __name__ == "__main__":

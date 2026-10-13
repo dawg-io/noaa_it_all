@@ -94,11 +94,23 @@ class TestUnsafeToSwimBinarySensor(unittest.TestCase):
         sensor = self._make("low rip current risk")
         self.assertFalse(sensor.is_on)
 
-    def test_no_data_is_off(self):
+    def test_no_data_is_unknown(self):
         from noaa_it_all.binary_sensor import UnsafeToSwimBinarySensor
         coord = _make_coordinator(None)
         sensor = UnsafeToSwimBinarySensor(coord, OFFICE)
-        self.assertFalse(sensor.is_on)
+        self.assertIsNone(sensor.is_on)
+
+    def test_failed_forecast_fetch_is_unknown_not_safe(self):
+        """#33 P1.2: a failed SRF fetch must not read as safe to swim."""
+        from noaa_it_all.binary_sensor import UnsafeToSwimBinarySensor
+        # What the surf coordinator returns when only the SRF fetch failed.
+        coord = _make_coordinator({"source_url": "", "water_temp_f": 72.0})
+        sensor = UnsafeToSwimBinarySensor(coord, OFFICE)
+        self.assertIsNone(sensor.is_on)
+        attrs = sensor.extra_state_attributes
+        self.assertEqual(attrs["risk_level"], "Unknown")
+        self.assertIsNone(attrs["high_risk_detected"])
+        self.assertIsNone(attrs["moderate_risk_detected"])
 
     def test_icon_when_on(self):
         sensor = self._make("high rip current risk")
@@ -123,6 +135,12 @@ class TestUnsafeToSwimBinarySensor(unittest.TestCase):
         attrs = sensor.extra_state_attributes
         self.assertEqual(attrs["risk_level"], "Moderate")
         self.assertTrue(attrs["moderate_risk_detected"])
+
+    def test_attributes_low_risk(self):
+        sensor = self._make("low rip current risk")
+        attrs = sensor.extra_state_attributes
+        self.assertEqual(attrs["risk_level"], "Low")
+        self.assertFalse(attrs["high_risk_detected"])
 
 
 class TestSevereWeatherAlertBinarySensor(unittest.TestCase):

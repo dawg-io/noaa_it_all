@@ -1730,3 +1730,36 @@ class TestRadarFrameHousekeeping(unittest.TestCase):
             [self._entry("ILM", 0), self._entry("SGX", 24)], ["KLTX", "KNKX"]
         )
         self.assertEqual(["KLTX"], self._run_cleanup(hass, keep=None))
+
+
+class TestImagesByEntryType(unittest.TestCase):
+    """The hurricane images belong to the hurricane entry alone."""
+
+    _HURRICANE = {
+        "HurricaneOutlookImageEntity", "HurricanePacificOutlookImageEntity",
+        "GOESAirMassImageEntity", "GOESGeoColorImageEntity",
+    }
+
+    def _added(self, data):
+        from noaa_it_all import image
+        entry = MagicMock()
+        entry.entry_id = "entry_1"
+        entry.data = data
+        entry.options = {}
+        hass = MagicMock()
+        # The radar frame housekeeping is scheduled, not awaited, in setup.
+        hass.async_create_task = lambda coro: coro.close()
+        added = []
+        _run(image.async_setup_entry(hass, entry, added.extend))
+        return {type(entity).__name__ for entity in added}
+
+    def test_the_hurricane_entry_has_only_the_hurricane_images(self):
+        self.assertEqual(self._HURRICANE, self._added({"entry_type": "hurricane"}))
+
+    def test_a_weather_entry_has_its_radar_but_no_hurricane_images(self):
+        added = self._added({
+            "entry_type": "weather", "office_code": "SGX",
+            "latitude": 32.7157, "longitude": -117.1611,
+        })
+        self.assertIn("RadarBaseReflectivityImageEntity", added)
+        self.assertFalse(self._HURRICANE & added)
