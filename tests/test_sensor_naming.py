@@ -1031,6 +1031,7 @@ class TestPlatformsByEntryType(unittest.TestCase):
                 "alerts_coordinator", "cloud_cover_coordinator",
                 "radar_timestamp_coordinator", "forecast_discussion_coordinator",
                 "meteor_coordinator", "eclipse_coordinator", "surf_coordinator",
+                "marine_forecast_coordinator",
             )
         }}}
         if data.get("entry_type") == "surf":
@@ -1079,6 +1080,16 @@ class TestPlatformsByEntryType(unittest.TestCase):
             self._added("sensor", mfr, carried=[WATER_TEMPERATURE]),
             {"RipCurrentRiskSensor", "WaterTemperatureSensor"},
         )
+
+    def test_a_marine_entry_has_only_its_period_and_forecast(self):
+        data = {"entry_type": "marine", "marine_zone": "LMZ741", "office_code": "LOT"}
+        self.assertEqual(
+            self._added("sensor", data), {"MarinePeriodSensor", "MarineForecastSensor"}
+        )
+
+    def test_a_weather_entry_has_no_marine_sensors(self):
+        added = self._added("sensor", self._WEATHER)
+        self.assertFalse({"MarinePeriodSensor", "MarineForecastSensor"} & added)
 
     def test_the_hurricane_entry_has_only_hurricanes(self):
         self.assertEqual(self._added("sensor", {"entry_type": "hurricane"}), self._HURRICANE)

@@ -55,6 +55,7 @@ The integration has three kinds of entry, each listed separately under **Setting
 |---|---|---|
 | Weather for a location | `NOAA Weather - Las Vegas, NV` | `NOAA VEF Weather`, `NOAA VEF Space` |
 | Surf forecast for a coast | `NOAA Surf - Wilmington, NC` | `NOAA ILM Surf` |
+| Nearshore marine forecast for a Great Lakes zone | `NOAA Marine - Wilmette Harbor to Northerly Island IL` | `NOAA LMZ741 Marine` |
 | Hurricanes and satellite images | `NOAA Hurricane` | `NOAA Hurricane` |
 
 Add a location first:
@@ -152,6 +153,7 @@ Location-specific weather observations, forecasts, alerts, and radar — **one d
 ### Location-Specific Sensors (Config Flow Only)
 - **Rip Current Risk**: Current risk level (Low, Moderate, High) from your NWS office's surf zone forecast *(NOAA Surf)*
 - **Surf Height**: Wave height estimates in feet from local surf zone forecasts *(NOAA Surf)*
+- **Marine Forecast** *(NOAA {ZONE} Marine)*: Nearshore marine forecast for one Great Lakes marine zone (for example `LMZ741` on Lake Michigan), as two sensors. `sensor.noaa_lmz741_marine_period` is the current forecast period, such as `Rest Of Today`, and `sensor.noaa_lmz741_marine_forecast` is that period's forecast, such as `West winds 10 to 20 kt becoming northeast. Partly cloudy. Waves 1 to 2 ft.` The forecast's `periods` attribute lists every period as `name` and `detailed_forecast`, with any advisories in `headlines`. If the office hasn't issued a forecast in 24 hours, both are unavailable rather than showing an old one. Add it with **Add entry → Nearshore marine forecast for a Great Lakes zone** and the zone ID; NWS supplies the zone's office and name, and setup checks the zone is in that office's Nearshore Marine Forecast (NSH).
 - **Water Temperature**: Local water temperature from surf zone forecasts *(NOAA Surf)*
 - **Unsafe to Swim**: Binary sensor indicating dangerous rip current conditions *(NOAA Surf)*
 

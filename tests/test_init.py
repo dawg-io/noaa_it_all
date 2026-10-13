@@ -76,6 +76,7 @@ _COORDINATOR_NAMES = (
     "NWSAlertsCoordinator",
     "ObservationsCoordinator",
     "SurfCoordinator",
+    "MarineForecastCoordinator",
     "ForecastCoordinator",
     "CloudCoverCoordinator",
     "RadarTimestampCoordinator",
@@ -401,6 +402,19 @@ class TestEntryTypesSetUp(unittest.TestCase):
         _, _, device_key, entities = adopt.call_args.args
         self.assertEqual(device_key, "noaa_hurricane")
         self.assertEqual(len(entities), 6)
+
+    def test_a_marine_entry_has_only_its_zone_forecast(self):
+        hass, coordinators, _ = self._setup(
+            {"entry_type": "marine", "marine_zone": "LMZ741", "office_code": "LOT"}
+        )
+        self.assertEqual(
+            coordinators["MarineForecastCoordinator"].call_args.args[1:], ("LOT", "LMZ741")
+        )
+        coordinators["SpaceWeatherCoordinator"].assert_not_called()
+        coordinators["SurfCoordinator"].assert_not_called()
+        self.assertEqual(
+            hass.config_entries.async_forward_entry_setups.call_args.args[1], ["sensor"]
+        )
 
     def test_a_failed_takeover_does_not_stop_setup(self):
         import noaa_it_all

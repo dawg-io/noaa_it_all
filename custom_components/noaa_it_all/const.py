@@ -44,6 +44,7 @@ CONF_OFFICE_CODE = "office_code"
 CONF_LATITUDE = "latitude"
 CONF_LONGITUDE = "longitude"
 CONF_RADAR_LOOP_HOURS = "radar_loop_hours"
+CONF_MARINE_ZONE = "marine_zone"
 # What a config entry is: weather for a location (forecast, alerts, radar and
 # space), or the surf forecast of one coastal office. Entries from before 0.8.0
 # have no type; migrating them adds it.
@@ -53,6 +54,8 @@ ENTRY_TYPE_SURF = "surf"
 # The national hurricane feeds and satellite images, in one entry of their own.
 ENTRY_TYPE_HURRICANE = "hurricane"
 HURRICANE_ENTRY_TITLE = "NOAA Hurricane"
+# The nearshore marine forecast for one marine zone, such as LMZ741.
+ENTRY_TYPE_MARINE = "marine"
 # The surf office chosen on the surf step. A 0.8.0 test build also saved it on
 # weather entries, before surf became its own entry; that copy is only read
 # when migrating them.
@@ -137,6 +140,8 @@ NWS_SRF_URL = "https://forecast.weather.gov/product.php?site={office}&issuedby={
 NWS_API_BASE = "https://api.weather.gov"
 NWS_POINTS_URL = "https://api.weather.gov/points/{lat},{lon}"
 NWS_OFFICE_URL = "https://api.weather.gov/offices/{office}"
+# A marine zone's name and the office that forecasts it.
+NWS_MARINE_ZONE_URL = "https://api.weather.gov/zones/marine/{zone}"
 # Every Surf Zone Forecast issued in about the last week, to tell which offices
 # are issuing one now. Several stop outside their summer season.
 NWS_SRF_PRODUCTS_URL = "https://api.weather.gov/products/types/SRF"
@@ -146,6 +151,15 @@ NWS_RADAR_LOOP_URL = "https://radar.weather.gov/ridge/standard/{radar}_loop.gif"
 NWS_ALERTS_URL = "https://api.weather.gov/alerts/active?point={lat},{lon}"
 NWS_ALERTS_ZONE_URL = "https://api.weather.gov/alerts/active?zone={zone}"
 NWS_GRIDPOINT_URL = "https://api.weather.gov/gridpoints/{office}/{gridX},{gridY}"
+# Nearshore Marine Forecast (NSH) text product, issued per NWS office (Great Lakes etc.)
+NWS_NSH_URL = "https://api.weather.gov/products/types/NSH/locations/{office}/latest"
+# The office's NSH products. Empty for an office that issues none, where the
+# "latest" URL above answers 500 rather than 404.
+NWS_NSH_LIST_URL = "https://api.weather.gov/products/types/NSH/locations/{office}"
+# Offices issue a nearshore marine forecast several times a day, and NWS keeps
+# the last one for about a week after an office stops. One older than this is
+# shown as unavailable rather than as the current forecast.
+NSH_MAX_AGE_HOURS = 24
 NWS_AFD_URL = "https://forecast.weather.gov/product.php?site={office}&issuedby={office}&product=AFD&format=TXT"
 
 # NOAA CO-OPS API for water temperature (Tides and Currents)

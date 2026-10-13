@@ -12,6 +12,7 @@ import re
 from .const import (
     CONF_ENTRY_TYPE,
     ENTRY_TYPE_HURRICANE,
+    ENTRY_TYPE_MARINE,
     ENTRY_TYPE_WEATHER,
     CONF_OFFICE_CODE,
     CONF_RADAR_SITE,
@@ -71,6 +72,11 @@ def is_surf_entry(conf):
 def is_hurricane_entry(conf):
     """Return True for the hurricane entry."""
     return entry_type(conf) == ENTRY_TYPE_HURRICANE
+
+
+def is_marine_entry(conf):
+    """Return True for a marine entry: one zone's nearshore marine forecast."""
+    return entry_type(conf) == ENTRY_TYPE_MARINE
 
 
 def is_weather_entry(conf):

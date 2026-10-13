@@ -1,0 +1,271 @@
+
+000
+FZUS53 KDLH 101911
+NSHDLH
+
+Nearshore Marine Forecast
+National Weather Service Duluth MN
+211 PM CDT Sat Oct 10 2026
+
+For waters within five nautical miles of shore on Lake Superior.         
+
+Waves are the significant wave height - the average of the highest 
+1/3 of the wave spectrum. Occasional wave height is the average of 
+the highest 1/10 of the wave spectrum.
+
+LSZ140-110400-
+Grand Portage to Grand Marais MN-
+211 PM CDT Sat Oct 10 2026
+
+.TONIGHT...Southwest wind 15 to 20 knots with gusts to around
+25 knots. Mostly clear. Waves 3 to 5 feet. Waves occasionally to
+7 feet. 
+.SUNDAY...Southwest wind 10 to 15 knots with gusts to around
+20 knots becoming northwest 5 to 10 knots late in the afternoon.
+Mostly sunny. Waves 3 to 5 feet subsiding to 1 to 2 feet late in
+the afternoon. A small craft advisory may be needed. 
+.SUNDAY NIGHT...Northeast wind 20 to 25 knots with gusts to
+around 30 knots. Slight chance of rain showers in the evening,
+then chance of rain showers after midnight. Waves 1 to 2 feet
+building to 4 to 6 feet in the late evening and overnight. Waves
+occasionally to 7 feet. A small craft advisory may be needed. 
+.MONDAY...Northeast wind 20 to 25 knots. Gusts up to 35 knots
+decreasing to 30 knots late in the afternoon. Rain showers likely
+in the morning, then slight chance of rain showers in the
+afternoon. Waves 4 to 6 feet. Waves occasionally to 8 feet. A
+gale warning may be needed. 
+
+$$
+
+LSZ141-110400-
+Grand Marais to Taconite Harbor MN-
+211 PM CDT Sat Oct 10 2026
+
+.TONIGHT...Southeast wind 5 to 10 knots becoming southwest with
+gusts to around 20 knots in the late evening and overnight.
+Mostly clear. Waves 1 to 2 feet building to 1 to 3 feet in the
+late evening and overnight. 
+.SUNDAY...Southwest wind 5 knots becoming north late in the
+afternoon. Partly sunny. Waves 1 to 3 feet subsiding to 1 to
+2 feet in the late morning and afternoon. 
+.SUNDAY NIGHT...Northeast wind 15 to 20 knots with gusts to
+around 30 knots. Slight chance of rain showers after midnight.
+Waves 1 to 3 feet building to 2 to 4 feet early in the morning. 
+.MONDAY...Northeast wind 20 to 25 knots easing to 10 to 15 knots
+late in the afternoon. Gusts up to 30 knots. Chance of rain
+showers. Waves 3 to 5 feet. A small craft advisory may be needed.
+
+$$
+
+LSZ142-110400-
+Taconite Harbor to Silver Bay Harbor MN-
+211 PM CDT Sat Oct 10 2026
+
+.TONIGHT...Southwest wind 10 to 15 knots. Gusts up to 20 knots
+increasing to 25 knots in the late evening and early morning,
+then decreasing to 20 knots late in the night. Mostly clear.
+Waves 1 to 3 feet. 
+.SUNDAY...Southwest wind 5 knots becoming west late in the
+afternoon. Mostly sunny. Waves 1 to 2 feet. 
+.SUNDAY NIGHT...Northeast wind 15 to 20 knots with gusts to
+around 30 knots. Slight chance of rain showers after midnight.
+Waves 1 to 2 feet building to 1 to 3 feet early in the morning. 
+.MONDAY...Northeast wind 15 to 20 knots with gales to around
+35 knots. Chance of rain showers. Waves 4 to 7 feet. Waves
+occasionally to 9 feet. A gale warning may be needed. 
+
+$$
+
+LSZ143-110400-
+Silver Bay Harbor to Two Harbors MN-
+211 PM CDT Sat Oct 10 2026
+
+.TONIGHT...Southwest wind 10 to 15 knots. Gusts up to 20 knots
+increasing to 25 knots late in the evening, then decreasing to
+20 knots after midnight. Mostly clear. Waves 1 to 2 feet building
+to 1 to 3 feet in the late evening and overnight. 
+.SUNDAY...Southwest wind 5 to 10 knots. Sunny in the morning then
+becoming partly sunny. Waves 1 to 2 feet. 
+.SUNDAY NIGHT...Northeast wind 5 knots rising to 20 to 25 knots
+with gusts to around 30 knots in the late evening and overnight.
+Slight chance of rain showers after midnight. Waves 1 to 3 feet
+building to 2 to 4 feet early in the morning. A small craft
+advisory may be needed. 
+.MONDAY...Northeast wind 20 to 25 knots with gales to around
+35 knots. Chance of rain showers. Waves 5 to 8 feet. Waves
+occasionally to 10 feet. A gale warning may be needed. 
+
+$$
+
+LSZ144-110400-
+Two Harbors to Duluth MN-
+211 PM CDT Sat Oct 10 2026
+
+.TONIGHT...Southwest wind 10 to 15 knots. Gusts up to 25 knots
+decreasing to 20 knots late in the night. Clear. Waves 1 to
+2 feet building to 1 to 3 feet in the late evening and early
+morning, then subsiding to 1 to 2 feet late in the night. 
+.SUNDAY...Southwest wind 5 to 10 knots becoming northeast late in
+the afternoon. Sunny in the morning then becoming partly sunny.
+Waves 1 to 2 feet. 
+.SUNDAY NIGHT...Northeast wind 10 to 15 knots with gusts to
+around 20 knots rising to 20 to 25 knots with gusts to around
+30 knots after midnight. Slight chance of rain showers after
+midnight. Waves 1 foot or less building to 3 to 5 feet after
+midnight. A small craft advisory may be needed. 
+.MONDAY...Northeast wind up to 30 knots easing to 15 to 20 knots
+in the late morning and afternoon. Gusts up to 35 knots. Chance
+of rain showers in the morning, then slight chance of rain
+showers in the afternoon. Waves 5 to 8 feet. Waves occasionally
+to 10 feet. A gale warning may be needed. 
+
+$$
+
+LSZ145-110400-
+Duluth MN to Port Wing WI-
+211 PM CDT Sat Oct 10 2026
+
+...SMALL CRAFT ADVISORY IN EFFECT THROUGH SUNDAY MORNING...
+
+.TONIGHT...South wind 15 to 20 knots. Gusts up to 25 knots
+increasing to 30 knots in the late evening and early morning,
+then decreasing to 25 knots late in the night. Clear. Waves 1 to
+2 feet building to 1 to 3 feet in the late evening and early
+morning, then subsiding to 1 to 2 feet late in the night. 
+.SUNDAY...Southwest wind 5 to 10 knots with gusts to around
+20 knots becoming west early in the afternoon, then becoming
+northeast late in the afternoon. Sunny in the morning then
+becoming partly sunny. Waves 1 to 2 feet. 
+.SUNDAY NIGHT...Northeast wind 10 to 15 knots with gusts to
+around 20 knots rising to 20 to 25 knots with gusts to around
+30 knots after midnight. Slight chance of rain showers after
+midnight. Waves 1 foot or less building to 3 to 5 feet after
+midnight. Waves occasionally to 7 feet. A small craft advisory
+may be needed. 
+.MONDAY...Northeast wind up to 30 knots easing to 15 to 20 knots
+in the late morning and afternoon. Gusts up to 35 knots. Chance
+of rain showers in the morning, then slight chance of rain
+showers in the afternoon. Waves 5 to 8 feet. Waves occasionally
+to 10 feet. A gale warning may be needed. 
+
+$$
+
+LSZ146-110400-
+Port Wing to Sand Island WI-
+211 PM CDT Sat Oct 10 2026
+
+...SMALL CRAFT ADVISORY IN EFFECT THROUGH SUNDAY MORNING...
+
+.TONIGHT...South wind 15 to 20 knots. Gusts up to 25 knots
+increasing to 30 knots in the late evening and overnight. Mostly
+clear. Waves 1 to 2 feet building to 1 to 3 feet in the late
+evening and overnight. 
+.SUNDAY...Southwest wind 5 to 10 knots with gusts to around
+25 knots becoming west early in the afternoon, then becoming
+northeast late in the afternoon. Mostly sunny. Waves 1 to 2 feet.
+.SUNDAY NIGHT...Northeast wind 5 knots rising to 20 to 25 knots
+with gusts to around 30 knots in the late evening and overnight.
+Slight chance of rain showers after midnight. Waves 1 to 3 feet
+building to 3 to 5 feet early in the morning. A small craft
+advisory may be needed. 
+.MONDAY...Northeast wind 20 to 25 knots with gales to around
+35 knots. Chance of rain showers. Waves 6 to 9 feet. Waves
+occasionally to 11 feet. A gale warning may be needed. 
+
+$$
+
+LSZ147-110400-
+Sand Island to Bayfield WI-
+211 PM CDT Sat Oct 10 2026
+
+...SMALL CRAFT ADVISORY IN EFFECT THROUGH SUNDAY MORNING...
+
+.TONIGHT...South wind 10 to 15 knots. Gusts up to 30 knots
+decreasing to 25 knots late in the night. Mostly clear. Waves
+1 to 2 feet. 
+.SUNDAY...Southwest wind 5 to 10 knots with gusts to around
+20 knots becoming west early in the afternoon, then becoming
+north late in the afternoon. Sunny. Waves 1 to 2 feet. 
+.SUNDAY NIGHT...Northeast wind 20 to 25 knots with gusts to
+around 30 knots. Slight chance of rain showers after midnight.
+Waves 1 to 2 feet building to 3 to 5 feet early in the morning.
+Waves occasionally to 7 feet. A small craft advisory may be
+needed. 
+.MONDAY...Northeast wind 20 to 25 knots with gales to around
+35 knots. Chance of rain showers through the day. Waves 6 to
+9 feet. Waves occasionally to 12 feet. A gale warning may be
+needed. 
+
+$$
+
+LSZ150-110400-
+Outer Apostle Islands Beyond 5 NM from Mainland-
+211 PM CDT Sat Oct 10 2026
+
+...SMALL CRAFT ADVISORY IN EFFECT THROUGH SUNDAY MORNING...
+
+.TONIGHT...South wind 15 to 20 knots. Gusts up to 30 knots
+decreasing to 25 knots late in the night. Mostly clear. Waves
+2 to 4 feet. 
+.SUNDAY...Southwest wind 10 to 15 knots with gusts to around
+25 knots becoming north 5 to 10 knots late in the afternoon.
+Sunny. Waves 1 to 3 feet subsiding to 1 to 2 feet in the late
+morning and afternoon. 
+.SUNDAY NIGHT...Northeast wind 20 to 25 knots with gales to
+around 35 knots. Cloudy. Waves 1 foot or less building to 4 to
+6 feet. Waves occasionally to 8 feet. A gale warning may be
+needed. 
+.MONDAY...Northeast wind up to 30 knots with gales to around
+35 knots. Slight chance of rain showers through the day. Waves
+7 to 10 feet. Waves occasionally to 13 feet. A gale warning may
+be needed. 
+
+$$
+
+LSZ121-110400-
+Chequamegon Bay-Bayfield to Oak Point WI-
+211 PM CDT Sat Oct 10 2026
+
+...SMALL CRAFT ADVISORY IN EFFECT THROUGH SUNDAY MORNING...
+
+.TONIGHT...South wind 15 to 20 knots. Gusts up to 30 knots
+decreasing to 25 knots after midnight. Clear. Waves 1 to 2 feet. 
+.SUNDAY...Southwest wind 10 to 15 knots with gusts to around
+20 knots becoming northwest 5 knots late in the afternoon. Sunny.
+Waves 1 foot or less. 
+.SUNDAY NIGHT...Northeast wind 15 to 20 knots with gusts to
+around 25 knots. Cloudy. Waves 1 to 2 feet. 
+.MONDAY...Northeast wind 15 to 20 knots with gusts to around
+25 knots easing to 10 to 15 knots with gusts to around 30 knots
+in the late morning and afternoon. Slight chance of rain showers
+in the morning. Waves 1 to 3 feet. 
+
+$$
+
+LSZ148-110400-
+Oak Point to Saxon Harbor WI-
+211 PM CDT Sat Oct 10 2026
+
+...SMALL CRAFT ADVISORY IN EFFECT THROUGH SUNDAY MORNING...
+
+.TONIGHT...South wind 15 to 20 knots with gusts to around
+30 knots. Clear. Waves 1 to 3 feet. 
+.SUNDAY...South wind 10 to 15 knots with gusts to around 25 knots
+becoming southwest 5 to 10 knots with gusts to around 20 knots in
+the late morning and early afternoon, then becoming north late in
+the afternoon. Sunny. Waves 1 to 2 feet. 
+.SUNDAY NIGHT...Northeast wind 15 to 20 knots with gusts to
+around 25 knots. Mostly cloudy. Waves 1 to 2 feet building to
+2 to 4 feet early in the morning. A small craft advisory may be
+needed. 
+.MONDAY...Northeast wind 15 to 20 knots. Gusts up to 30 knots
+increasing to 35 knots late in the afternoon. Slight chance of
+rain showers through the day. Waves 6 to 9 feet. Waves
+occasionally to 12 feet. A gale warning may be needed. 
+
+$$
+
+Graphical marine forecasts are available online at: 
+weather.gov/greatlakes 
+
+WFO DLH
