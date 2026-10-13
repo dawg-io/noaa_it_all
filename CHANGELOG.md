@@ -5,6 +5,37 @@ All notable changes to NOAA It All for Home Assistant will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.2]
+
+### Fixed
+- **Weather observations no longer drop out for a missed reading.** Temperature, humidity and the
+  other observation sensors, and the weather entity, kept going `unavailable` or `unknown` for ten
+  minutes at a time, leaving gaps in their history. 0.7.2 only covered the nearest station not
+  answering. Now:
+  - A refresh where every station fails keeps showing the last observation for up to an hour after
+    the last successful refresh, as Home Assistant's own NWS integration does, instead of making
+    every observation entity unavailable until the next refresh. The outage is logged once, and so
+    is its end.
+  - A field NWS left empty in the newest observation, such as temperature, humidity or wind, is
+    taken from the newest observation in the last two hours that has it, instead of reading
+    `unknown`. Each sensor's `timestamp` attribute says when its own value was observed. Wind
+    direction, wind chill and heat index come from the same observation as the wind speed or
+    temperature they go with, since NWS leaves them empty for variable wind or when they don't
+    apply.
+- **A station that stops reporting but keeps answering is skipped.** Observations now come from
+  the last two hours, so a station with nothing in that time is passed over for the next nearest
+  instead of serving its last reading indefinitely. (#42)
+- **The forecast discussion's `issue_time` attribute is filled in.** It was always `Unknown`: the
+  pattern for the discussion's header, such as `235 PM EDT Tue Oct 13 2026`, left out the month.
+
+### Changed
+- **The documentation is up to date, with new screenshots.** The README covers the four kinds of
+  entry, has a table of all 54 entities, a table of the surf offices and what each provides, and
+  screenshots of setup, each device and each dashboard card example. Every automation, script and
+  card example was run in Home Assistant 2026.10 and fixed: four called `tts.google_translate_say`,
+  which no longer exists, and they now use the current automation syntax. The minimum Home
+  Assistant version is given as 2026.3.0, as `hacs.json` already required.
+
 ## [0.9.1]
 
 ### Fixed

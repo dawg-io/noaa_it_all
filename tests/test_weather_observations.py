@@ -452,5 +452,54 @@ class TestFeelsLikeSensor(unittest.TestCase):
         self.assertEqual(attrs["feels_like_type"], "Actual Temperature")
 
 
+# ---------------------------------------------------------------
+# Per-field observation time
+# ---------------------------------------------------------------
+class TestObservationTimestamps(unittest.TestCase):
+    """A value carried from an older observation says when it was observed."""
+
+    DATA = {
+        "station_id": "KILM",
+        "properties": {
+            "timestamp": "2026-10-13T18:30:00+00:00",
+            "temperature": {"value": 29.0},
+            "relativeHumidity": {"value": 52.0},
+        },
+        "field_times": {
+            "temperature": "2026-10-13T18:30:00+00:00",
+            "relativeHumidity": "2026-10-13T18:20:00+00:00",
+        },
+    }
+
+    def test_carried_value_has_its_own_time(self):
+        from noaa_it_all.sensors.weather_observations import HumiditySensor
+        sensor = HumiditySensor(_make_coordinator(self.DATA), OFFICE, LAT, LON)
+        self.assertEqual(sensor.state, 52)
+        self.assertEqual(sensor.extra_state_attributes["timestamp"], "2026-10-13T18:20:00+00:00")
+
+    def test_current_value_has_the_observation_time(self):
+        from noaa_it_all.sensors.weather_observations import TemperatureSensor
+        sensor = TemperatureSensor(_make_coordinator(self.DATA), OFFICE, LAT, LON)
+        self.assertEqual(sensor.extra_state_attributes["timestamp"], "2026-10-13T18:30:00+00:00")
+
+    def test_feels_like_has_the_time_of_its_temperature(self):
+        # Its value is the wind chill, heat index or temperature, which all come
+        # from the observation the temperature came from.
+        from noaa_it_all.sensors.weather_observations import FeelsLikeSensor
+        data = {
+            "station_id": "KILM",
+            "properties": {"timestamp": "2026-10-13T18:30:00+00:00", "temperature": {"value": 29.0}},
+            "field_times": {"temperature": "2026-10-13T18:10:00+00:00"},
+        }
+        sensor = FeelsLikeSensor(_make_coordinator(data), OFFICE, LAT, LON)
+        self.assertEqual(sensor.extra_state_attributes["timestamp"], "2026-10-13T18:10:00+00:00")
+
+    def test_without_field_times_the_observation_time_is_used(self):
+        from noaa_it_all.sensors.weather_observations import HumiditySensor
+        data = {k: v for k, v in self.DATA.items() if k != "field_times"}
+        sensor = HumiditySensor(_make_coordinator(data), OFFICE, LAT, LON)
+        self.assertEqual(sensor.extra_state_attributes["timestamp"], "2026-10-13T18:30:00+00:00")
+
+
 if __name__ == "__main__":
     unittest.main()

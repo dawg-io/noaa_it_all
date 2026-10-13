@@ -318,7 +318,9 @@ Real-time weather observations from your local NWS observation station *(NOAA We
 - **Sky Conditions**: Current sky conditions description (Clear, Cloudy, Fog, etc.) *(sensor.noaa_{office}_weather_sky_conditions)*
 - **Feels Like**: Apparent temperature incorporating wind chill or heat index *(sensor.noaa_{office}_weather_feels_like)*
 
-> **Note**: Weather observations update every 10 minutes from the NWS observation station nearest your configured coordinates. If that station stops reporting, the next nearest (of up to three) is used until it comes back; the `station_id` attribute shows which one. Data includes automatic unit conversions to US customary units.
+> **Note**: Weather observations update every 10 minutes from the NWS observation station nearest your configured coordinates. If that station stops answering, or has nothing from the last two hours, the next nearest (of up to three) is used until it comes back; the `station_id` attribute shows which one. Data includes automatic unit conversions to US customary units.
+>
+> A missed reading doesn't blank a sensor. If NWS leaves a field such as humidity or wind out of the newest observation, it comes from the newest one in the last two hours that has it, and that sensor's `timestamp` attribute says when it was observed. If every station fails, the last observation stays for up to an hour after the last successful refresh before the observation entities go `unavailable`. Wind direction, wind chill and heat index come from the same observation as the wind speed or temperature they go with: NWS leaves direction empty for calm or variable wind, and wind chill and heat index whenever they don't apply.
 
 ### Aurora Visibility Alerts
 Location-aware aurora visibility predictions *(NOAA Space)*:
@@ -403,7 +405,8 @@ These sensors provide additional weather data where available from NOAA/NWS *(NO
   - Includes reasoning behind forecast decisions
   - Updated when new forecast discussions are issued (typically 2-3 times daily)
   - State is the literal `Available` (or unknown); the text is in the `full_text` attribute,
-    and `summary` has its first 200 characters
+    and `summary` has its first 200 characters. `issue_time` is when it was issued, e.g.
+    `235 PM EDT Tue Oct 13 2026`
   - Provides insight into weather patterns and forecast confidence
 
 ### Forecast Sensors and the Weather Entity
@@ -1546,12 +1549,13 @@ content: |
 - Check sensor attributes for error messages
 - Verify internet connectivity from your Home Assistant instance
 - NOAA APIs occasionally experience temporary outages; sensors will recover automatically
-- Confirm scan interval is running: entities should show a `last_changed` time within the last 10 minutes
+- Check an observation sensor's `timestamp` attribute: it's when that reading was made. NWS often publishes observations tens of minutes late, and during an outage the last one stays for up to an hour after the last successful refresh
 
 ### Incorrect or Missing Weather Data
-- Weather observations are pulled from the nearest NWS station to your configured coordinates. If it stops reporting, the next nearest of up to three is used instead, and a warning naming the failed station is logged
+- Weather observations are pulled from the nearest NWS station to your configured coordinates. If it stops answering or has nothing from the last two hours, the next nearest of up to three is used instead, and a warning naming the skipped station is logged
 - Confirm your latitude and longitude are accurate (you can change them with **Configure** on the `NOAA Weather` entry under **Settings** → **Devices & services** → **NOAA It All**)
-- If no nearby station answers, observation entities show `unavailable`. The log line `Error fetching NOAA Observations data` names each station tried and why it failed
+- If no nearby station answers, the last observation stays for up to an hour after the last successful refresh, with a warning naming each station tried and why it failed. After an hour, observation entities show `unavailable` and the log line `Error fetching NOAA Observations data` names the stations again
+- A sensor shows `unknown` only if none of the station's observations in the last two hours has that field
 
 ### Binary Sensors Always Off
 - The alert binary sensors only turn on while NWS has an active alert for your coordinates, and Unsafe to Swim only when the Surf Zone Forecast gives a high rip current risk. Their `alerts` and `risk_level` attributes show what they're reading
