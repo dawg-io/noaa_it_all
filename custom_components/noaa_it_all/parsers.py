@@ -681,11 +681,19 @@ _MARINE_ZONE_RE = re.compile(r"^[A-Z]{2}Z\d{3}$")
 _UGC_START_RE = re.compile(r"^[A-Z]{2}[ZC]\d{3}")
 _UGC_EXPIRY_RE = re.compile(r"-\d{6}-\s*$")
 _UGC_TOKEN_RE = re.compile(r"^(?:([A-Z]{2}[ZC]))?(\d{3})(?:>(\d{3}))?$")
+# When an NWS text product was issued, on a header line of its own:
+# "235 PM EDT Tue Oct 13 2026", or "1000 AM ChST Wed Oct 14 2026" for Guam.
+_ISSUED_TIME = r"\d{3,4}\s+[AP]M\s+\S+\s+[A-Za-z]{3}\s+[A-Za-z]{3}\s+\d{1,2}\s+\d{4}"
 # Offices spanning two time zones append the second, e.g. "... 2026 /1001 AM CDT Sat Oct 10 2026/".
-_NSH_ISSUED_RE = re.compile(
-    r"^\d{3,4}\s+[AP]M\s+\S+\s+[A-Za-z]{3}\s+[A-Za-z]{3}\s+\d{1,2}\s+\d{4}(?:\s+/[^/]*/)?$"
-)
+_NSH_ISSUED_RE = re.compile(rf"^{_ISSUED_TIME}(?:\s+/[^/]*/)?$")
+_ISSUED_LINE_RE = re.compile(rf"^({_ISSUED_TIME})(?:\s+/[^/]*/)?[ \t]*$", re.MULTILINE)
 _NSH_PERIOD_RE = re.compile(r"^\.([^.]+)\.\.\.(.*)$")
+
+
+def find_issue_time(text: str) -> Optional[str]:
+    """Return when an NWS text product was issued, from its header, or None."""
+    match = _ISSUED_LINE_RE.search(text or "")
+    return match.group(1) if match else None
 
 
 def product_is_stale(issuance_time: Any, now: datetime, max_age_hours: float) -> bool:

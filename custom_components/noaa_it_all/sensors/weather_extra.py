@@ -5,11 +5,11 @@ discussion (AFD) text.
 """
 
 import logging
-import re
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from ..const import DOMAIN
+from ..parsers import find_issue_time
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -235,12 +235,7 @@ class ForecastDiscussionSensor(CoordinatorEntity):
                 'office_code': self._office_code,
                 'availability': 'Unable to parse forecast discussion'
             }
-        # Extract issue time if available
-        issue_time_match = re.search(
-            r'(\d{3,4}\s+(?:AM|PM)\s+\w{3}\s+\w{3}\s+\d{1,2}\s+\d{4})',
-            text, re.IGNORECASE
-        )
-        issue_time = issue_time_match.group(1) if issue_time_match else 'Unknown'
+        issue_time = find_issue_time(text) or 'Unknown'
         summary = text[:200] + '...' if len(text) > 200 else text
         return {
             'office_code': self._office_code,

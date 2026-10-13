@@ -28,6 +28,7 @@ from .const import (
     NWS_SRF_URL, NWS_AFD_URL, NWS_RADAR_BASE_URL, NWS_NSH_URL, NSH_MAX_AGE_HOURS,
     COOPS_WATER_TEMP_URL, NDBC_REALTIME_URL,
     OFFICE_STATION_IDS, OBSERVATION_STATION_CANDIDATES,
+    OBSERVATION_WINDOW_HOURS, OBSERVATION_LIMIT, OBSERVATION_KEEP_MINUTES,
     METEOR_SCAN_INTERVAL, METEOR_UPCOMING_COUNT,
     ECLIPSE_SCAN_INTERVAL, ECLIPSE_APPROACH_SCAN_INTERVAL, ECLIPSE_ACTIVE_SCAN_INTERVAL,
     ECLIPSE_APPROACH_WINDOW_HOURS, ECLIPSE_UPCOMING_COUNT, ECLIPSE_MAX_CATALOG_SCAN,
@@ -210,14 +211,98 @@ class NWSAlertsCoordinator(DataUpdateCoordinator):
 # Weather Observations (location-specific)
 # -------------------------------------------------------------------
 
+# Fields every observation should have. When the newest leaves one empty, NWS
+# just did not publish it that time, so the newest earlier observation that
+# has it stands in.
+_CARRIED_OBSERVATION_FIELDS = (
+    "temperature", "dewpoint", "relativeHumidity", "windSpeed",
+    "barometricPressure", "visibility", "textDescription",
+)
+# Fields that go with another, so they come from the observation it came from.
+# Wind direction is empty for calm or variable wind, and wind chill and heat
+# index whenever they do not apply: there, empty is the reading. Carried on
+# their own, an old bearing or heat index would show as current.
+_PAIRED_OBSERVATION_FIELDS = {
+    "windDirection": "windSpeed",
+    "windChill": "temperature",
+    "heatIndex": "temperature",
+}
+
+
+def _observation_time(properties: dict) -> Optional[datetime]:
+    """Return when an observation was made, or None if it does not say."""
+    stamp = properties.get("timestamp")
+    if not isinstance(stamp, str):
+        return None
+    try:
+        when = datetime.fromisoformat(stamp)
+    except ValueError:
+        return None
+    return when if when.tzinfo else when.replace(tzinfo=timezone.utc)
+
+
+def _has_reading(value) -> bool:
+    """Return True if an observation field holds a reading. Zero counts."""
+    if isinstance(value, dict):
+        return value.get("value") is not None
+    return isinstance(value, str) and value.strip() != ""
+
+
+def merge_observations(features, since: datetime) -> Optional[tuple[dict, dict]]:
+    """Return the newest observation since ``since`` with its gaps filled.
+
+    Returns ``(properties, field_times)``: the newest observation's properties,
+    with each carried field that it left empty taken from the newest earlier
+    observation that has it, each paired field taken from wherever its partner
+    came from, and the time each of those fields was observed. Returns None if
+    no observation is that recent.
+    """
+    recent = []
+    for feature in features if isinstance(features, list) else []:
+        properties = feature.get("properties") if isinstance(feature, dict) else None
+        if not isinstance(properties, dict):
+            continue
+        when = _observation_time(properties)
+        if when is not None and when >= since:
+            recent.append((when, properties))
+    if not recent:
+        return None
+    recent.sort(key=lambda item: item[0], reverse=True)
+
+    newest = recent[0][1]
+    merged = dict(newest)
+    field_times = {}
+    sources = {}
+    for field in _CARRIED_OBSERVATION_FIELDS:
+        for _, properties in recent:
+            if _has_reading(properties.get(field)):
+                merged[field] = properties[field]
+                field_times[field] = properties.get("timestamp")
+                sources[field] = properties
+                break
+    for field, partner in _PAIRED_OBSERVATION_FIELDS.items():
+        source = sources.get(partner, newest)
+        if field in source:
+            merged[field] = source[field]
+        if _has_reading(source.get(field)):
+            field_times[field] = source.get("timestamp")
+    return merged, field_times
+
+
 class ObservationsCoordinator(DataUpdateCoordinator):
-    """Resolve the nearest stations and fetch the latest observation.
+    """Resolve the nearest stations and fetch their recent observations.
 
     Only the nearest station used to be kept, so when it stopped reporting
     every refresh failed -- and a restart resolved the same station again --
     while the next station along was reporting normally. Now the nearest few
-    are kept and the first that answers is used. The nearest is still tried
-    first on every refresh, so it takes over again once it recovers.
+    are kept and the first with a recent observation is used. The nearest is
+    still tried first on every refresh, so it takes over again once it recovers.
+
+    Each refresh reads the last OBSERVATION_WINDOW_HOURS of observations, so a
+    field NWS left empty in the newest one is filled from an earlier one rather
+    than reading as unknown. When every station fails, the last observation is
+    kept for up to OBSERVATION_KEEP_MINUTES rather than every observation
+    entity going unavailable until the next refresh.
     """
 
     def __init__(
@@ -242,6 +327,12 @@ class ObservationsCoordinator(DataUpdateCoordinator):
         self.station_id: Optional[str] = OFFICE_STATION_IDS.get(office_code)
         # Nearest first, filled in by _resolve_station.
         self._stations: list[str] = []
+        # The last successful refresh's data and when it happened, kept while
+        # every station fails; and whether that is happening now, so the
+        # outage is logged once and its end once.
+        self._last_good: Optional[dict] = None
+        self._last_success: Optional[datetime] = None
+        self._failing = False
         # If latitude/longitude are provided, always attempt to resolve the nearest
         # station via the NWS Points API on first update, using OFFICE_STATION_IDS
         # only as a fallback if resolution fails.
@@ -270,6 +361,15 @@ class ObservationsCoordinator(DataUpdateCoordinator):
                 f"No observation station for office {self.office_code}"
             )
 
+        now = datetime.now(timezone.utc)
+        # Rounded down to ten minutes, so successive refreshes ask for the same
+        # URL and NWS can answer from its cache.
+        since = now - timedelta(hours=OBSERVATION_WINDOW_HOURS)
+        since = since.replace(minute=since.minute - since.minute % 10, second=0, microsecond=0)
+        params = {
+            "start": since.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "limit": OBSERVATION_LIMIT,
+        }
         errors: list[str] = []
         last_err: Optional[Exception] = None
         for station in stations:
@@ -277,6 +377,7 @@ class ObservationsCoordinator(DataUpdateCoordinator):
             try:
                 async with session.get(
                     url,
+                    params=params,
                     headers={"User-Agent": USER_AGENT},
                     timeout=timeout,
                 ) as resp:
@@ -284,7 +385,7 @@ class ObservationsCoordinator(DataUpdateCoordinator):
                     data = await resp.json()
                 # Inside the try: a body that is not a JSON object is a
                 # failed station too, not an escaped AttributeError.
-                properties = data.get("properties", {})
+                features = data.get("features")
             except Exception as err:
                 _LOGGER.debug(
                     "Error fetching observations from station %s: %s",
@@ -294,11 +395,21 @@ class ObservationsCoordinator(DataUpdateCoordinator):
                 last_err = err
                 continue
 
+            merged = merge_observations(features, since)
+            if merged is None:
+                # Answering, but with nothing recent: it has stopped reporting.
+                errors.append(
+                    f"{station} (no observation in the last "
+                    f"{OBSERVATION_WINDOW_HOURS} hours)"
+                )
+                continue
+            properties, field_times = merged
+
             # Log only when the station changes, not on every refresh.
             if station != self.station_id:
                 if errors:
                     _LOGGER.warning(
-                        "Nearer observation stations are not answering "
+                        "Nearer observation stations are not reporting "
                         "(%s); using %s instead",
                         "; ".join(errors), station,
                     )
@@ -307,14 +418,50 @@ class ObservationsCoordinator(DataUpdateCoordinator):
                         "Observation station %s is answering again", station
                     )
                 self.station_id = station
-            return {
+            if self._failing:
+                _LOGGER.info("Observations are updating again, from %s", station)
+                self._failing = False
+            self._last_success = now
+            self._last_good = {
                 "properties": properties,
+                "field_times": field_times,
                 "station_id": station,
             }
+            return self._last_good
 
-        raise UpdateFailed(
-            "Error fetching observations: " + "; ".join(errors)
-        ) from last_err
+        return self._keep_last_observation(now, errors, last_err)
+
+    def _keep_last_observation(
+        self, now: datetime, errors: list[str], cause: Optional[Exception]
+    ) -> dict:
+        """Return the last observation while it is recent enough, else fail.
+
+        Every station failing used to make every observation entity
+        unavailable until the next refresh, leaving a gap in their history
+        for what is usually a brief NWS outage.
+        """
+        message = "Error fetching observations: " + "; ".join(errors)
+        keep = timedelta(minutes=OBSERVATION_KEEP_MINUTES)
+        if (
+            self._last_good is None
+            or self._last_success is None
+            or now - self._last_success > keep
+        ):
+            # Home Assistant logs this failure and the recovery from here.
+            self._failing = False
+            raise UpdateFailed(message) from cause
+        if self._failing:
+            _LOGGER.debug("%s", message)
+        else:
+            _LOGGER.warning(
+                "%s. Showing the observation from %s until a station answers, "
+                "for up to %d minutes",
+                message,
+                self._last_good["properties"].get("timestamp"),
+                OBSERVATION_KEEP_MINUTES,
+            )
+            self._failing = True
+        return self._last_good
 
     async def _resolve_station(self, session, timeout) -> None:
         """Fetch the observation stations nearest lat/lon."""
