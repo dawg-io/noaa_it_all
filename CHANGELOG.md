@@ -5,6 +5,20 @@ All notable changes to NOAA It All for Home Assistant will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.1]
+
+### Fixed
+- **Surf Height reads a reporting buoy again in San Diego, Corpus Christi, Mobile and Miami.** San
+  Diego (SGX) used buoy 46235, Imperial Beach Nearshore, which has stopped reporting, so Surf Height
+  fell back to the forecast text or stayed unknown, and a warning was logged on every poll. It now
+  uses 46232, Point Loma South. Corpus Christi (CRP) and Mobile (MOB) used buoys that NDBC has
+  recovered or that stopped reporting, and now use 42092 (Aransas Pass) and 42012 (Orange Beach).
+  Miami (MFL) read a buoy 350 NM east of Nassau in the Bahamas, and now uses 41122 (Hollywood
+  Beach). Thanks @xpucu for finding the San Diego buoy and tracking down the right one. (#38)
+- **Brownsville no longer polls a buoy that's gone.** BRO shared Corpus Christi's recovered buoy,
+  and no other buoy nearby reports wave height. A new BRO surf entry doesn't get Surf Height; an
+  existing one keeps it and reads it from the forecast text.
+
 ## [0.9.0]
 
 ### Added
