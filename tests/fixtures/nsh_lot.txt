@@ -1,0 +1,48 @@
+FZUS53 KLOT 101451
+NSHLOT
+
+Nearshore Marine Forecast
+National Weather Service Chicago/Romeoville IL
+951 AM CDT Sat Oct 10 2026
+
+For waters within five nautical miles of shore on Lake Michigan
+
+Waves are provided as a range of significant wave heights, which
+is the average of the highest 1/3 of the waves, along with the
+average height of the highest 10 percent of the waves which will
+occasionally be encountered.
+
+LMZ740>742-102115-
+Winthrop Harbor to Wilmette Harbor IL-
+Wilmette Harbor to Northerly Island IL-
+Northerly Island to Calumet Harbor IL-
+951 AM CDT Sat Oct 10 2026
+
+.REST OF TODAY...South winds 15 to 20 kt becoming southeast.
+Partly cloudy. Waves 2 to 4 ft. 
+.TONIGHT...Southeast winds 15 to 20 kt diminishing to 10 to 15 
+kt. Mostly cloudy. Waves 2 to 4 ft. 
+.SUNDAY...Southeast winds around 10 kt. Partly cloudy in the
+morning, then becoming mostly sunny. Waves 1 to 3 ft. 
+.SUNDAY NIGHT...South winds around 10 kt. Mostly clear in the
+evening, then becoming partly cloudy. Waves 1 to 3 ft.
+
+$$
+
+LMZ743>745-102115-
+Calumet Harbor IL to Gary IN-Gary to Burns Harbor IN-
+Burns Harbor to Michigan City IN-
+951 AM CDT Sat Oct 10 2026
+
+.REST OF TODAY...South winds 15 to 20 kt becoming southeast.
+Partly cloudy. Waves 1 to 2 ft. 
+.TONIGHT...Southeast winds 10 to 15 kt. Mostly cloudy. Waves 1 
+to 2 ft. 
+.SUNDAY...East winds around 10 kt becoming northeast in the
+afternoon. Slight chance of showers in the morning. Waves 1 to 
+2 ft. 
+.SUNDAY NIGHT...Southeast winds around 10 kt becoming south
+overnight. Clear in the evening, then becoming partly cloudy.
+Waves around 1 ft.  
+
+$$

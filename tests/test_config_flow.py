@@ -730,9 +730,10 @@ _VEF_POINT = {"office": "VEF", "name": "Las Vegas, NV", "radar": "KESX"}
 class _FakeResponse:
     """Async context manager standing in for an aiohttp response."""
 
-    def __init__(self, payload=None, error=None):
+    def __init__(self, payload=None, error=None, status=200):
         self._payload = payload
         self._error = error
+        self.status = status
 
     async def __aenter__(self):
         return self
@@ -743,8 +744,10 @@ class _FakeResponse:
     def raise_for_status(self):
         if self._error:
             raise self._error
+        if self.status >= 400:
+            raise RuntimeError(f"HTTP {self.status}")
 
-    async def json(self):
+    async def json(self, **kwargs):
         return self._payload
 
 
@@ -998,12 +1001,12 @@ class TestMenu(unittest.TestCase):
     def test_offers_location_surf_and_hurricanes(self):
         result = _run(_flow().async_step_user())
         self.assertEqual(result["type"], "menu")
-        self.assertEqual(result["menu_options"], ["location", "surf", "hurricane"])
+        self.assertEqual(result["menu_options"], ["location", "surf", "marine", "hurricane"])
 
     def test_leaves_out_hurricanes_once_added(self):
         flow = _flow(entries=[_entry({"entry_type": "hurricane"})])
         self.assertEqual(
-            _run(flow.async_step_user())["menu_options"], ["location", "surf"]
+            _run(flow.async_step_user())["menu_options"], ["location", "surf", "marine"]
         )
 
 
@@ -1192,3 +1195,148 @@ class TestOptionsOnlyForWeather(unittest.TestCase):
                 self.assertIs(
                     NOAAConfigFlow.async_supports_options_flow(_entry(data)), expected
                 )
+
+
+# ---------------------------------------------------------------------------
+# Marine entries: one zone's nearshore marine forecast
+# ---------------------------------------------------------------------------
+
+def _nsh_lot():
+    with open(os.path.join(_REPO, "tests", "fixtures", "nsh_lot.txt"), encoding="utf-8") as f:
+        return f.read()
+
+
+class TestLookupMarineZone(unittest.TestCase):
+    """async_lookup_marine_zone checks a zone with NWS before it is added."""
+
+    _ZONE = "https://api.weather.gov/zones/marine/LMZ741"
+    _LIST = "https://api.weather.gov/products/types/NSH/locations/LOT"
+    _NSH = "https://api.weather.gov/products/types/NSH/locations/LOT/latest"
+    _ISSUED = _FakeResponse({"@graph": [{"id": "abc"}]})
+
+    def _lookup(self, responses, zone="LMZ741"):
+        from noaa_it_all import config_flow
+        with patch.object(
+            config_flow, "async_get_clientsession", return_value=_session(responses)
+        ):
+            return _run(config_flow.async_lookup_marine_zone(MagicMock(), zone))
+
+    def _zone(self, cwa="LOT"):
+        return _FakeResponse({"properties": {
+            "cwa": [cwa], "name": "Wilmette Harbor to Northerly Island IL",
+        }})
+
+    def test_a_zone_in_its_office_nearshore_forecast(self):
+        result = self._lookup({
+            self._ZONE: self._zone(),
+            self._LIST: self._ISSUED,
+            self._NSH: _FakeResponse({"productText": _nsh_lot()}),
+        })
+        self.assertEqual(
+            result, ({"office": "LOT", "name": "Wilmette Harbor to Northerly Island IL"}, None)
+        )
+
+    def test_an_office_that_has_not_issued_for_a_day(self):
+        """Its last forecast is still served, but it would show as unavailable."""
+        result = self._lookup({
+            self._ZONE: self._zone(),
+            self._LIST: self._ISSUED,
+            self._NSH: _FakeResponse({
+                "issuanceTime": "2020-04-01T14:00:00+00:00", "productText": _nsh_lot(),
+            }),
+        })
+        self.assertEqual(result, (None, "marine_forecast_stale"))
+
+    def test_an_unknown_zone(self):
+        self.assertEqual(
+            self._lookup({self._ZONE: _FakeResponse(status=404)}),
+            (None, "unknown_marine_zone"),
+        )
+
+    def test_a_zone_missing_from_the_nearshore_forecast(self):
+        """Open-lake waters are a marine zone but not in the nearshore product."""
+        result = self._lookup({
+            self._ZONE: self._zone(),
+            self._LIST: self._ISSUED,
+            self._NSH: _FakeResponse({"productText": "nothing for this zone"}),
+        })
+        self.assertEqual(result, (None, "marine_zone_not_covered"))
+
+    def test_an_office_without_a_nearshore_forecast(self):
+        """It lists no products; its latest URL would answer 500, not 404."""
+        result = self._lookup({
+            self._ZONE: self._zone(cwa="ILM"),
+            "https://api.weather.gov/products/types/NSH/locations/ILM":
+                _FakeResponse({"@graph": []}),
+        })
+        self.assertEqual(result, (None, "marine_zone_not_covered"))
+
+    def test_nws_unreachable(self):
+        self.assertEqual(
+            self._lookup({self._ZONE: _FakeResponse(error=RuntimeError("timeout"))}),
+            (None, "cannot_connect"),
+        )
+        self.assertEqual(
+            self._lookup({
+                self._ZONE: self._zone(),
+                self._LIST: self._ISSUED,
+                self._NSH: _FakeResponse(error=RuntimeError("timeout")),
+            }),
+            (None, "cannot_connect"),
+        )
+        self.assertEqual(
+            self._lookup({
+                self._ZONE: self._zone(),
+                self._LIST: _FakeResponse(status=500),
+            }),
+            (None, "cannot_connect"),
+        )
+
+
+class TestMarineFlow(unittest.TestCase):
+    """Add entry > Nearshore marine forecast."""
+
+    def _submit(self, zone, found=({"office": "LOT", "name": "Wilmette Harbor IL"}, None)):
+        flow = _flow()
+        with patch(
+            "noaa_it_all.config_flow.async_lookup_marine_zone", AsyncMock(return_value=found)
+        ) as lookup:
+            result = _run(flow.async_step_marine(user_input={"marine_zone": zone}))
+        return flow, result, lookup
+
+    def test_shows_the_form(self):
+        result = _run(_flow().async_step_marine())
+        self.assertEqual(result["step_id"], "marine")
+        self.assertEqual(result["errors"], {})
+
+    def test_creates_the_marine_entry(self):
+        flow, result, lookup = self._submit(" lmz741 ")
+        self.assertEqual(result["type"], "create_entry")
+        self.assertEqual(result["title"], "NOAA Marine - Wilmette Harbor IL")
+        self.assertEqual(result["data"], {
+            "entry_type": "marine", "marine_zone": "LMZ741", "office_code": "LOT",
+        })
+        lookup.assert_awaited_once_with(flow.hass, "LMZ741")
+        flow.async_set_unique_id.assert_awaited_once_with("noaa_marine_LMZ741")
+        flow._abort_if_unique_id_configured.assert_called_once_with(
+            error="marine_already_configured"
+        )
+
+    def test_a_malformed_zone_is_refused_without_asking_nws(self):
+        _, result, lookup = self._submit("Lake Michigan")
+        self.assertEqual(result["errors"], {"marine_zone": "invalid_marine_zone"})
+        lookup.assert_not_called()
+
+    def test_nws_errors_are_shown_on_the_form(self):
+        for error in ("unknown_marine_zone", "marine_zone_not_covered", "cannot_connect"):
+            with self.subTest(error=error):
+                _, result, _ = self._submit("LMZ741", found=(None, error))
+                self.assertEqual(result["type"], "form")
+                self.assertEqual(result["errors"], {"marine_zone": error})
+                self.assertEqual(result["description_placeholders"], {"zone": "LMZ741"})
+
+    def test_marine_entries_have_no_configure(self):
+        from noaa_it_all.config_flow import NOAAConfigFlow
+        self.assertFalse(NOAAConfigFlow.async_supports_options_flow(
+            _entry({"entry_type": "marine", "marine_zone": "LMZ741", "office_code": "LOT"})
+        ))

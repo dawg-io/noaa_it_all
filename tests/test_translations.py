@@ -51,7 +51,7 @@ class TestTranslationsValid(unittest.TestCase):
     def test_user_step_is_the_menu_of_entry_types(self):
         """Add entry starts by choosing weather, surf or hurricanes."""
         options = self.en["config"]["step"]["user"]["menu_options"]
-        self.assertEqual({"location", "surf", "hurricane"}, set(options))
+        self.assertEqual({"location", "surf", "marine", "hurricane"}, set(options))
 
     def test_location_step_has_required_fields(self):
         location = self.en["config"]["step"]["location"]

@@ -1,6 +1,7 @@
 """Config flow for NOAA Integration."""
 import logging
 import math
+from datetime import datetime, timezone
 
 import aiohttp
 import voluptuous as vol
@@ -14,15 +15,21 @@ from .const import (
     CONF_ENTRY_TYPE,
     CONF_LATITUDE,
     CONF_LONGITUDE,
+    CONF_MARINE_ZONE,
     CONF_OFFICE_CODE,
     CONF_RADAR_LOOP_HOURS,
     CONF_RADAR_SITE,
     CONF_SURF_OFFICE_CODE,
     DEFAULT_RADAR_LOOP_HOURS,
     ENTRY_TYPE_HURRICANE,
+    ENTRY_TYPE_MARINE,
     ENTRY_TYPE_SURF,
     ENTRY_TYPE_WEATHER,
     HURRICANE_ENTRY_TITLE,
+    NSH_MAX_AGE_HOURS,
+    NWS_MARINE_ZONE_URL,
+    NWS_NSH_LIST_URL,
+    NWS_NSH_URL,
     NWS_OFFICE_URL,
     NWS_POINTS_URL,
     NWS_SRF_PRODUCTS_URL,
@@ -33,6 +40,7 @@ from .const import (
     USER_AGENT,
 )
 from .entry_config import resolve_entry_config
+from .parsers import normalize_marine_zone, parse_nearshore_forecast, product_is_stale
 from .offices import (
     SURF_HEIGHT,
     WATER_TEMPERATURE,
@@ -124,6 +132,68 @@ def find_nearby_offices(latitude, longitude, max_miles=NEARBY_OFFICE_RADIUS_MILE
     if max_miles is None:
         return distances
     return [item for item in distances if item[1] <= max_miles]
+
+
+async def async_lookup_marine_zone(hass, zone):
+    """Check a marine zone with NWS: its name, its office, and its forecast.
+
+    Returns ({"office", "name"}, None), or (None, error) where error is a
+    config flow error key: the zone does not exist, it is not in a nearshore
+    marine forecast, its office has not issued one in a day, or NWS could not
+    be reached.
+    """
+    session = async_get_clientsession(hass)
+    timeout = aiohttp.ClientTimeout(total=_LOOKUP_TIMEOUT)
+    headers = {"User-Agent": USER_AGENT}
+    try:
+        async with session.get(
+            NWS_MARINE_ZONE_URL.format(zone=zone), headers=headers, timeout=timeout
+        ) as resp:
+            if resp.status == 404:
+                return None, "unknown_marine_zone"
+            resp.raise_for_status()
+            properties = (await resp.json()).get("properties") or {}
+    except Exception as err:  # noqa: BLE001 - shown as a form error
+        _LOGGER.debug("Could not look up marine zone %s: %s", zone, err)
+        return None, "cannot_connect"
+
+    offices = properties.get("cwa") or []
+    office = offices[0] if offices and isinstance(offices[0], str) else None
+    if office is None or len(office) != 3 or not office.isascii() or not office.isalpha():
+        return None, "marine_zone_not_covered"
+    office = office.upper()
+    name = properties.get("name")
+    if not isinstance(name, str) or not name:
+        name = zone
+
+    # A zone can exist without being in a Nearshore Marine Forecast: open
+    # lake waters, or the ocean, which have other products. The forecast
+    # entity would never have data, so it is checked here. An office that
+    # issues none lists no products; its "latest" URL answers 500.
+    try:
+        async with session.get(
+            NWS_NSH_LIST_URL.format(office=office),
+            headers={**headers, "Accept": "application/ld+json"},
+            timeout=timeout,
+        ) as resp:
+            resp.raise_for_status()
+            issued = (await resp.json(content_type=None) or {}).get("@graph")
+        if not issued:
+            return None, "marine_zone_not_covered"
+        async with session.get(
+            NWS_NSH_URL.format(office=office), headers=headers, timeout=timeout
+        ) as resp:
+            resp.raise_for_status()
+            product = await resp.json(content_type=None) or {}
+    except Exception as err:  # noqa: BLE001 - shown as a form error
+        _LOGGER.debug("Could not fetch the nearshore forecast from %s: %s", office, err)
+        return None, "cannot_connect"
+    issued = product.get("issuanceTime")
+    if product_is_stale(issued, datetime.now(timezone.utc), NSH_MAX_AGE_HOURS):
+        return None, "marine_forecast_stale"
+    if parse_nearshore_forecast(product.get("productText") or "", zone) is None:
+        return None, "marine_zone_not_covered"
+    return {"office": office, "name": name}, None
 
 
 def _format_office_label(code, distance_miles):
@@ -369,10 +439,47 @@ class NOAAConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def async_step_user(self, user_input=None):
         """Step 1: choose weather for a location, a surf forecast or hurricanes."""
-        menu_options = ["location", "surf"]
+        menu_options = ["location", "surf", "marine"]
         if not any(is_hurricane_entry(e.data) for e in self._entries()):
             menu_options.append("hurricane")
         return self.async_show_menu(step_id="user", menu_options=menu_options)
+
+    async def async_step_marine(self, user_input=None):
+        """Add a nearshore marine forecast for one marine zone."""
+        errors = {}
+        placeholders = {"zone": ""}
+        suggested = ""
+        if user_input is not None:
+            suggested = (user_input.get(CONF_MARINE_ZONE) or "").strip()
+            zone = normalize_marine_zone(suggested)
+            if zone is None:
+                errors[CONF_MARINE_ZONE] = "invalid_marine_zone"
+            else:
+                await self.async_set_unique_id(f"noaa_marine_{zone}")
+                self._abort_if_unique_id_configured(error="marine_already_configured")
+                found, error = await async_lookup_marine_zone(self.hass, zone)
+                if found is not None:
+                    return self.async_create_entry(
+                        title=f"NOAA Marine - {found['name']}",
+                        data={
+                            CONF_ENTRY_TYPE: ENTRY_TYPE_MARINE,
+                            CONF_MARINE_ZONE: zone,
+                            CONF_OFFICE_CODE: found["office"],
+                        },
+                    )
+                errors[CONF_MARINE_ZONE] = error
+                placeholders["zone"] = zone
+
+        return self.async_show_form(
+            step_id="marine",
+            data_schema=vol.Schema({
+                vol.Required(
+                    CONF_MARINE_ZONE, description={"suggested_value": suggested}
+                ): str,
+            }),
+            errors=errors,
+            description_placeholders=placeholders,
+        )
 
     async def async_step_hurricane(self, user_input=None):
         """Add the hurricane entry."""

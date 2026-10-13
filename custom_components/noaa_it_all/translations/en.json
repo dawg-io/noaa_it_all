@@ -7,6 +7,7 @@
         "menu_options": {
           "location": "Weather for a location (forecast, alerts, radar and space)",
           "surf": "Surf forecast for a coast",
+          "marine": "Nearshore marine forecast for a Great Lakes zone",
           "hurricane": "Hurricanes and satellite images"
         }
       },
@@ -31,12 +32,24 @@
         "data": {
           "surf_office_code": "Surf forecast office"
         }
+      },
+      "marine": {
+        "title": "Nearshore Marine Forecast",
+        "description": "Enter an NWS marine zone ID, for example LMZ741 (Lake Michigan, Wilmette Harbor to Northerly Island). Nearshore marine forecasts come from the Great Lakes offices, for the zones near the shore. The zone's office and name come from NWS, and the forecast is its own NOAA Marine entry.",
+        "data": {
+          "marine_zone": "Marine zone ID"
+        }
       }
     },
     "error": {
       "invalid_latitude": "Latitude must be between -90 and 90.",
       "invalid_longitude": "Longitude must be between -180 and 180.",
-      "invalid_office": "Please choose a valid NWS forecast office."
+      "invalid_office": "Please choose a valid NWS forecast office.",
+      "invalid_marine_zone": "Enter a marine zone ID such as LMZ741: two letters, Z, then three digits.",
+      "unknown_marine_zone": "NWS has no marine zone {zone}.",
+      "marine_zone_not_covered": "{zone} is not in a nearshore marine forecast. Those cover the Great Lakes zones near the shore; open-lake and ocean zones have other forecasts.",
+      "marine_forecast_stale": "{zone}'s office hasn't issued a nearshore marine forecast in the last 24 hours. Try again later.",
+      "cannot_connect": "Could not reach NWS. Try again in a moment."
     },
     "abort": {
       "already_configured": "This NOAA office and location is already configured.",
@@ -44,7 +57,8 @@
       "hurricane_already_configured": "Hurricanes are already set up.",
       "all_surf_configured": "Every surf forecast office is already set up.",
       "unknown_surf_office": "That office does not issue a Surf Zone Forecast.",
-      "already_in_progress": "This is already being set up."
+      "already_in_progress": "This is already being set up.",
+      "marine_already_configured": "The marine forecast for this zone is already set up."
     }
   },
   "options": {
