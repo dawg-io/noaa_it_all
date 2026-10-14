@@ -65,9 +65,10 @@ Comprehensive NOAA data integration providing weather observations, forecasts, a
 3. Enter your **Latitude and Longitude** (pre-filled from your Home zone)
 4. Select your **NWS Forecast Office**; the one NWS names for your location is pre-selected
 5. Choose a **surf forecast office**, or **No surf data**
-6. Complete setup
+6. Choose **Space** for the office, or **No space data**
+7. Complete setup
 
-The surf office becomes its own `NOAA Surf` entry, and the first location also adds the `NOAA Hurricane` entry. Use **Add entry** for more beaches, Great Lakes marine zones, or hurricanes.
+The surf office becomes its own `NOAA Surf` entry and Space a `NOAA Space` entry for the office, and the first location also adds the `NOAA Hurricane` entry. Use **Add entry** for more beaches, Great Lakes marine zones, Space for another office, or hurricanes.
 
 #### Legacy YAML Configuration
 
@@ -80,7 +81,7 @@ The surf office becomes its own `NOAA Surf` entry, and the first location also a
 
 Entities are automatically grouped into logical devices:
 - **NOAA {OFFICE} Weather** - Observations, forecasts, radar and severe weather alerts
-- **NOAA {OFFICE} Space** - Space weather, aurora, meteor shower and eclipse data
+- **NOAA {OFFICE} Space** - Space weather, aurora, meteor shower and eclipse data, one Space entry per office
 - **NOAA {OFFICE} Surf** - Surf and ocean conditions for one coastal office
 - **NOAA {ZONE} Marine** - The nearshore marine forecast for one Great Lakes zone
 - **NOAA Hurricane** - Global tropical data and satellite imagery, created once across all offices

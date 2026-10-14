@@ -16,7 +16,7 @@ from .const import (
     ECLIPSE_UPCOMING_DAYS, ECLIPSE_UPCOMING_MIN_COVERAGE,
 )
 from .entry_config import resolve_entry_config
-from .offices import is_surf_entry
+from .offices import is_space_entry, is_surf_entry
 from .sensors.meteor_showers import space_device_info
 
 _LOGGER = logging.getLogger(__name__)
@@ -43,10 +43,17 @@ async def async_setup_entry(
     if is_surf_entry(conf):
         async_add_entities([UnsafeToSwimBinarySensor(data["surf_coordinator"], office_code)])
         return
+    if is_space_entry(conf):
+        meteor_coord = data["meteor_coordinator"]
+        eclipse_coord = data["eclipse_coordinator"]
+        async_add_entities([
+            MeteorShowerActiveBinarySensor(meteor_coord, office_code),
+            EclipseVisibleNowBinarySensor(eclipse_coord, office_code),
+            EclipseComingUpBinarySensor(eclipse_coord, office_code),
+        ])
+        return
 
     alerts_coord = data["alerts_coordinator"]
-    meteor_coord = data["meteor_coordinator"]
-    eclipse_coord = data["eclipse_coordinator"]
 
     entities = []
 
@@ -56,15 +63,6 @@ async def async_setup_entry(
             FloodWinterAlertBinarySensor(alerts_coord, office_code, latitude, longitude),
             HeatAirQualityAlertBinarySensor(alerts_coord, office_code, latitude, longitude),
             ActiveAlertsGeneralBinarySensor(alerts_coord, office_code, latitude, longitude),
-        ])
-
-    if meteor_coord:
-        entities.append(MeteorShowerActiveBinarySensor(meteor_coord, office_code))
-
-    if eclipse_coord:
-        entities.extend([
-            EclipseVisibleNowBinarySensor(eclipse_coord, office_code),
-            EclipseComingUpBinarySensor(eclipse_coord, office_code),
         ])
 
     async_add_entities(entities)

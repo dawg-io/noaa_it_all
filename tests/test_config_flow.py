@@ -391,10 +391,21 @@ class TestAsyncStepOffice(unittest.TestCase):
         self.assertEqual(result["type"], "form")
         self.assertEqual(result["step_id"], "surf")
 
-    def test_surf_choice_creates_the_weather_entry(self):
+    def test_surf_choice_asks_about_space(self):
         flow = self._make_flow(32.7157, -117.1611)
         _run(flow.async_step_office(user_input={"office_code": "SGX"}))
+        _reset_recorded_defaults()
         result = _run(flow.async_step_surf(user_input={"surf_office_code": "SGX"}))
+        self.assertEqual(result["type"], "form")
+        self.assertEqual(result["step_id"], "space")
+        self.assertEqual(result["description_placeholders"], {"office": "SGX"})
+        self.assertEqual(_recorded_defaults()["space_office_code"], "SGX")
+
+    def test_space_choice_creates_the_weather_entry(self):
+        flow = self._make_flow(32.7157, -117.1611)
+        _run(flow.async_step_office(user_input={"office_code": "SGX"}))
+        _run(flow.async_step_surf(user_input={"surf_office_code": "SGX"}))
+        result = _run(flow.async_step_space(user_input={"space_office_code": "SGX"}))
         self.assertEqual(result["type"], "create_entry")
         self.assertEqual(result["title"], "NOAA Weather - San Diego, CA")
         flow.async_set_unique_id.assert_awaited_once_with(
@@ -860,7 +871,8 @@ class TestInlandConfigFlow(unittest.TestCase):
     def test_surf_office_choice_creates_the_entry_and_adds_the_surf_entry(self):
         flow = self._make_flow()
         _run(flow.async_step_office(user_input={"office_code": "VEF"}))
-        result = _run(flow.async_step_surf(user_input={"surf_office_code": "MLB"}))
+        _run(flow.async_step_surf(user_input={"surf_office_code": "MLB"}))
+        result = _run(flow.async_step_space(user_input={"space_office_code": "VEF"}))
         self.assertEqual(result["type"], "create_entry")
         self.assertEqual(result["title"], "NOAA Weather - Las Vegas, NV")
         self.assertEqual(result["data"], {
@@ -871,11 +883,18 @@ class TestInlandConfigFlow(unittest.TestCase):
             "noaa_VEF_36_1699_n115_1398"
         )
         self.assertIn({"entry_type": "surf", "office_code": "MLB"}, _added_entries(flow))
+        # Space is named after the forecast office, and its title after the
+        # name NWS gave it.
+        self.assertIn({
+            "entry_type": "space", "office_code": "VEF",
+            "latitude": _VEGAS[0], "longitude": _VEGAS[1], "place": "Las Vegas, NV",
+        }, _added_entries(flow))
 
     def test_no_surf_adds_no_surf_entry(self):
         flow = self._make_flow()
         _run(flow.async_step_office(user_input={"office_code": "VEF"}))
-        result = _run(flow.async_step_surf(user_input={"surf_office_code": "none"}))
+        _run(flow.async_step_surf(user_input={"surf_office_code": "none"}))
+        result = _run(flow.async_step_space(user_input={"space_office_code": "VEF"}))
         self.assertEqual(result["type"], "create_entry")
         self.assertNotIn("surf", [d.get("entry_type") for d in _added_entries(flow)])
 
@@ -993,49 +1012,59 @@ class TestInlandOptionsFlow(unittest.TestCase):
 # ---------------------------------------------------------------------------
 
 _WILMINGTON = (34.2257, -77.9447)
+# The Space entry a Wilmington location flow adds.
+_ILM_SPACE = {
+    "entry_type": "space", "office_code": "ILM",
+    "latitude": _WILMINGTON[0], "longitude": _WILMINGTON[1], "place": "Wilmington, NC",
+}
 
 
 class TestMenu(unittest.TestCase):
     """Add entry starts with what to add."""
 
-    def test_offers_location_surf_and_hurricanes(self):
+    def test_offers_location_surf_marine_space_and_hurricanes(self):
         result = _run(_flow().async_step_user())
         self.assertEqual(result["type"], "menu")
-        self.assertEqual(result["menu_options"], ["location", "surf", "marine", "hurricane"])
+        self.assertEqual(
+            result["menu_options"], ["location", "surf", "marine", "space", "hurricane"]
+        )
 
     def test_leaves_out_hurricanes_once_added(self):
         flow = _flow(entries=[_entry({"entry_type": "hurricane"})])
         self.assertEqual(
-            _run(flow.async_step_user())["menu_options"], ["location", "surf", "marine"]
+            _run(flow.async_step_user())["menu_options"], ["location", "surf", "marine", "space"]
         )
 
 
 class TestLocationFlowAddsOtherEntries(unittest.TestCase):
-    """A location flow adds the surf entry it chose, and hurricanes the first time."""
+    """A location flow adds the surf and Space entries it chose, and hurricanes the first time."""
 
-    def _finish(self, surf="ILM", entries=()):
+    def _finish(self, surf="ILM", space="ILM", entries=()):
         flow = _flow(entries=entries)
         flow._latitude, flow._longitude = _WILMINGTON
         _run(flow.async_step_office(user_input={"office_code": "ILM"}))
-        result = _run(flow.async_step_surf(user_input={"surf_office_code": surf}))
+        _run(flow.async_step_surf(user_input={"surf_office_code": surf}))
+        result = _run(flow.async_step_space(user_input={"space_office_code": space}))
         self.assertEqual(result["type"], "create_entry")
         return _added_entries(flow)
 
-    def test_the_first_entry_adds_surf_and_hurricanes(self):
+    def test_the_first_entry_adds_surf_space_and_hurricanes(self):
         self.assertEqual(self._finish(), [
             {"entry_type": "surf", "office_code": "ILM"},
+            _ILM_SPACE,
             {"entry_type": "hurricane"},
         ])
 
     def test_a_later_location_does_not_add_hurricanes_back(self):
         """Deleting the hurricane entry is not undone by the next location."""
         added = self._finish(entries=[_entry({"entry_type": "weather", "office_code": "VEF"})])
-        self.assertEqual(added, [{"entry_type": "surf", "office_code": "ILM"}])
+        self.assertEqual(added, [{"entry_type": "surf", "office_code": "ILM"}, _ILM_SPACE])
 
     def test_nor_does_the_first_location_after_a_surf_entry(self):
         """A surf entry on its own, with hurricanes deleted, is not a fresh install."""
         added = self._finish(
-            surf="none", entries=[_entry({"entry_type": "surf", "office_code": "SGX"})],
+            surf="none", space="none",
+            entries=[_entry({"entry_type": "surf", "office_code": "SGX"})],
         )
         self.assertEqual(added, [])
 
@@ -1189,12 +1218,190 @@ class TestOptionsOnlyForWeather(unittest.TestCase):
             ({"entry_type": "weather", "office_code": "ILM"}, True),
             ({"office_code": "ILM"}, True),
             ({"entry_type": "surf", "office_code": "ILM"}, False),
+            ({"entry_type": "space", "office_code": "ILM"}, False),
             ({"entry_type": "hurricane"}, False),
         ):
             with self.subTest(data=data):
                 self.assertIs(
                     NOAAConfigFlow.async_supports_options_flow(_entry(data)), expected
                 )
+
+
+class TestSpaceStep(unittest.TestCase):
+    """The location flow's last step: Space for the location's office."""
+
+    def _space_form(self, entries=()):
+        flow = _flow(entries=entries)
+        flow._latitude, flow._longitude = _WILMINGTON
+        _run(flow.async_step_office(user_input={"office_code": "ILM"}))
+        _reset_recorded_defaults()
+        form = _run(flow.async_step_surf(user_input={"surf_office_code": "none"}))
+        return flow, form
+
+    def _space_added(self, flow):
+        return [d for d in _added_entries(flow) if d.get("entry_type") == "space"]
+
+    def test_this_office_is_offered_and_preselected(self):
+        _, form = self._space_form()
+        self.assertEqual(form["step_id"], "space")
+        self.assertEqual(_recorded_defaults()["space_office_code"], "ILM")
+
+    def test_options_list_this_office_then_the_ones_already_added(self):
+        from noaa_it_all.config_flow import _build_space_options
+        options, default = _build_space_options("ILM", {"MQT", "BOX"})
+        self.assertEqual(default, "ILM")
+        self.assertEqual(options, {
+            "ILM": "NOAA ILM Space - this location",
+            "BOX": "NOAA BOX Space - already added",
+            "MQT": "NOAA MQT Space - already added",
+            "none": "No space data",
+        })
+
+    def test_an_office_with_a_space_entry_is_preselected_as_already_added(self):
+        from noaa_it_all.config_flow import _build_space_options
+        options, default = _build_space_options("ILM", {"ILM"})
+        self.assertEqual(default, "ILM")
+        self.assertEqual(options["ILM"], "NOAA ILM Space - already added")
+
+    def test_this_office_adds_its_space_entry(self):
+        flow, _ = self._space_form()
+        _run(flow.async_step_space(user_input={"space_office_code": "ILM"}))
+        self.assertEqual(self._space_added(flow), [_ILM_SPACE])
+
+    def test_an_office_that_has_space_is_shared_not_added_again(self):
+        flow, _ = self._space_form(entries=[_entry({"entry_type": "space", "office_code": "ILM"})])
+        result = _run(flow.async_step_space(user_input={"space_office_code": "ILM"}))
+        self.assertEqual(result["type"], "create_entry")
+        self.assertEqual(self._space_added(flow), [])
+
+    def test_another_office_already_added_adds_nothing(self):
+        flow, _ = self._space_form(entries=[_entry({"entry_type": "space", "office_code": "MQT"})])
+        result = _run(flow.async_step_space(user_input={"space_office_code": "MQT"}))
+        self.assertEqual(result["type"], "create_entry")
+        self.assertEqual(self._space_added(flow), [])
+
+    def test_no_space_adds_nothing(self):
+        flow, _ = self._space_form()
+        result = _run(flow.async_step_space(user_input={"space_office_code": "none"}))
+        self.assertEqual(result["type"], "create_entry")
+        self.assertEqual(self._space_added(flow), [])
+
+    def test_an_office_not_offered_is_rejected(self):
+        flow, _ = self._space_form()
+        result = _run(flow.async_step_space(user_input={"space_office_code": "MQT"}))
+        self.assertEqual(result["type"], "form")
+        self.assertEqual(result["errors"], {"space_office_code": "invalid_office"})
+        self.assertEqual(_added_entries(flow), [])
+
+
+class TestSpaceOnlyFlow(unittest.TestCase):
+    """Add entry > Space: a location, then the office it is named after."""
+
+    def _office_form(self, point=_VEF_POINT):
+        flow = _flow()
+        flow.hass.config.latitude, flow.hass.config.longitude = _VEGAS
+        location_form = _run(flow.async_step_space())
+        self.assertEqual(location_form["step_id"], "space_location")
+        self.assertEqual(
+            location_form["description_placeholders"], {"ha_location": "36.1699, -115.1398"}
+        )
+        with patch(
+            "noaa_it_all.config_flow.async_lookup_point", AsyncMock(return_value=point),
+        ):
+            _reset_recorded_defaults()
+            form = _run(flow.async_step_space_location(user_input={
+                "latitude": _VEGAS[0], "longitude": _VEGAS[1],
+            }))
+        return flow, form
+
+    def test_the_location_asks_for_the_office_nws_names(self):
+        _, form = self._office_form()
+        self.assertEqual(form["step_id"], "space_office")
+        self.assertEqual(_recorded_defaults()["office_code"], "VEF")
+        self.assertEqual(form["description_placeholders"]["warning"], "")
+
+    def test_an_invalid_location_is_refused(self):
+        result = _run(_flow().async_step_space_location(user_input={
+            "latitude": 91.0, "longitude": 0.0,
+        }))
+        self.assertEqual(result["step_id"], "space_location")
+        self.assertEqual(result["errors"], {"latitude": "invalid_latitude"})
+
+    def test_creates_the_space_entry_named_after_the_office(self):
+        flow, _ = self._office_form()
+        result = _run(flow.async_step_space_office(user_input={"office_code": "VEF"}))
+        self.assertEqual(result["type"], "create_entry")
+        self.assertEqual(result["title"], "NOAA Space - Las Vegas, NV")
+        self.assertEqual(result["data"], {
+            "entry_type": "space", "office_code": "VEF",
+            "latitude": _VEGAS[0], "longitude": _VEGAS[1],
+        })
+        flow.async_set_unique_id.assert_awaited_with("noaa_space_VEF")
+        flow._abort_if_unique_id_configured.assert_called_with(error="space_already_configured")
+        # A Space entry on its own adds no other entries.
+        self.assertEqual(_added_entries(flow), [])
+
+    def test_without_an_office_for_the_location_it_is_refused(self):
+        """A distant coastal office chosen here would take that office's only Space entry."""
+        flow, result = self._office_form(point=None)
+        self.assertEqual(result, {"type": "abort", "reason": "space_no_office"})
+
+    def test_without_nws_a_coastal_office_nearby_is_offered(self):
+        flow = _flow()
+        with patch(
+            "noaa_it_all.config_flow.async_lookup_point", AsyncMock(return_value=None),
+        ):
+            form = _run(flow.async_step_space_location(user_input={
+                "latitude": _WILMINGTON[0], "longitude": _WILMINGTON[1],
+            }))
+        self.assertEqual(form["step_id"], "space_office")
+        result = _run(flow.async_step_space_office(user_input={"office_code": "ILM"}))
+        self.assertEqual(result["title"], "NOAA Space - Wilmington, NC")
+
+    def test_an_office_not_offered_is_rejected(self):
+        flow, _ = self._office_form()
+        result = _run(flow.async_step_space_office(user_input={"office_code": "ILM"}))
+        self.assertEqual(result["step_id"], "space_office")
+        self.assertEqual(result["errors"], {"office_code": "invalid_office"})
+
+
+class TestImportSpace(unittest.TestCase):
+    """Space entries added by a location flow or an upgrade."""
+
+    def test_creates_the_space_entry(self):
+        flow = _flow()
+        result = _run(flow.async_step_import(dict(_ILM_SPACE)))
+        self.assertEqual(result["type"], "create_entry")
+        self.assertEqual(result["title"], "NOAA Space - Wilmington, NC")
+        # The place only names the entry.
+        self.assertEqual(result["data"], {
+            "entry_type": "space", "office_code": "ILM",
+            "latitude": _WILMINGTON[0], "longitude": _WILMINGTON[1],
+        })
+        flow.async_set_unique_id.assert_awaited_once_with("noaa_space_ILM")
+        flow._abort_if_unique_id_configured.assert_called_once_with(
+            error="space_already_configured"
+        )
+
+    def test_without_a_place_the_office_names_it(self):
+        for office, title in (("SGX", "NOAA Space - San Diego, CA"), ("VEF", "NOAA Space - VEF")):
+            with self.subTest(office=office):
+                result = _run(_flow().async_step_import({
+                    "entry_type": "space", "office_code": office,
+                    "latitude": 36.0, "longitude": -115.0,
+                }))
+                self.assertEqual(result["title"], title)
+
+    def test_refuses_data_that_is_not_an_office_and_a_location(self):
+        good = {k: v for k, v in _ILM_SPACE.items() if k != "place"}
+        for change in (
+            {"office_code": None}, {"office_code": "ilm"}, {"office_code": "ILMX"},
+            {"latitude": None}, {"latitude": 91}, {"latitude": True},
+            {"longitude": "-77.9"}, {"longitude": -181},
+        ):
+            with self.subTest(change=change):
+                result = _run(_flow().async_step_import({**good, **change}))
+                self.assertEqual(result, {"type": "abort", "reason": "invalid_space"})
 
 
 # ---------------------------------------------------------------------------

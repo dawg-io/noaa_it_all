@@ -16,7 +16,8 @@ from .const import (
 )
 from .entry_config import resolve_entry_config
 from .offices import (
-    SURF_HEIGHT, WATER_TEMPERATURE, is_hurricane_entry, is_marine_entry, is_surf_entry,
+    SURF_HEIGHT, WATER_TEMPERATURE, is_hurricane_entry, is_marine_entry, is_space_entry,
+    is_surf_entry,
 )
 
 # Re-export every sensor class so that existing code that imports
@@ -115,28 +116,18 @@ async def async_setup_entry(
             entities.append(SurfHeightSensor(surf_coord, office_code))
         async_add_entities(entities)
         return
+    if is_space_entry(conf):
+        async_add_entities(_space_sensors(data, office_code, latitude, longitude))
+        return
 
-    space_coord = data["space_weather_coordinator"]
     observations_coord = data["observations_coordinator"]
     forecast_coord = data["forecast_coordinator"]
     alerts_coord = data["alerts_coordinator"]
     cloud_cover_coord = data["cloud_cover_coordinator"]
     radar_coord = data["radar_timestamp_coordinator"]
     discussion_coord = data["forecast_discussion_coordinator"]
-    meteor_coord = data["meteor_coordinator"]
-    eclipse_coord = data["eclipse_coordinator"]
 
-    entities = [
-        # Space weather (global, use SpaceWeatherCoordinator)
-        GeomagneticSensor(space_coord, office_code),
-        GeomagneticSensorInterpretation(space_coord, office_code),
-        PlanetaryKIndexSensor(space_coord, office_code),
-        PlanetaryKIndexSensorRating(space_coord, office_code),
-        AuroraNextTimeSensor(space_coord, office_code, latitude, longitude),
-        AuroraDurationSensor(space_coord, office_code, latitude, longitude),
-        AuroraVisibilityProbabilitySensor(space_coord, office_code, latitude, longitude),
-        SolarRadiationStormAlertsSensor(space_coord, office_code, latitude, longitude),
-    ]
+    entities = []
 
     # Observation sensors (location-specific)
     if observations_coord:
@@ -167,23 +158,6 @@ async def async_setup_entry(
     if cloud_cover_coord:
         entities.append(CloudCoverSensor(cloud_cover_coord, office_code, latitude, longitude))
 
-    # Meteor shower sensors (location-specific, grouped under the Space device)
-    if meteor_coord:
-        entities.extend([
-            MeteorShowerActivitySensor(meteor_coord, office_code),
-            NextMeteorShowerSensor(meteor_coord, office_code),
-            MeteorViewingScoreSensor(meteor_coord, office_code),
-        ])
-
-    # Eclipse sensors (location-specific, grouped under the Space device)
-    if eclipse_coord:
-        entities.extend([
-            NextEclipseSensor(eclipse_coord, office_code),
-            NextEclipseTimeSensor(eclipse_coord, office_code),
-            EclipseCoverageSensor(eclipse_coord, office_code),
-            EclipseViewingScoreSensor(eclipse_coord, office_code),
-        ])
-
     # Radar timestamp sensor (office-specific, may be None if no radar site)
     if radar_coord:
         entities.append(RadarTimestampSensor(radar_coord, office_code))
@@ -192,3 +166,28 @@ async def async_setup_entry(
     entities.append(ForecastDiscussionSensor(discussion_coord, office_code))
 
     async_add_entities(entities)
+
+
+def _space_sensors(data, office_code, latitude, longitude):
+    """Return a Space entry's sensors: space weather, aurora, meteors and eclipses."""
+    space_coord = data["space_weather_coordinator"]
+    meteor_coord = data["meteor_coordinator"]
+    eclipse_coord = data["eclipse_coordinator"]
+    return [
+        # Space weather is global; aurora goes by the office's or location's magnetic latitude.
+        GeomagneticSensor(space_coord, office_code),
+        GeomagneticSensorInterpretation(space_coord, office_code),
+        PlanetaryKIndexSensor(space_coord, office_code),
+        PlanetaryKIndexSensorRating(space_coord, office_code),
+        AuroraNextTimeSensor(space_coord, office_code, latitude, longitude),
+        AuroraDurationSensor(space_coord, office_code, latitude, longitude),
+        AuroraVisibilityProbabilitySensor(space_coord, office_code, latitude, longitude),
+        SolarRadiationStormAlertsSensor(space_coord, office_code, latitude, longitude),
+        MeteorShowerActivitySensor(meteor_coord, office_code),
+        NextMeteorShowerSensor(meteor_coord, office_code),
+        MeteorViewingScoreSensor(meteor_coord, office_code),
+        NextEclipseSensor(eclipse_coord, office_code),
+        NextEclipseTimeSensor(eclipse_coord, office_code),
+        EclipseCoverageSensor(eclipse_coord, office_code),
+        EclipseViewingScoreSensor(eclipse_coord, office_code),
+    ]

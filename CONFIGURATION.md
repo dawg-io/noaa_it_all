@@ -14,9 +14,10 @@ This guide provides detailed configuration examples for NOAA It All, including e
 ## Installation Methods
 
 ### Config Flow
-Setup is done in the UI, and the integration has four kinds of entry: weather for a location, surf
-forecast for a coast, nearshore marine forecast for a Great Lakes zone, and hurricanes and
-satellite images. The [README](README.md#configuration) walks through each with screenshots.
+Setup is done in the UI, and the integration has five kinds of entry: weather for a location, surf
+forecast for a coast, nearshore marine forecast for a Great Lakes zone, Space (space weather,
+aurora, meteor showers and eclipses) and hurricanes and satellite images. The
+[README](README.md#configuration) walks through each with screenshots.
 
 **Steps for a location:**
 1. Navigate to **Settings** → **Devices & services** → **Add integration**
@@ -24,10 +25,13 @@ satellite images. The [README](README.md#configuration) walks through each with 
 3. Enter your **Latitude** and **Longitude** (e.g., 34.2104, -77.8868), pre-filled from your Home zone
 4. Select your NWS Forecast Office. The office NWS names for your location is pre-selected (e.g., ILM for Wilmington)
 5. Choose a surf forecast office, or **No surf data**
-6. Click Submit, then **Skip and finish** or assign the devices to areas
+6. Choose Space for the office, or **No space data**
+7. Click Submit, then **Skip and finish** or assign the device to an area
 
-The surf office becomes its own `NOAA Surf` entry. Add more beaches, marine zones, or the hurricane
-entry later with **Add entry** on the NOAA It All page.
+The surf office becomes its own `NOAA Surf` entry, and Space a `NOAA Space` entry for the forecast
+office, at this location. Each office has one Space entry, which other locations in it share. Add
+more beaches, marine zones, Space for another office, or the hurricane entry later with **Add
+entry** on the NOAA It All page.
 
 **Example Configuration Data:**
 ```yaml
@@ -35,6 +39,12 @@ entry later with **Add entry** on the NOAA It All page.
 entry_type: "weather"
 office_code: "ILM"
 radar_site: "KLTX"
+latitude: 34.2104
+longitude: -77.8868
+
+# A Space entry
+entry_type: "space"
+office_code: "ILM"
 latitude: 34.2104
 longitude: -77.8868
 ```
@@ -51,11 +61,12 @@ longitude: -77.8868
 **Settings** → **Devices & services** → **NOAA It All** → **Configure** (the gear on a
 `NOAA Weather` entry). The flow walks through latitude and longitude, then the forecast office,
 then the radar loop. Saving reloads the entry so the new values take effect immediately. Surf,
-marine and hurricane entries have no options: add or delete them instead.
+marine, Space and hurricane entries have no options: add or delete them instead. A Space entry
+doesn't move with the weather entry.
 
 | Option | Default | Notes |
 |---|---|---|
-| Latitude / Longitude | Home Assistant's Home location | Used for observations, forecasts, alerts, aurora, meteor showers and eclipses |
+| Latitude / Longitude | Home Assistant's Home location | Used for observations, forecasts, alerts and cloud cover |
 | NWS Forecast Office | The office NWS names for those coordinates | Determines the entity IDs, radar site and forecast discussion |
 | Hours of radar history | `24` | Length of the Radar Loop animation, `0`–`24` |
 
@@ -183,9 +194,8 @@ homeassistant:
 
 ## Device Grouping
 
-NOAA It All organizes entities into five kinds of device. A `NOAA Weather` entry has the Weather
-and Space devices for its office; each `NOAA Surf`, `NOAA Marine` and `NOAA Hurricane` entry has
-one device.
+NOAA It All organizes entities into five kinds of device, one for each kind of entry: `NOAA
+Weather`, `NOAA Space`, `NOAA Surf`, `NOAA Marine` and `NOAA Hurricane`.
 
 ### 1. NOAA {OFFICE} Weather (Observations, Forecasts, Alerts & Radar)
 Entities for your configured location, in the `NOAA Weather` entry.
@@ -216,7 +226,10 @@ Entities for your configured location, in the `NOAA Weather` entry.
 
 ### 2. NOAA {OFFICE} Space (Space Weather, Meteor Showers & Eclipses)
 Entities that monitor space weather conditions worldwide, plus the aurora, meteor shower and
-eclipse forecasts for your configured location, in the `NOAA Weather` entry.
+eclipse forecasts for the entry's location, in the office's `NOAA Space` entry. With more than one
+Space entry, the space weather entities show the same values in each: the Kp index and its
+rating, the geomagnetic storm and its interpretation, the solar radiation storm alerts and the two
+images.
 
 **Entities in this group:**
 - `sensor.noaa_{office}_space_planetary_k_index`
@@ -563,8 +576,8 @@ space_weather_check:
 
 ### Entities Not Appearing
 - Verify setup includes latitude and longitude
-- Surf and hurricane entities are in their own `NOAA Surf` and `NOAA Hurricane` entries; add them
-  with **Add entry** if they're missing
+- Surf, space and hurricane entities are in their own `NOAA Surf`, `NOAA Space` and
+  `NOAA Hurricane` entries; add them with **Add entry** if they're missing
 - A new surf entry only gets Water Temperature and Surf Height if its office has a tide station or
   buoy (see the [README](README.md#nws-forecast-offices))
 

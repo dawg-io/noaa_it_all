@@ -1756,10 +1756,35 @@ class TestImagesByEntryType(unittest.TestCase):
     def test_the_hurricane_entry_has_only_the_hurricane_images(self):
         self.assertEqual(self._HURRICANE, self._added({"entry_type": "hurricane"}))
 
-    def test_a_weather_entry_has_its_radar_but_no_hurricane_images(self):
+    def test_a_weather_entry_has_its_radar_but_no_hurricane_or_space_images(self):
         added = self._added({
             "entry_type": "weather", "office_code": "SGX",
             "latitude": 32.7157, "longitude": -117.1611,
         })
         self.assertIn("RadarBaseReflectivityImageEntity", added)
         self.assertFalse(self._HURRICANE & added)
+        self.assertFalse(
+            {"GeoelectricFieldImageEntity", "AuroraForecastImageEntity"} & added
+        )
+
+    def test_a_space_entry_has_only_the_space_images(self):
+        from noaa_it_all import image
+        from noaa_it_all.offices import SPACE_ENTITIES
+        entry = MagicMock()
+        entry.entry_id = "entry_1"
+        entry.data = {
+            "entry_type": "space", "office_code": "ILM",
+            "latitude": 34.2257, "longitude": -77.9447,
+        }
+        entry.options = {}
+        added = []
+        _run(image.async_setup_entry(MagicMock(), entry, added.extend))
+        self.assertEqual(
+            {type(entity).__name__ for entity in added},
+            {"GeoelectricFieldImageEntity", "AuroraForecastImageEntity"},
+        )
+        # The unique IDs an upgraded Space entry takes over.
+        self.assertEqual(
+            {entity.unique_id for entity in added},
+            {f"noaa_ILM_{suffix}" for platform, suffix in SPACE_ENTITIES if platform == "image"},
+        )

@@ -45,26 +45,27 @@ Requires Home Assistant **2026.3.0** or newer.
 
 ### Configuration
 
-The integration has four kinds of entry, each listed separately under **Settings → Devices & services → NOAA It All**:
+The integration has five kinds of entry, each listed separately under **Settings → Devices & services → NOAA It All**:
 
-| Entry | Title | Devices |
+| Entry | Title | Device |
 |---|---|---|
-| Weather for a location | `NOAA Weather - Wilmington, NC` | `NOAA ILM Weather`, `NOAA ILM Space` |
+| Weather for a location | `NOAA Weather - Wilmington, NC` | `NOAA ILM Weather` |
 | Surf forecast for a coast | `NOAA Surf - Wilmington, NC` | `NOAA ILM Surf` |
 | Nearshore marine forecast for a Great Lakes zone | `NOAA Marine - Wilmette Harbor to Northerly Island IL` | `NOAA LMZ741 Marine` |
+| Space weather, aurora, meteor showers and eclipses | `NOAA Space - Wilmington, NC` | `NOAA ILM Space` |
 | Hurricanes and satellite images | `NOAA Hurricane` | `NOAA Hurricane` |
 
 <p align="left">
-<img width="560" alt="The NOAA It All page under Devices &amp; services, with a Hurricane, a Marine, a Surf and a Weather entry" src="docs/images/entries.png" />
+<img width="560" alt="The NOAA It All page under Devices &amp; services, with a Hurricane, a Marine, a Space, a Surf and a Weather entry" src="docs/images/entries.png" />
 </p>
 
 #### Add a location
 
 1. Go to **Settings** → **Devices & services** → **Add integration**, search for "NOAA It All", and choose **Weather for a location**.
 
-   <img width="420" alt="The NOAA It All setup menu: Weather for a location, Surf forecast for a coast, Nearshore marine forecast for a Great Lakes zone, Hurricanes and satellite images" src="docs/images/setup-menu.png" />
+   <img width="420" alt="The NOAA It All setup menu: Weather for a location, Surf forecast for a coast, Nearshore marine forecast for a Great Lakes zone, Space weather, aurora, meteor showers and eclipses, Hurricanes and satellite images" src="docs/images/setup-menu.png" />
 
-2. Enter the **latitude and longitude** (required). They're pre-filled from your Home Assistant Home zone; change them to use another location. Observations come from the NWS station nearest to them, and alerts, forecasts, cloud cover, aurora, meteor shower and eclipse entities use them too.
+2. Enter the **latitude and longitude** (required). They're pre-filled from your Home Assistant Home zone; change them to use another location. Observations come from the NWS station nearest to them, and alerts, forecasts and cloud cover use them too, as does the Space entry added in step 5.
 
    <img width="420" alt="Weather for a Location step with latitude and longitude fields" src="docs/images/setup-location.png" />
 
@@ -79,13 +80,19 @@ The integration has four kinds of entry, each listed separately under **Settings
 
    <img width="420" alt="Choose Surf Forecast Office step with ILM - Wilmington, NC selected" src="docs/images/setup-surf.png" />
 
-5. Assign the devices to areas, or choose **Skip and finish**. A weather entry has two devices, `NOAA ILM Weather` and `NOAA ILM Space`. The surf entry, and the hurricane entry on a first setup, are added alongside it.
+5. Choose **Space**: space weather, aurora, meteor showers and eclipses, as a `NOAA Space` entry for the forecast office, with a device named after it. `NOAA ILM Space - this location` adds it, worked out for this location. Each office has one Space entry:
+   - **already added** means the office has one already. The location shares it, and it stays at its own location.
+   - The other offices' Space entries are listed as **already added** too. Choosing one, or **No space data**, adds nothing.
 
-   <img width="420" alt="Name and assign step listing the NOAA ILM Space and NOAA ILM Weather devices" src="docs/images/setup-devices.png" />
+   <img width="420" alt="Add Space step with NOAA ILM Space - this location selected" src="docs/images/setup-space.png" />
+
+6. Assign the device to an area, or choose **Skip and finish**. A weather entry has one device, `NOAA ILM Weather`. The surf and Space entries, and the hurricane entry on a first setup, are added alongside it.
+
+   <img width="420" alt="Name and assign step listing the NOAA ILM Weather device" src="docs/images/setup-devices.png" />
 
 A location set up as the integration's first entry also adds the `NOAA Hurricane` entry. Delete it if you don't want hurricane and satellite entities; nothing adds it back.
 
-#### Add more beaches, marine zones or hurricanes
+#### Add more beaches, marine zones, Space or hurricanes
 
 Use **Add entry** on the NOAA It All page and pick from the same menu. **Hurricanes and satellite images** is only offered while there's no `NOAA Hurricane` entry.
 
@@ -97,13 +104,19 @@ Use **Add entry** on the NOAA It All page and pick from the same menu. **Hurrica
 
   <img width="420" alt="Nearshore Marine Forecast step with LMZ741 entered as the marine zone ID" src="docs/images/setup-marine.png" />
 
+- **Space weather, aurora, meteor showers and eclipses** asks for a location, pre-filled from your Home zone, then its forecast office. Use it for aurora, meteor showers and eclipses somewhere other than your weather locations, such as a cabin near Marquette (`NOAA Space - Marquette, MI`, device `NOAA MQT Space`). Each office has one Space entry, so an office that has one is refused. So is a location NWS doesn't name an office for, as when NWS is down: try again later.
+
 #### Change a location
 
-**Configure** (the gear on a `NOAA Weather` entry) walks through the latitude and longitude, the forecast office, then how many hours the radar loop covers (see [Radar loop history](#image-entities)). Surf, marine and hurricane entries have nothing to configure: add or delete them instead.
+**Configure** (the gear on a `NOAA Weather` entry) walks through the latitude and longitude, the forecast office, then how many hours the radar loop covers (see [Radar loop history](#image-entities)). Surf, marine, Space and hurricane entries have nothing to configure: add or delete them instead. A Space entry doesn't move with a weather entry; for a new office, add Space there and delete the old one.
 
 <p align="left">
 <img width="420" alt="Radar Loop History options step with Hours of radar history set to 24" src="docs/images/options-radar.png" />
 </p>
+
+#### Upgrading from 0.9.x
+
+Upgrading moves each weather entry's `NOAA {OFFICE} Space` device into a `NOAA Space` entry for its office, at that entry's location, keeping the entity IDs and history. Weather entries in the same office share one Space entry. Going back to 0.9.x afterwards needs the integration removed and added again.
 
 #### Upgrading from 0.7.x
 
@@ -118,7 +131,7 @@ Upgrading splits each existing entry once: the location becomes a `NOAA Weather`
 
 ## Device Grouping and Organization
 
-Every entity belongs to one of five kinds of device. A weather entry has a Weather and a Space device for its office, and each surf, marine and hurricane entry has one device. The screenshots below are from a Wilmington, NC (ILM) setup.
+Every entity belongs to one of five kinds of device, one for each kind of entry. The screenshots below are from a Wilmington, NC (ILM) setup.
 
 ### Device Groups Overview
 
@@ -134,9 +147,10 @@ Location-specific weather observations, forecasts, alerts and radar, in the `NOA
 </p>
 
 #### 🌌 NOAA {OFFICE} Space
-Space weather (geomagnetic storms, Kp, aurora, solar radiation storms) plus the meteor shower and eclipse forecasts, in the `NOAA Weather - <office>` entry
+Space weather (geomagnetic storms, Kp, aurora, solar radiation storms) plus the meteor shower and eclipse forecasts, in the office's `NOAA Space - <office>` entry
 - **Device ID**: `noaa_{office}_space` (e.g., `noaa_ILM_space`)
-- **Location**: Space weather is global; aurora, meteor shower and eclipse entities use your configured latitude and longitude
+- **Location**: Space weather is global; aurora, meteor shower and eclipse entities use the Space entry's location
+- **More than one Space entry**: space weather is the same everywhere, so these show the same values in each: Planetary K-index and its rating, Geomagnetic Storm and its interpretation, Solar Radiation Storm Alerts, and the Geoelectric Field and Aurora Forecast images. Aurora, meteor shower and eclipse entities are worked out for each entry
 - **Update Frequency**: 10 minutes for space weather and its images, 30 minutes for meteor showers. Eclipses recompute hourly, every 5 minutes in the 6 hours before one, and every minute while one is under way
 - **Entities**: 20: eight space weather sensors, three meteor shower and four eclipse sensors, three binary sensors, and two images
 
@@ -328,7 +342,7 @@ Location-aware aurora visibility predictions *(NOAA Space)*:
 - **Aurora Duration**: Estimated length of aurora visibility in hours based on geomagnetic conditions *(sensor.noaa_{office}_space_aurora_duration)*
 - **Aurora Visibility Probability**: Percentage chance of aurora visibility from your specific location *(sensor.noaa_{office}_space_aurora_visibility_probability)*
 
-> **Note**: Aurora predictions are based on real-time Kp index data and the magnetic latitude of your office (for the coastal offices) or of your configured location (for any other office). Northern locations (like Duluth, MN) have much higher visibility potential than southern locations (like Miami, FL).
+> **Note**: Aurora predictions are based on real-time Kp index data and the magnetic latitude of the Space entry's office (for the coastal offices) or of its location (for any other office). Northern locations (like Duluth, MN) have much higher visibility potential than southern locations (like Miami, FL).
 
 ### Solar Radiation Storm Alerts
 Location-aware monitoring of solar radiation storm activity *(NOAA Space)*:
@@ -434,7 +448,7 @@ These sensors provide additional weather data where available from NOAA/NWS *(NO
 ### Image Entities
 Visual representations of current conditions:
 
-**NOAA {OFFICE} Space** (global images, one set per weather entry):
+**NOAA {OFFICE} Space** (global images, one set per Space entry):
 - **Geoelectric Field Image** — Real-time geoelectric field map from SWPC *(image.noaa_{office}_space_geoelectric_field_image)*
 - **Aurora Forecast Image** — SWPC's aurora forecast map for the northern hemisphere *(image.noaa_{office}_space_aurora_forecast_image)*
 
@@ -1540,7 +1554,7 @@ content: |
 
 ### Entities Not Appearing
 - Ensure you completed setup with valid latitude and longitude
-- Surf entities are in their own `NOAA Surf` entry, and hurricane and satellite entities in the `NOAA Hurricane` entry. If you chose **No surf data** or deleted the hurricane entry, add them back with **Add entry**
+- Surf entities are in their own `NOAA Surf` entry, space weather, aurora, meteor shower and eclipse entities in a `NOAA Space` entry, and hurricane and satellite entities in the `NOAA Hurricane` entry. If you chose **No surf data** or **No space data**, or deleted the hurricane entry, add them back with **Add entry**
 - A new surf entry only gets Water Temperature and Surf Height if its office has a tide station or buoy; see [NWS Forecast Offices](#nws-forecast-offices)
 - After upgrading, reload the Home Assistant page so the new setup screens show
 - Check **Settings** → **System** → **Logs** for any error messages from `noaa_it_all`
@@ -1585,7 +1599,7 @@ A: No. Setup requires latitude and longitude. They are pre-filled from your Home
 A: You don't need to: setup asks NWS which office covers your coordinates and pre-selects it. To look one up yourself, search for your location on [weather.gov](https://www.weather.gov/); the three-letter office code appears in the URL of your local forecast page (e.g., `forecast.weather.gov/MapClick.php?CityName=San+Diego&state=CA&site=SGX`).
 
 **Q: Why don't I see aurora predictions?**
-A: The aurora sensors are on the `NOAA {OFFICE} Space` device of a weather entry. Aurora is only visible at high Kp levels for southern latitudes — check the Planetary K-index value and the `magnetic_latitude` and `required_kp` attributes of Aurora Visibility Probability.
+A: The aurora sensors are on the `NOAA {OFFICE} Space` device of a `NOAA Space` entry. Aurora is only visible at high Kp levels for southern latitudes — check the Planetary K-index value and the `magnetic_latitude` and `required_kp` attributes of Aurora Visibility Probability.
 
 **Q: How often does data update?**
 A: Most entities update every 10 minutes; see [Update Frequency](#update-frequency).

@@ -5,15 +5,16 @@
       "user": {
         "title": "NOAA It All",
         "menu_options": {
-          "location": "Weather for a location (forecast, alerts, radar and space)",
+          "location": "Weather for a location (forecast, alerts and radar)",
           "surf": "Surf forecast for a coast",
           "marine": "Nearshore marine forecast for a Great Lakes zone",
+          "space": "Space weather, aurora, meteor showers and eclipses",
           "hurricane": "Hurricanes and satellite images"
         }
       },
       "location": {
         "title": "Weather for a Location",
-        "description": "Detected Home Assistant Home location: {ha_location}.\n\nIf a Home location is configured, latitude and longitude have been pre-filled from your Home Assistant Home zone; otherwise enter them manually. You may override the values to use a different location. The NWS forecast office for this location is suggested in the next step, then a coastal office for surf data.",
+        "description": "Detected Home Assistant Home location: {ha_location}.\n\nIf a Home location is configured, latitude and longitude have been pre-filled from your Home Assistant Home zone; otherwise enter them manually. You may override the values to use a different location. The NWS forecast office for this location is suggested in the next step, then a coastal office for surf data and Space for the office.",
         "data": {
           "latitude": "Latitude",
           "longitude": "Longitude"
@@ -33,11 +34,33 @@
           "surf_office_code": "Surf forecast office"
         }
       },
+      "space": {
+        "title": "Add Space",
+        "description": "Space weather, aurora, meteor showers and eclipses are a NOAA Space entry of their own, one per forecast office. Choose this location's office to add NOAA {office} Space, worked out for this location. An office marked already added keeps its own entry and location, so choosing it, or No space data, adds nothing.\n\nSpace weather such as the Kp index is the same everywhere, so with more than one Space entry those entities show the same values in each.",
+        "data": {
+          "space_office_code": "Space"
+        }
+      },
       "marine": {
         "title": "Nearshore Marine Forecast",
         "description": "Enter an NWS marine zone ID, for example LMZ741 (Lake Michigan, Wilmette Harbor to Northerly Island). Nearshore marine forecasts come from the Great Lakes offices, for the zones near the shore. The zone's office and name come from NWS, and the forecast is its own NOAA Marine entry.",
         "data": {
           "marine_zone": "Marine zone ID"
+        }
+      },
+      "space_location": {
+        "title": "Space for a Location",
+        "description": "Detected Home Assistant Home location: {ha_location}.\n\nAurora, meteor showers and eclipses are worked out for this location. If a Home location is configured, latitude and longitude have been pre-filled from your Home Assistant Home zone; otherwise enter them manually. The NWS forecast office for this location is suggested in the next step, and the Space device is named after it.",
+        "data": {
+          "latitude": "Latitude",
+          "longitude": "Longitude"
+        }
+      },
+      "space_office": {
+        "title": "Choose NWS Forecast Office",
+        "description": "Select the NOAA / NWS forecast office for {latitude}, {longitude}. Each office has one Space entry, and its device is named after the office, as in NOAA ILM Space. The office NWS names for this location is pre-selected, followed by the nearby coastal offices.\n\n{warning}",
+        "data": {
+          "office_code": "NWS Forecast Office"
         }
       }
     },
@@ -58,14 +81,17 @@
       "all_surf_configured": "Every surf forecast office is already set up.",
       "unknown_surf_office": "That office does not issue a Surf Zone Forecast.",
       "already_in_progress": "This is already being set up.",
-      "marine_already_configured": "The marine forecast for this zone is already set up."
+      "marine_already_configured": "The marine forecast for this zone is already set up.",
+      "space_already_configured": "This office already has a Space entry. Each office has one: add Space for a location in another office instead.",
+      "invalid_space": "Space needs an NWS forecast office and a location.",
+      "space_no_office": "NWS didn't name a forecast office for this location, and Space is named after one. If NWS is down, try again in a moment. Locations outside NWS coverage can't have Space."
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "NOAA It All Options",
-        "description": "Detected Home Assistant Home location: {ha_location}.\n\nUpdate the latitude and longitude used for NOAA data. The NWS forecast office for this location will be suggested in the next step. Surf forecasts and hurricanes are separate entries: add them with Add entry, or delete them.",
+        "description": "Detected Home Assistant Home location: {ha_location}.\n\nUpdate the latitude and longitude used for NOAA data. The NWS forecast office for this location will be suggested in the next step. Surf forecasts, Space and hurricanes are separate entries: add them with Add entry, or delete them. Changing this location doesn't move a Space entry.",
         "data": {
           "latitude": "Latitude",
           "longitude": "Longitude"
