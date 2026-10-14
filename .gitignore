@@ -26,3 +26,11 @@ Thumbs.db
 
 # Testing artifacts
 .pytest_cache/
+# Documentation site (website/): dependencies, build output, and the pages,
+# screenshots and icon that scripts/sync-docs.mjs copies in from docs/
+website/node_modules/
+website/dist/
+website/.astro/
+website/public/
+website/src/content/docs/
+website/src/assets/

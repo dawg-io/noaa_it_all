@@ -29,6 +29,18 @@ is always ready to release. Changes to docs, tests or CI alone don't.
 - Head the top section of `CHANGELOG.md` with that version, `## [X.Y.Z]`, instead of
   `## [Unreleased]`, and list the change there under Added, Changed or Fixed.
 
+## Documentation
+
+`docs/*.md` is the documentation, written as plain GitHub Markdown with relative links, and
+`tests/test_docs.py` checks those links. `website/` builds it into a Starlight site:
+`npm run build` there runs `scripts/sync-docs.mjs`, which copies `docs/` into
+`website/src/content/docs/` (generated and git-ignored, so never edit it), then builds `website/dist/`.
+
+- A new page in `docs/` needs an entry in `SIDEBAR` in `website/site.mjs`, or the build fails.
+- `.github/workflows/docs-pages.yml` builds the site and checks its links whenever `docs/` or
+  `website/` changes. It deploys to GitHub Pages only from the public repository's `main`, at
+  `https://dawg-io.github.io/noaa_it_all/`, which the README and `info.md` link to.
+
 ## Releasing to public
 
 This repository (`turbo5000c/dev-noaa_it_all`) is a fork of the public repository
