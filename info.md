@@ -105,7 +105,7 @@ Entities are automatically grouped into logical devices:
   - **Pacific & Caribbean**: Honolulu (HFO), Guam (GUM), San Juan (SJU)
 - **Nearshore marine**: the Great Lakes nearshore zones
 
-*See the [full documentation](https://github.com/dawg-io/noaa_it_all#nws-forecast-offices) for every surf office and which have water temperature and surf height.*
+*See the [full documentation](https://github.com/dawg-io/noaa_it_all/blob/main/docs/forecast-offices.md) for every surf office and which have water temperature and surf height.*
 
 ## Update Frequency
 

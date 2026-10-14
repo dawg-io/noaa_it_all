@@ -334,7 +334,7 @@ class TestReadmeImages(unittest.TestCase):
 
     A github.com/<owner>/<repo>/blob/... URL serves an HTML *page*, not an image,
     so it shows as broken on GitHub and on the HACS repository page (hacs.json sets
-    render_readme, so HACS renders this same markdown).
+    render_readme, so HACS renders README.md). The pages under docs/ are checked too.
     """
 
     _FENCE = re.compile(r"^\s*(```|~~~).*?^\s*\1", re.DOTALL | re.MULTILINE)
@@ -343,22 +343,27 @@ class TestReadmeImages(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        with open(os.path.join(_REPO, "README.md"), encoding="utf-8") as f:
-            body = f.read()
-        # Drop fenced code blocks first: the Lovelace card examples contain
-        # <img src="{{ ... }}"> templates that are documentation, not real images.
-        body = cls._FENCE.sub("", body)
-        cls.urls = cls._HTML_IMG.findall(body) + cls._MD_IMG.findall(body)
+        docs = os.path.join(_REPO, "docs")
+        paths = [os.path.join(_REPO, "README.md")] + sorted(
+            os.path.join(docs, name) for name in os.listdir(docs) if name.endswith(".md"))
+        cls.urls = []
+        for path in paths:
+            with open(path, encoding="utf-8") as f:
+                body = f.read()
+            # Drop fenced code blocks first: the Lovelace card examples contain
+            # <img src="{{ ... }}"> templates that are documentation, not real images.
+            body = cls._FENCE.sub("", body)
+            cls.urls += cls._HTML_IMG.findall(body) + cls._MD_IMG.findall(body)
 
     def test_images_found(self):
         """Sanity check that the extraction actually matched something."""
-        self.assertTrue(self.urls, "no image URLs found in README.md -- extraction is broken")
+        self.assertTrue(self.urls, "no image URLs found in the docs -- extraction is broken")
 
     def test_no_github_blob_image_urls(self):
         for url in self.urls:
             if "github.com" in url and "/blob/" in url:
                 self.fail(
-                    f"README.md image URL serves an HTML page, not an image: {url}\n"
+                    f"Image URL serves an HTML page, not an image: {url}\n"
                     "Use https://raw.githubusercontent.com/<owner>/<repo>/<branch>/<path> instead."
                 )
 
@@ -371,9 +376,9 @@ class TestReadmeImages(unittest.TestCase):
         """
         for url in self.urls:
             self.assertNotIn("img.shields.io/github/downloads", url,
-                             f"README.md has a release-download badge: {url}")
+                             f"The docs have a release-download badge: {url}")
             self.assertNotIn("analytics.home-assistant.io", url,
-                             f"README.md has an analytics install badge: {url}")
+                             f"The docs have an analytics install badge: {url}")
 
 
 if __name__ == "__main__":
