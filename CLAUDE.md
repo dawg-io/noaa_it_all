@@ -46,30 +46,36 @@ is always ready to release. Changes to docs, tests or CI alone don't.
 
 This repository (`turbo5000c/dev-noaa_it_all`) is a fork of the public repository
 `dawg-io/noaa_it_all`. A release to public is a pull request from this repository's `main` into
-the public repository's `staging` branch.
+the public repository's `staging` branch. Sessions here can read the public repository but not
+write to it, so the owner opens the pull request and publishes the release, and the session writes
+what they paste.
 
 When asked for a "release to public":
 
-1. Attach the public repository with `add_repo` (owner `dawg-io`, repo `noaa_it_all`, access
-   `push`) so the GitHub tools can open a pull request there. If access is refused, stop and
-   report the reason.
-2. Check the release before opening anything:
+1. Check the release first. Read the public repository with git, which needs no access:
+   `git remote add public https://github.com/dawg-io/noaa_it_all` (once), then
+   `git fetch public --tags`, and compare against `public/staging` and `public/main`.
    - `main` here has commits that `dawg-io/noaa_it_all:staging` does not.
    - The version in `custom_components/noaa_it_all/manifest.json` is newer than the latest
      `vX.Y.Z` tag in the public repository. A version that is already on the public `main` but
      not tagged is still open, so more changes can ship under it without a bump.
    - The top section of `CHANGELOG.md` is for that version and covers everything being released.
-   - If either is off, stop and say what needs to change. Version bumps go through a normal pull
-     request into this repository's `main` first.
    - flake8 (`--max-line-length=120`) and pytest pass on `main`.
-3. Open a **draft** pull request in `dawg-io/noaa_it_all` with head `turbo5000c:main` and base
-   `staging`. If one is already open, it already follows `main`, so update its description
-   instead of opening another.
-   - Title: `Release X.Y.Z: <one-line summary>`.
-   - Body: follow `.github/PULL_REQUEST_TEMPLATE.md`, listing the changes since the public `main`
-     from `CHANGELOG.md`, grouped by version.
-4. hassfest and HACS Validate are disabled in this fork and only run on the public repository.
-   Check their results on the release pull request and report any failure.
-5. Stop there. The owner merges the release pull request with a merge commit, not a squash, so
-   `staging` keeps this repository's history and later releases don't conflict. The `staging` →
-   `main` pull request, release branches, tags and GitHub releases are the owner's unless asked.
+   - If any of these is off, stop and say what needs to change. Version bumps go through a normal
+     pull request into this repository's `main` first.
+2. Give the owner these, each title and description in its own code block to copy and paste:
+   - **Pull request link**:
+     `https://github.com/dawg-io/noaa_it_all/compare/staging...turbo5000c:main?expand=1`
+   - **Pull request title**: `Release X.Y.Z: <one-line summary>`.
+   - **Pull request description**: follow `.github/PULL_REQUEST_TEMPLATE.md`, listing the changes
+     since the public `main` from `CHANGELOG.md`, grouped by version.
+   - **Release title**: `vX.Y.Z: <one-line summary>`.
+   - **Release description**: the version's `CHANGELOG.md` entries written for users, under
+     `## Added`, `## Changed` and `## Fixed`, ending with what going back to the previous version
+     needs. Match the earlier releases in the public repository.
+3. Stop there. The owner opens the pull request, checks hassfest and HACS Validate on it (they're
+   disabled in this fork and only run on the public repository), and merges it with a merge
+   commit, not a squash, so `staging` keeps this repository's history and later releases don't
+   conflict. The `staging` → `main` pull request, the tag and the GitHub release are the owner's.
+   When the release changes `docs/` or `website/`, publish it after the Documentation Site workflow
+   has deployed the site from the public `main`.
