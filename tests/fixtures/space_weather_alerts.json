@@ -1,0 +1,252 @@
+[
+ {
+  "product_id": "K04W",
+  "issue_datetime": "2026-10-13 20:58:58.750",
+  "message": "Space Weather Message Code: WARK04\r\nSerial Number: 5435\r\nIssue Time: 2026 Oct 13 2058 UTC\r\n\r\nEXTENDED WARNING: Geomagnetic K-index of 4 expected\nExtension to Serial Number: 5434\nValid From: 2026 Oct 13 0115 UTC\nNow Valid Until: 2026 Oct 14 1200 UTC\nWarning Condition: Persistence\n\r\n\r\nNOAA Space Weather Scale descriptions can be found at\r\nwww.swpc.noaa.gov/noaa-scales-explanation\r\n\r\nPotential Impacts: Area of impact primarily poleward of 65 degrees Geomagnetic Latitude.\r\nInduced Currents - Weak power grid fluctuations can occur.\r\nAurora - Aurora may be visible at high latitudes such as Canada and Alaska."
+ },
+ {
+  "product_id": "A20F",
+  "issue_datetime": "2026-10-11 19:11:07.000",
+  "message": "Space Weather Message Code: WATA20\r\nSerial Number: 1129\r\nIssue Time: 2026 Oct 11 1911 UTC\r\n\r\nWATCH: Geomagnetic Storm Category G1 Predicted \nHighest Storm Level Predicted by Day:\nOct 12:  None (Below G1)   Oct 13:  G1 (Minor)   Oct 14:  None (Below G1)   \nTHIS SUPERSEDES ANY/ALL PRIOR WATCHES IN EFFECT\nComment: \r\n\r\nNOAA Space Weather Scale descriptions can be found at\r\nwww.swpc.noaa.gov/noaa-scales-explanation\r\n\r\nPotential Impacts: Area of impact primarily poleward of 60 degrees Geomagnetic Latitude.\r\nInduced Currents - Weak power grid fluctuations can occur.\r\nSpacecraft - Minor impact on satellite operations possible.\r\nAurora - Aurora may be visible at high latitudes, i.e., northern tier of the U.S. such as northern Michigan and Maine."
+ },
+ {
+  "product_id": "K05A",
+  "issue_datetime": "2026-10-10 21:45:58.723",
+  "message": "Space Weather Message Code: ALTK05\r\nSerial Number: 2057\r\nIssue Time: 2026 Oct 10 2145 UTC\r\n\r\nALERT: Geomagnetic K-index of 5 \nThreshold Reached: 2026 Oct 10 2145 UTC\nSynoptic Period: 2100-2400\nActive Warning: YES\nNoaa Scale: G1 - Minor\nComment: \r\n\r\nNOAA Scale: G1 - Minor\r\n\r\nNOAA Space Weather Scale descriptions can be found at\r\nwww.swpc.noaa.gov/noaa-scales-explanation\r\n\r\nPotential Impacts: Area of impact primarily poleward of 60 degrees Geomagnetic Latitude.\r\nInduced Currents - Weak power grid fluctuations can occur.\r\nSpacecraft - Minor impact on satellite operations possible.\r\nAurora - Aurora may be visible at high latitudes, i.e., northern tier of the U.S. such as northern Michigan and Maine."
+ },
+ {
+  "product_id": "TIIA",
+  "issue_datetime": "2026-10-10 15:26:24.740",
+  "message": "Space Weather Message Code: ALTTP2\r\nSerial Number: 1532\r\nIssue Time: 2026 Oct 10 1526 UTC\r\n\r\nALERT: Type II Radio Emission \nBegin Time: 2026 Oct 10 1515 UTC\nEstimate Velocity: 929 km/s\nComment: "
+ },
+ {
+  "product_id": "XM5A",
+  "issue_datetime": "2026-10-10 15:09:47.723",
+  "message": "Space Weather Message Code: ALTXMF\r\nSerial Number: 543\r\nIssue Time: 2026 Oct 10 1509 UTC\r\n\r\nALERT: X-Ray Flux exceeded M5 \nThreshold Reached: 2026 Oct 10 1507 UTC\nNoaa Scale: R2 - Moderate\nComment: \r\n\r\nNOAA Scale: R2 - Moderate\r\n\r\nNOAA Space Weather Scale descriptions can be found at\r\nwww.swpc.noaa.gov/noaa-scales-explanation\r\n\r\nPotential Impacts: Area of impact centered on sub-solar point on the sunlit side of Earth. Extent of blackout of HF (high frequency) radio communication dependent upon current X-ray Flux intensity. For real-time information on affected area and expected duration please see http://www.swpc.noaa.gov/products/d-region-absorption-predictions-d-rap."
+ },
+ {
+  "product_id": "EF3A",
+  "issue_datetime": "2026-10-10 14:53:52.067",
+  "message": "Space Weather Message Code: ALTEF3\r\nSerial Number: 3753\r\nIssue Time: 2026 Oct 10 1453 UTC\r\n\r\nALERT: Electron 2MeV Integral Flux exceeded 1,000pfu \nThreshold Reached: 2026 Oct 10 1453 UTC\nStation: GOES-19\nComment: "
+ },
+ {
+  "product_id": "TIVA",
+  "issue_datetime": "2026-10-08 16:44:50.033",
+  "message": "Space Weather Message Code: ALTTP4\r\nSerial Number: 719\r\nIssue Time: 2026 Oct 08 1644 UTC\r\n\r\nALERT: Type IV Radio Emission \nBegin Time: 2026 Oct 08 1612 UTC\nComment: Type IV recorded by Sagamore Hill RSTN site\n"
+ },
+ {
+  "product_id": "EF3A",
+  "issue_datetime": "2026-10-08 05:01:00.663",
+  "message": "Space Weather Message Code: ALTEF3\r\nSerial Number: 3752\r\nIssue Time: 2026 Oct 08 0501 UTC\r\n\r\nCONTINUED ALERT: Electron 2MeV Integral Flux exceeded 1,000pfu\nContinuation of Serial Number: 3752\nBegin Time: 2026 Oct 05 1830 UTC\nYesterday Maximum 2MeV Flux: 11911 pfu\nCORRECTED"
+ },
+ {
+  "product_id": "EF3A",
+  "issue_datetime": "2026-10-07 05:04:25.963",
+  "message": "Space Weather Message Code: ALTEF3\r\nSerial Number: 3752\r\nIssue Time: 2026 Oct 07 0504 UTC\r\n\r\nCONTINUED ALERT: Electron 2MeV Integral Flux exceeded 1,000pfu\nContinuation of Serial Number: 3752\nBegin Time: 2026 Oct 05 1830 UTC\nYesterday Maximum 2MeV Flux: 10956 pfu\nCORRECTED"
+ },
+ {
+  "product_id": "EF3A",
+  "issue_datetime": "2026-10-06 05:07:58.703",
+  "message": "Space Weather Message Code: ALTEF3\r\nSerial Number: 3752\r\nIssue Time: 2026 Oct 06 0507 UTC\r\n\r\nCONTINUED ALERT: Electron 2MeV Integral Flux exceeded 1,000pfu\nContinuation of Serial Number: 3751\nBegin Time: 2026 Oct 05 1830 UTC\n\nYesterday Maximum 2MeV Flux: 2358 pfu\nMax time: 2026 Oct 05 2010 UTC"
+ },
+ {
+  "product_id": "EF3A",
+  "issue_datetime": "2026-10-05 18:47:07.310",
+  "message": "Space Weather Message Code: ALTEF3\r\nSerial Number: 3751\r\nIssue Time: 2026 Oct 05 1847 UTC\r\n\r\nALERT: Electron 2MeV Integral Flux exceeded 1,000pfu \nThreshold Reached: 2026 Oct 05 1830 UTC\nStation: GOES-19\nComment: "
+ },
+ {
+  "product_id": "EF3A",
+  "issue_datetime": "2026-10-01 14:30:29.700",
+  "message": "Space Weather Message Code: ALTEF3\r\nSerial Number: 3750\r\nIssue Time: 2026 Oct 01 1430 UTC\r\n\r\nCONTINUED ALERT: Electron 2MeV Integral Flux exceeded 1,000pfu\nContinuation of Serial Number: 3749\nBegin Time: 2026 Sep 30 0945 UTC\n\nYesterday Maximum 2MeV Flux: 3120 pfu\nMax time: 2026 Sep 30 1435 UTC"
+ },
+ {
+  "product_id": "EF3A",
+  "issue_datetime": "2026-09-30 10:04:50.050",
+  "message": "Space Weather Message Code: ALTEF3\r\nSerial Number: 3749\r\nIssue Time: 2026 Sep 30 1004 UTC\r\n\r\nALERT: Electron 2MeV Integral Flux exceeded 1,000pfu \nThreshold Reached: 2026 Sep 30 0945 UTC\nStation: GOES-19\nComment: Yesterday's max flux of 5,622 pfu at 29/1620 UTC.\n"
+ },
+ {
+  "product_id": "TIVA",
+  "issue_datetime": "2026-09-30 03:39:25.207",
+  "message": "Space Weather Message Code: ALTTP4\r\nSerial Number: 718\r\nIssue Time: 2026 Sep 30 0339 UTC\r\n\r\nALERT: Type IV Radio Emission \nBegin Time: 2026 Sep 30 0256 UTC\nComment: Observed by PAL\n"
+ },
+ {
+  "product_id": "EF3A",
+  "issue_datetime": "2026-09-29 05:02:02.247",
+  "message": "Space Weather Message Code: ALTEF3\r\nSerial Number: 3748\r\nIssue Time: 2026 Sep 29 0502 UTC\r\n\r\nCONTINUED ALERT: Electron 2MeV Integral Flux exceeded 1,000pfu\nContinuation of Serial Number: 3747\nBegin Time: 2026 Sep 26 1535 UTC\n\nYesterday Maximum 2MeV Flux: 4128 pfu\nMax time: 2026 Sep 28 1440 UTC"
+ },
+ {
+  "product_id": "EF3A",
+  "issue_datetime": "2026-09-28 05:00:40.090",
+  "message": "Space Weather Message Code: ALTEF3\r\nSerial Number: 3747\r\nIssue Time: 2026 Sep 28 0500 UTC\r\n\r\nCONTINUED ALERT: Electron 2MeV Integral Flux exceeded 1,000pfu\nContinuation of Serial Number: 3746\nBegin Time: 2026 Sep 26 1535 UTC\n\nYesterday Maximum 2MeV Flux: 3060 pfu\nMax time: 2026 Sep 27 1720 UTC"
+ },
+ {
+  "product_id": "EF3A",
+  "issue_datetime": "2026-09-27 05:02:04.940",
+  "message": "Space Weather Message Code: ALTEF3\r\nSerial Number: 3746\r\nIssue Time: 2026 Sep 27 0502 UTC\r\n\r\nCONTINUED ALERT: Electron 2MeV Integral Flux exceeded 1,000pfu\nContinuation of Serial Number: 3745\nBegin Time: 2026 Sep 26 1535 UTC\n\nYesterday Maximum 2MeV Flux: 1260 pfu\nMax time: 2026 Sep 26 1645 UTC"
+ },
+ {
+  "product_id": "EF3A",
+  "issue_datetime": "2026-09-26 15:51:34.970",
+  "message": "Space Weather Message Code: ALTEF3\r\nSerial Number: 3745\r\nIssue Time: 2026 Sep 26 1551 UTC\r\n\r\nALERT: Electron 2MeV Integral Flux exceeded 1,000pfu \nThreshold Reached: 2026 Sep 26 1535 UTC\nStation: GOES-19\nComment: "
+ },
+ {
+  "product_id": "EF3A",
+  "issue_datetime": "2026-09-14 11:03:04.607",
+  "message": "Space Weather Message Code: ALTEF3\r\nSerial Number: 3744\r\nIssue Time: 2026 Sep 14 1103 UTC\r\n\r\nCONTINUED ALERT: Electron 2MeV Integral Flux exceeded 1,000pfu\nContinuation of Serial Number: 3743\nBegin Time: 2026 Sep 10 1304 UTC\n\nYesterday Maximum 2MeV Flux: 1827 pfu\nMax time: 2026 Sep 13 1800 UTC"
+ },
+ {
+  "product_id": "P11S",
+  "issue_datetime": "2026-07-31 09:08:02.797",
+  "message": "Space Weather Message Code: SUMPX1\r\nSerial Number: 132\r\nIssue Time: 2026 Jul 31 0908 UTC\r\n\r\nSUMMARY: Proton Event 10MeV Integral Flux exceeded 10pfu \nBegin Time: 2026 Jul 30 1845 UTC\nMaximum Time: 2026 Jul 30 2055 UTC\nEnd Time: 2026 Jul 31 0715 UTC\nMaximum 10MeV Flux: 18 pfu\nNoaa Scale: S1 - Minor\nComment: \r\n\r\nNOAA Scale: S1 - Minor"
+ },
+ {
+  "product_id": "P20A",
+  "issue_datetime": "2026-07-31 01:56:29.630",
+  "message": "Space Weather Message Code: ALTPC0\r\nSerial Number: 57\r\nIssue Time: 2026 Jul 31 0156 UTC\r\n\r\nCANCEL ALERT: Proton Event 100MeV Integral Flux exceeded 1pfu \nCancel Serial Number: 56\nOriginal Issue Time: 2026 Jul 30 1833 UTC\nThreshold was met at 30/1845 UTC and ended at 30/1850 UTC"
+ },
+ {
+  "product_id": "P11A",
+  "issue_datetime": "2026-07-30 19:03:19.350",
+  "message": "Space Weather Message Code: ALTPX1\r\nSerial Number: 366\r\nIssue Time: 2026 Jul 30 1903 UTC\r\n\r\nALERT: Proton Event 10meV Integral Flux exceeded 10pfu \nBegin Time: 2026 Jul 30 1903 UTC\nNoaa Scale: S1 - Minor\nComment: \r\n\r\nNOAA Scale: S1 - Minor"
+ },
+ {
+  "product_id": "P11W",
+  "issue_datetime": "2026-07-30 18:34:42.033",
+  "message": "Space Weather Message Code: WARPX1\r\nSerial Number: 628\r\nIssue Time: 2026 Jul 30 1834 UTC\r\n\r\nWARNING: Proton 10MeV Integral Flux above 10pfu expected \nValid From: 2026 Jul 30 1833 UTC\nValid To: 2026 Jul 31 0900 UTC\nWarning Conditions: Onset\nNoaa Scale: S1 - Minor\nComment: \r\n\r\nNOAA Scale: S1 - Minor"
+ },
+ {
+  "product_id": "P20A",
+  "issue_datetime": "2026-07-30 18:33:22.693",
+  "message": "Space Weather Message Code: ALTPC0\r\nSerial Number: 56\r\nIssue Time: 2026 Jul 30 1833 UTC\r\n\r\nALERT: Proton Event 100MeV Integral Flux exceeded 1pfu \nBegin Time: 2026 Jul 30 1833 UTC\nComment: "
+ },
+ {
+  "product_id": "P20W",
+  "issue_datetime": "2026-07-30 18:08:39.780",
+  "message": "Space Weather Message Code: WARPC0\r\nSerial Number: 122\r\nIssue Time: 2026 Jul 30 1808 UTC\r\n\r\nWARNING: Proton 100MeV Integral Flux above 1pfu expected \nValid From: 2026 Jul 30 1807 UTC\nValid To: 2026 Jul 31 0300 UTC\nWarning Conditions: Onset\nComment: "
+ },
+ {
+  "product_id": "P11W",
+  "issue_datetime": "2026-06-30 16:36:36.953",
+  "message": "Space Weather Message Code: WARPX1\r\nSerial Number: 627\r\nIssue Time: 2026 Jun 30 1636 UTC\r\n\r\nCANCEL WARNING: Proton 10MeV Integral Flux above 10pfu expected \nCancel Serial Number: 626\nOriginal Issue Time: 2026 Jun 30 1600 UTC\nConditions no longer justify warning.\r\n\nConditions no longer justify warning.NOAA Scale: S1 - Minor"
+ },
+ {
+  "product_id": "P11W",
+  "issue_datetime": "2026-06-30 16:00:16.053",
+  "message": "Space Weather Message Code: WARPX1\r\nSerial Number: 626\r\nIssue Time: 2026 Jun 30 1600 UTC\r\n\r\nWARNING: Proton 10MeV Integral Flux above 10pfu expected \nValid From: 2026 Jun 30 1600 UTC\nValid To: 2026 Jun 30 2359 UTC\nWarning Conditions: Onset\nNoaa Scale: S1 - Minor\nComment: \r\n\nNOAA Scale: S1 - Minor"
+ },
+ {
+  "product_id": "P11S",
+  "issue_datetime": "2026-05-27 14:45:02.823",
+  "message": "Space Weather Message Code: SUMPX1\r\nSerial Number: 131\r\nIssue Time: 2026 May 27 1445 UTC\r\n\r\nCANCELLED SUMMARY: Proton Event 10MeV Integral Flux exceeded 10pfu \nCancel Serial Number: 130\nOriginal Issued Time: 2026-05-27T02:28:00\nCancelled 2026-05-27 14:44 by Forecaster User duplicate\r\n\nCancelled 2026-05-27 14:44 by Forecaster User duplicateNOAA Scale: S1 - Minor"
+ },
+ {
+  "product_id": "P11S",
+  "issue_datetime": "2026-05-27 02:28:51.080",
+  "message": "Space Weather Message Code: SUMPX1\r\nSerial Number: 130\r\nIssue Time: 2026 May 27 0228 UTC\r\n\r\nSUMMARY: Proton Event 10MeV Integral Flux exceeded 10pfu \nBegin Time: 2026 May 27 0015 UTC\nMaximum Time: 2026 May 26 0110 UTC\nEnd Time: 2026 May 26 0425 UTC\nMaximum 10MeV Flux: 23 pfu\nNoaa Scale: S1 - Minor\nComment: \r\n\nNOAA Scale: S1 - Minor"
+ },
+ {
+  "product_id": "P11S",
+  "issue_datetime": "2026-05-27 02:27:49.300",
+  "message": "Space Weather Message Code: SUMPX1\r\nSerial Number: 129\r\nIssue Time: 2026 May 27 0227 UTC\r\n\r\nSUMMARY: Proton Event 10MeV Integral Flux exceeded 10pfu \nBegin Time: 2026 May 26 0015 UTC\nMaximum Time: 2026 May 26 0110 UTC\nEnd Time: 2026 May 26 0425 UTC\nMaximum 10MeV Flux: 23 pfu\nNoaa Scale: S1 - Minor\nComment: \r\n\nNOAA Scale: S1 - Minor"
+ },
+ {
+  "product_id": "P11A",
+  "issue_datetime": "2026-05-26 00:35:09.697",
+  "message": "Space Weather Message Code: ALTPX1\r\nSerial Number: 365\r\nIssue Time: 2026 May 26 0035 UTC\r\n\r\nALERT: Proton Event 10meV Integral Flux exceeded 10pfu \nBegin Time: 2026 May 26 0010 UTC\nNoaa Scale: S1 - Minor\nComment: \r\n\nNOAA Scale: S1 - Minor"
+ },
+ {
+  "product_id": "P11W",
+  "issue_datetime": "2026-05-26 00:16:17.667",
+  "message": "Space Weather Message Code: WARPX1\r\nSerial Number: 625\r\nIssue Time: 2026 May 26 0016 UTC\r\n\r\nWARNING: Proton 10MeV Integral Flux above 10pfu expected \nValid From: 2026 May 26 0015 UTC\nValid To: 2026 May 26 2359 UTC\nWarning Conditions: Onset\nNoaa Scale: S1 - Minor\nComment: \r\n\nNOAA Scale: S1 - Minor"
+ },
+ {
+  "product_id": "TIIA",
+  "issue_datetime": "2026-05-01 15:50:32.247",
+  "message": "Space Weather Message Code: ALTTP2\r\nSerial Number: 1481\r\nIssue Time: 2026 May 01 1550 UTC\r\n\r\nALERT: Type II Radio Emission\r\nBegin Time: 2026 May 01 1535 UTC\r\nEstimated Velocity: 593 km/s\r\n\r\n\r\n\r\nDescription: Type II emissions occur in association with eruptions on the sun and typically indicate a coronal mass ejection is associated with a flare event."
+ },
+ {
+  "product_id": "P11S",
+  "issue_datetime": "2026-01-22 17:54:18.420",
+  "message": "Space Weather Message Code: SUMPX1\r\nSerial Number: 127\r\nIssue Time: 2026 Jan 22 1754 UTC\r\n\r\nSUMMARY: Proton Event 10MeV Integral Flux exceeded 10pfu\r\nBegin Time: 2026 Jan 18 2255 UTC\r\nMaximum Time: 2026 Jan 19 1915 UTC\r\nEnd Time: 2026 Jan 22 0545 UTC\r\nMaximum 10MeV Flux: 37000 pfu\r\nNOAA Scale: S4 - Severe\r\n\r\nNOAA Space Weather Scale descriptions can be found at\r\nwww.swpc.noaa.gov/noaa-scales-explanation"
+ },
+ {
+  "product_id": "P11W",
+  "issue_datetime": "2026-01-22 11:03:16.950",
+  "message": "Space Weather Message Code: WARPX1\r\nSerial Number: 623\r\nIssue Time: 2026 Jan 22 1103 UTC\r\n\r\nEXTENDED WARNING: Proton 10MeV Integral Flux above 10pfu expected\r\nExtension to Serial Number: 622\r\nValid From: 2026 Jan 22 0124 UTC\r\nNow Valid Until: 2026 Jan 22 1800 UTC\r\nWarning Condition: Onset\r\nPredicted NOAA Scale: S1 - Minor\r\n\r\nNOAA Space Weather Scale descriptions can be found at\r\nwww.swpc.noaa.gov/noaa-scales-explanation\r\n\r\nPotential Impacts: Radio - Minor impacts on polar HF (high frequency) radio propagation resulting in fades at lower frequencies."
+ },
+ {
+  "product_id": "P11A",
+  "issue_datetime": "2026-01-22 05:37:17.160",
+  "message": "Space Weather Message Code: ALTPX1\r\nSerial Number: 363\r\nIssue Time: 2026 Jan 22 0537 UTC\r\n\r\nALERT: Proton Event 10MeV Integral Flux exceeded 10pfu\r\nBegin Time: 2026 Jan 22 0520 UTC\r\nNOAA Scale: S1 - Minor\r\n\r\nNOAA Space Weather Scale descriptions can be found at\r\nwww.swpc.noaa.gov/noaa-scales-explanation\r\n\r\nPotential Impacts: Radio - Minor impacts on polar HF (high frequency) radio propagation resulting in fades at lower frequencies."
+ },
+ {
+  "product_id": "P11W",
+  "issue_datetime": "2026-01-22 01:24:41.293",
+  "message": "Space Weather Message Code: WARPX1\r\nSerial Number: 622\r\nIssue Time: 2026 Jan 22 0124 UTC\r\n\r\nWARNING: Proton 10MeV Integral Flux above 10pfu expected\r\nValid From: 2026 Jan 22 0124 UTC\r\nValid To: 2026 Jan 22 1200 UTC\r\nWarning Condition: Onset\r\nPredicted NOAA Scale: S1 - Minor\r\n\r\nNOAA Space Weather Scale descriptions can be found at\r\nwww.swpc.noaa.gov/noaa-scales-explanation\r\n\r\nPotential Impacts: Radio - Minor impacts on polar HF (high frequency) radio propagation resulting in fades at lower frequencies."
+ },
+ {
+  "product_id": "P12S",
+  "issue_datetime": "2026-01-21 01:55:50.153",
+  "message": "Space Weather Message Code: SUMPX2\r\nSerial Number: 59\r\nIssue Time: 2026 Jan 21 0155 UTC\r\n\r\nSUMMARY: Proton Event 10MeV Integral Flux exceeded 100pfu\r\nBegin Time: 2026 Jan 19 0440 UTC\r\nMaximum Time: 2026 Jan 19 1915 UTC\r\nEnd Time: 2026 Jan 20 1335 UTC\r\nMaximum 10MeV Flux: 37000 pfu\r\nNOAA Scale: S4 - Severe\r\n\r\nNOAA Space Weather Scale descriptions can be found at\r\nwww.swpc.noaa.gov/noaa-scales-explanation"
+ },
+ {
+  "product_id": "P11W",
+  "issue_datetime": "2026-01-20 23:55:27.690",
+  "message": "Space Weather Message Code: WARPX1\r\nSerial Number: 621\r\nIssue Time: 2026 Jan 20 2355 UTC\r\n\r\nEXTENDED WARNING: Proton 10MeV Integral Flux above 10pfu expected\r\nExtension to Serial Number: 620\r\nValid From: 2026 Jan 18 2130 UTC\r\nNow Valid Until: 2026 Jan 21 2359 UTC\r\nWarning Condition: Persistence\r\nPredicted NOAA Scale: S1 - Minor\r\n\r\nNOAA Space Weather Scale descriptions can be found at\r\nwww.swpc.noaa.gov/noaa-scales-explanation\r\n\r\nPotential Impacts: Radio - Minor impacts on polar HF (high frequency) radio propagation resulting in fades at lower frequencies."
+ },
+ {
+  "product_id": "P13S",
+  "issue_datetime": "2026-01-20 01:03:16.340",
+  "message": "Space Weather Message Code: SUMPX3\r\nSerial Number: 22\r\nIssue Time: 2026 Jan 20 0103 UTC\r\n\r\nSUMMARY:  Proton Event 10MeV Integral Flux exceeded 1000pfu\r\nBegin Time: 2026 Jan 19 1020 UTC\r\nMaximum Time: 2026 Jan 19 1915 UTC\r\nEnd Time: 2026 Jan 19 2135 UTC\r\nMaximum 10MeV Flux: 37000 pfu\r\nNOAA Scale: S4 - Severe\r\n\r\nNOAA Space Weather Scale descriptions can be found at\r\nwww.swpc.noaa.gov/noaa-scales-explanation"
+ },
+ {
+  "product_id": "P14S",
+  "issue_datetime": "2026-01-19 23:21:20.893",
+  "message": "Space Weather Message Code: SUMPX4\r\nSerial Number: 2\r\nIssue Time: 2026 Jan 19 2321 UTC\r\n\r\nSUMMARY: Proton Event 10MeV Integral Flux exceeded 10000pfu\r\nBegin Time: 2026 Jan 19 1810 UTC\r\nMaximum Time: 2026 Jan 19 1915 UTC\r\nEnd Time: 2026 Jan 19 2045 UTC\r\nMaximum 10MeV Flux: 37000 pfu\r\nNOAA Scale: S4 - Severe\r\n\r\nNOAA Space Weather Scale descriptions can be found at\r\nwww.swpc.noaa.gov/noaa-scales-explanation"
+ },
+ {
+  "product_id": "P14A",
+  "issue_datetime": "2026-01-19 18:19:10.037",
+  "message": "Space Weather Message Code: ALTPX4\r\nSerial Number: 2\r\nIssue Time: 2026 Jan 19 1819 UTC\r\n\r\nALERT: Proton Event 10MeV Integral Flux exceeded 10000pfu\r\nBegin Time: 2026 Jan 19 1810 UTC\r\nNOAA Scale: S4 - Severe\r\n\r\nNOAA Space Weather Scale descriptions can be found at\r\nwww.swpc.noaa.gov/noaa-scales-explanation\r\n\r\nPotential Impacts: Radiation - Passengers and crew in high latitude, high altitude flights may experience significant radiation exposures. Astronauts on EVA (extra-vehicular activity) are exposed to unavoidable radiation hazard.\r\nSpacecraft - Satellites may experience memory device problems and noise on imaging systems; star-trackers may cause orientation problems; solar panel efficiency may be degraded.\r\nRadio - Widespread blackout of polar HF (high frequency) communications likely."
+ },
+ {
+  "product_id": "P11W",
+  "issue_datetime": "2026-01-19 18:14:04.130",
+  "message": "Space Weather Message Code: WARPX1\r\nSerial Number: 620\r\nIssue Time: 2026 Jan 19 1814 UTC\r\n\r\nEXTENDED WARNING: Proton 10MeV Integral Flux above 10pfu expected\r\nExtension to Serial Number: 619\r\nValid From: 2026 Jan 18 2130 UTC\r\nNow Valid Until: 2026 Jan 20 2359 UTC\r\nWarning Condition: Persistence\r\nPredicted NOAA Scale: S1 - Minor\r\n\r\nComment: This warning UPGRADED from S3 (Strong) to S4 (Severe) due to increasing Proton flux levels.\r\n\r\nNOAA Space Weather Scale descriptions can be found at\r\nwww.swpc.noaa.gov/noaa-scales-explanation\r\n\r\nPotential Impacts: Radio - Minor impacts on polar HF (high frequency) radio propagation resulting in fades at lower frequencies."
+ },
+ {
+  "product_id": "P13A",
+  "issue_datetime": "2026-01-19 10:29:56.950",
+  "message": "Space Weather Message Code: ALTPX3\r\nSerial Number: 34\r\nIssue Time: 2026 Jan 19 1029 UTC\r\n\r\nALERT: Proton Event 10MeV Integral Flux exceeded 1000pfu\r\nBegin Time: 2026 Jan 19 1020 UTC\r\nNOAA Scale: S3 - Strong\r\n\r\nNOAA Space Weather Scale descriptions can be found at\r\nwww.swpc.noaa.gov/noaa-scales-explanation\r\n\r\nPotential Impacts: Radiation - Passengers and crew in high latitude, high altitude flights may experience increasing radiation exposures. Astronauts on EVA (extra-vehicular activity) are exposed to elevated radiation levels.\r\nSpacecraft - Single-event upsets to satellite operations, noise in imaging systems, and slight reduction of efficiency in solar panels are likely.\r\nRadio - Degraded or episodically blacked-out polar HF (high frequency) radio propagation."
+ },
+ {
+  "product_id": "P11W",
+  "issue_datetime": "2026-01-19 10:29:56.933",
+  "message": "Space Weather Message Code: WARPX1\r\nSerial Number: 619\r\nIssue Time: 2026 Jan 19 1029 UTC\r\n\r\nEXTENDED WARNING: Proton 10MeV Integral Flux above 10pfu expected\r\nExtension to Serial Number: 618\r\nValid From: 2026 Jan 18 2130 UTC\r\nNow Valid Until: 2026 Jan 20 2359 UTC\r\nWarning Condition: Persistence\r\nPredicted NOAA Scale: S3 - Strong\r\n\r\nComment: This warning UPGRADED from S2 (Moderate) to S3 (Strong) due to increasing Proton flux levels.\r\n\r\nNOAA Space Weather Scale descriptions can be found at\r\nwww.swpc.noaa.gov/noaa-scales-explanation\r\n\r\nPotential Impacts: Radio - Minor impacts on polar HF (high frequency) radio propagation resulting in fades at lower frequencies."
+ },
+ {
+  "product_id": "P12A",
+  "issue_datetime": "2026-01-19 04:47:37.553",
+  "message": "Space Weather Message Code: ALTPX2\r\nSerial Number: 80\r\nIssue Time: 2026 Jan 19 0447 UTC\r\n\r\nALERT: Proton Event 10MeV Integral Flux exceeded 100pfu\r\nBegin Time: 2026 Jan 19 0440 UTC\r\nNOAA Scale: S2 - Moderate\r\n\r\nNOAA Space Weather Scale descriptions can be found at\r\nwww.swpc.noaa.gov/noaa-scales-explanation\r\n\r\nPotential Impacts: Radiation - Passengers and crew in high latitude, high altitude flights may experience small, increased radiation exposures.\r\nSpacecraft - Infrequent single-event upsets to satellites are possible.\r\nRadio - Small effects on polar HF (high frequency) propagation resulting in fades at lower frequencies."
+ },
+ {
+  "product_id": "P11W",
+  "issue_datetime": "2026-01-19 04:11:39.487",
+  "message": "Space Weather Message Code: WARPX1\r\nSerial Number: 618\r\nIssue Time: 2026 Jan 19 0411 UTC\r\n\r\nEXTENDED WARNING: Proton 10MeV Integral Flux above 10pfu expected\r\nExtension to Serial Number: 617\r\nValid From: 2026 Jan 18 2130 UTC\r\nNow Valid Until: 2026 Jan 19 2359 UTC\r\nWarning Condition: Persistence\r\nPredicted NOAA Scale: S2 - Moderate\r\n\r\nComment: This warning UPGRADED from S1 (Minor) to S2 (Moderate) due to increasing Proton flux levels.\r\n\r\nNOAA Space Weather Scale descriptions can be found at\r\nwww.swpc.noaa.gov/noaa-scales-explanation\r\n\r\nPotential Impacts: Radio - Minor impacts on polar HF (high frequency) radio propagation resulting in fades at lower frequencies."
+ },
+ {
+  "product_id": "P11A",
+  "issue_datetime": "2026-01-18 23:11:01.403",
+  "message": "Space Weather Message Code: ALTPX1\r\nSerial Number: 362\r\nIssue Time: 2026 Jan 18 2311 UTC\r\n\r\nALERT: Proton Event 10MeV Integral Flux exceeded 10pfu\r\nBegin Time: 2026 Jan 18 2255 UTC\r\nNOAA Scale: S1 - Minor\r\n\r\nNOAA Space Weather Scale descriptions can be found at\r\nwww.swpc.noaa.gov/noaa-scales-explanation\r\n\r\nPotential Impacts: Radio - Minor impacts on polar HF (high frequency) radio propagation resulting in fades at lower frequencies."
+ },
+ {
+  "product_id": "P11W",
+  "issue_datetime": "2026-01-18 21:30:41.987",
+  "message": "Space Weather Message Code: WARPX1\r\nSerial Number: 617\r\nIssue Time: 2026 Jan 18 2130 UTC\r\n\r\nWARNING: Proton 10MeV Integral Flux above 10pfu expected\r\nValid From: 2026 Jan 18 2130 UTC\r\nValid To: 2026 Jan 19 1200 UTC\r\nWarning Condition: Onset\r\nPredicted NOAA Scale: S1 - Minor\r\n\r\nNOAA Space Weather Scale descriptions can be found at\r\nwww.swpc.noaa.gov/noaa-scales-explanation\r\n\r\nPotential Impacts: Radio - Minor impacts on polar HF (high frequency) radio propagation resulting in fades at lower frequencies."
+ },
+ {
+  "product_id": "TIVA",
+  "issue_datetime": "2024-04-24 15:00:55.043",
+  "message": "Space Weather Message Code: ALTTP4\r\nSerial Number: 630\r\nIssue Time: 2024 Apr 24 1500 UTC\r\n\r\nALERT: Type IV Radio Emission\r\nBegin Time: 2024 Apr 24 1440 UTC\r\n\r\n\r\n\r\nDescription: Type IV emissions occur in association with major eruptions on the sun and are typically associated with strong coronal mass ejections and solar radiation storms."
+ }
+]

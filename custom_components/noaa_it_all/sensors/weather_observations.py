@@ -3,25 +3,24 @@
 Provides current conditions from the nearest NWS observation station:
 temperature, humidity, wind, pressure, dewpoint, visibility, sky
 conditions, and feels-like temperature.
+
+NWS reports observations in metric units. The sensors report them as they
+are, with a device class, and Home Assistant converts them to the unit
+system of the install, or to the unit chosen in an entity's settings.
 """
 
 import logging
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from ..const import DOMAIN
-from ..parsers import (
-    celsius_to_fahrenheit,
-    kmh_to_mph,
-    pascals_to_inhg,
-    meters_to_miles,
-    degrees_to_cardinal,
-)
+from ..parsers import degrees_to_cardinal
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class WeatherObservationSensor(CoordinatorEntity):
+class WeatherObservationSensor(CoordinatorEntity, SensorEntity):
     """Base class for weather observation sensors.
 
     Uses ``_attr_has_entity_name = True`` so that Home Assistant
@@ -35,7 +34,8 @@ class WeatherObservationSensor(CoordinatorEntity):
     _time_field = None
 
     def __init__(self, coordinator, office_code, observation_field, sensor_name,
-                 latitude=None, longitude=None, unit=None, icon=None, device_class=None):
+                 latitude=None, longitude=None, unit=None, icon=None, device_class=None,
+                 precision=None):
         """Initialize the weather observation sensor."""
         super().__init__(coordinator)
         self._office_code = office_code
@@ -46,6 +46,7 @@ class WeatherObservationSensor(CoordinatorEntity):
         self._unit = unit
         self._icon_name = icon
         self._device_class = device_class
+        self._precision = precision
         self._attributes = {}
 
     @property
@@ -58,17 +59,22 @@ class WeatherObservationSensor(CoordinatorEntity):
         return self._sensor_name
 
     @property
-    def state(self):
-        """Return the state of the sensor."""
+    def native_value(self):
+        """Return the observed value, in the unit NWS reports it in."""
         if self.coordinator.data is None:
             return None
         properties = self.coordinator.data.get("properties", {})
         return self._extract_value(properties)
 
     @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement."""
+    def native_unit_of_measurement(self):
+        """Return the unit of the observed value; Home Assistant converts it."""
         return self._unit
+
+    @property
+    def suggested_display_precision(self):
+        """Return how many decimals to show, in the native unit."""
+        return self._precision
 
     @property
     def icon(self):
@@ -136,10 +142,11 @@ class WeatherObservationSensor(CoordinatorEntity):
         return self._convert_value(value)
 
     def _convert_value(self, value):
-        """Convert the value to the appropriate format and units."""
-        # Default implementation - override in subclasses if needed
-        if isinstance(value, (int, float)):
-            return round(value, 1)
+        """Return the value as NWS reports it.
+
+        It isn't rounded, so a value Home Assistant converts comes out as
+        before; Home Assistant rounds it to the suggested display precision.
+        """
         return value
 
 
@@ -155,14 +162,11 @@ class TemperatureSensor(WeatherObservationSensor):
             'Temperature',
             latitude=latitude,
             longitude=longitude,
-            unit='°F',
+            unit='°C',
             icon='mdi:thermometer',
-            device_class='temperature'
+            device_class=SensorDeviceClass.TEMPERATURE,
+            precision=1,
         )
-
-    def _convert_value(self, value):
-        """Convert Celsius to Fahrenheit."""
-        return celsius_to_fahrenheit(value)
 
 
 class HumiditySensor(WeatherObservationSensor):
@@ -179,7 +183,7 @@ class HumiditySensor(WeatherObservationSensor):
             longitude=longitude,
             unit='%',
             icon='mdi:water-percent',
-            device_class='humidity'
+            device_class=SensorDeviceClass.HUMIDITY
         )
 
     def _convert_value(self, value):
@@ -201,13 +205,11 @@ class WindSpeedSensor(WeatherObservationSensor):
             'Wind Speed',
             latitude=latitude,
             longitude=longitude,
-            unit='mph',
-            icon='mdi:weather-windy'
+            unit='km/h',
+            icon='mdi:weather-windy',
+            device_class=SensorDeviceClass.WIND_SPEED,
+            precision=1,
         )
-
-    def _convert_value(self, value):
-        """Convert km/h to mph."""
-        return kmh_to_mph(value)
 
 
 class WindDirectionSensor(WeatherObservationSensor):
@@ -236,11 +238,12 @@ class WindDirectionSensor(WeatherObservationSensor):
     def extra_state_attributes(self):
         """Return state attributes with cardinal direction."""
         attrs = super().extra_state_attributes
-        if self.state is not None:
+        degrees = self.native_value
+        if degrees is not None:
             try:
-                attrs['cardinal_direction'] = degrees_to_cardinal(self.state)
+                attrs['cardinal_direction'] = degrees_to_cardinal(degrees)
             except (TypeError, ValueError) as err:
-                _LOGGER.debug("Could not convert wind direction %s to cardinal: %s", self.state, err)
+                _LOGGER.debug("Could not convert wind direction %s to cardinal: %s", degrees, err)
         return attrs
 
 
@@ -256,14 +259,18 @@ class BarometricPressureSensor(WeatherObservationSensor):
             'Barometric Pressure',
             latitude=latitude,
             longitude=longitude,
-            unit='inHg',
+            unit='hPa',
             icon='mdi:gauge',
-            device_class='pressure'
+            # Atmospheric pressure, rather than pressure, is shown in inHg in a
+            # US customary install.
+            device_class=SensorDeviceClass.ATMOSPHERIC_PRESSURE,
+            precision=1,
         )
 
     def _convert_value(self, value):
-        """Convert Pascals to inches of mercury."""
-        return pascals_to_inhg(value)
+        """Convert pascals to hectopascals, which shows inHg to 2 decimals."""
+        # NWS gives pascals to 2 decimals; the rounding only drops float noise.
+        return round(value / 100, 4)
 
 
 class DewpointSensor(WeatherObservationSensor):
@@ -278,14 +285,11 @@ class DewpointSensor(WeatherObservationSensor):
             'Dewpoint',
             latitude=latitude,
             longitude=longitude,
-            unit='°F',
+            unit='°C',
             icon='mdi:water',
-            device_class='temperature'
+            device_class=SensorDeviceClass.TEMPERATURE,
+            precision=1,
         )
-
-    def _convert_value(self, value):
-        """Convert Celsius to Fahrenheit."""
-        return celsius_to_fahrenheit(value)
 
 
 class VisibilitySensor(WeatherObservationSensor):
@@ -300,13 +304,16 @@ class VisibilitySensor(WeatherObservationSensor):
             'Visibility',
             latitude=latitude,
             longitude=longitude,
-            unit='mi',
-            icon='mdi:eye'
+            unit='km',
+            icon='mdi:eye',
+            device_class=SensorDeviceClass.DISTANCE,
+            precision=1,
         )
 
     def _convert_value(self, value):
-        """Convert meters to miles."""
-        return meters_to_miles(value)
+        """Convert meters to kilometers, which a US customary install shows in miles."""
+        # NWS gives meters to 2 decimals; the rounding only drops float noise.
+        return round(value / 1000, 5)
 
 
 class SkyConditionsSensor(WeatherObservationSensor):
@@ -345,9 +352,10 @@ class FeelsLikeSensor(WeatherObservationSensor):
             'Feels Like',
             latitude=latitude,
             longitude=longitude,
-            unit='°F',
+            unit='°C',
             icon='mdi:thermometer-lines',
-            device_class='temperature'
+            device_class=SensorDeviceClass.TEMPERATURE,
+            precision=1,
         )
 
     def _extract_value(self, properties):
@@ -384,7 +392,3 @@ class FeelsLikeSensor(WeatherObservationSensor):
             else:
                 attrs['feels_like_type'] = 'Actual Temperature'
         return attrs
-
-    def _convert_value(self, value):
-        """Convert Celsius to Fahrenheit."""
-        return celsius_to_fahrenheit(value)

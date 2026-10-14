@@ -5,41 +5,13 @@ making them independently unit-testable.
 """
 
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 
 # ---------------------------------------------------------------------------
 # Unit conversion helpers
 # ---------------------------------------------------------------------------
-
-def celsius_to_fahrenheit(celsius: Optional[float]) -> Optional[float]:
-    """Convert Celsius to Fahrenheit."""
-    if celsius is None:
-        return None
-    return round((celsius * 9 / 5) + 32, 1)
-
-
-def kmh_to_mph(kmh: Optional[float]) -> Optional[float]:
-    """Convert km/h to mph."""
-    if kmh is None:
-        return None
-    return round(kmh * 0.621371, 1)
-
-
-def pascals_to_inhg(pascals: Optional[float]) -> Optional[float]:
-    """Convert Pascals to inches of mercury."""
-    if pascals is None:
-        return None
-    return round(pascals * 0.00029530, 2)
-
-
-def meters_to_miles(meters: Optional[float]) -> Optional[float]:
-    """Convert meters to miles."""
-    if meters is None:
-        return None
-    return round(meters * 0.000621371, 1)
-
 
 def degrees_to_cardinal(degrees: Union[int, float]) -> str:
     """Convert degrees to cardinal direction."""
@@ -176,12 +148,156 @@ def get_required_kp(
     return 9
 
 
+def next_aurora_period(
+    forecast: Optional[List[Dict[str, Any]]],
+    required_kp: float,
+    now: datetime,
+) -> Optional[Dict[str, Any]]:
+    """Return the first forecast Kp period starting after ``now`` whose Kp reaches ``required_kp``.
+
+    ``forecast`` is SWPC's noaa-planetary-k-index-forecast.json: 3-hour
+    periods, each ``observed``, ``estimated`` or ``predicted``. Estimated
+    periods cover the rest of today and predicted ones the next two days, so
+    both are forecasts. The period in progress is left out: part of it is
+    already measured, and the current Kp says more about it than its
+    forecast. A period without a numeric Kp is skipped. Returns
+    ``{"start": datetime, "kp": float}``, or None when no period does.
+    """
+    found = None
+    for period in forecast or []:
+        if not isinstance(period, dict) or period.get("observed") == "observed":
+            continue
+        kp = period.get("kp")
+        if isinstance(kp, bool) or not isinstance(kp, (int, float)) or kp < required_kp:
+            continue
+        try:
+            start = datetime.fromisoformat(period["time_tag"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if start.tzinfo is None:
+            start = start.replace(tzinfo=timezone.utc)
+        if start > now and (found is None or start < found["start"]):
+            found = {"start": start, "kp": kp}
+    return found
+
+
 # ---------------------------------------------------------------------------
 # Solar radiation storm helpers
 # ---------------------------------------------------------------------------
 
+# Solar radiation storms are the 10 MeV integral proton flux products: P11 to
+# P14 for the S1 to S4 thresholds (10 to 10,000 pfu), each a warning (W), an
+# alert (A) or a summary (S). P20 is the 100 MeV flux, which has no S-scale.
+_RADIATION_STORM_PRODUCT = re.compile(r"P1\d[WAS]")
+_MONTHS = {
+    name: number for number, name in enumerate(
+        ("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"), 1
+    )
+}
+_SWPC_TIME = re.compile(r"(\d{4}) ([A-Z][a-z]{2}) (\d{2}) (\d{2})(\d{2}) UTC")
+
+
+def _message_field(message: str, name: str) -> Optional[str]:
+    """Return a field of an SWPC message, such as its Serial Number, or None."""
+    match = re.search(rf"^{name}:[ \t]*(\S.*?)\s*$", message, re.MULTILINE)
+    return match.group(1) if match else None
+
+
+def _swpc_time(text: Optional[str]) -> Optional[datetime]:
+    """Parse an SWPC message time, such as ``2026 Jan 19 2359 UTC``, whatever the locale."""
+    match = _SWPC_TIME.fullmatch(text or "")
+    if not match or match.group(2) not in _MONTHS:
+        return None
+    year, _, day, hour, minute = (int(g) if g.isdigit() else g for g in match.groups())
+    try:
+        return datetime(year, _MONTHS[match.group(2)], day, hour, minute, tzinfo=timezone.utc)
+    except ValueError:
+        return None
+
+
+def _issue_time(alert: Dict[str, Any]) -> Optional[datetime]:
+    """Return when an alerts.json product was issued, such as ``2026-01-19 18:19:10.037``."""
+    try:
+        return datetime.fromisoformat(alert["issue_datetime"]).replace(tzinfo=timezone.utc)
+    except (KeyError, TypeError, ValueError):
+        return None
+
+
+def radiation_storm_products_in_effect(
+    alerts: List[Dict[str, Any]], now: datetime
+) -> List[Dict[str, Any]]:
+    """Return the solar radiation storm products in alerts.json still in effect at ``now``.
+
+    A warning is in effect until its Valid To or Now Valid Until time, unless
+    an extended warning replaces it or it is cancelled. An alert is in effect
+    until a summary for its threshold, issued after it, says the event ended
+    after it began, or it is cancelled; of several for one threshold only the
+    newest counts. Summaries and cancellations are records, never in effect.
+    """
+    products = []
+    for alert in alerts:
+        if not isinstance(alert, dict):
+            continue
+        product_id = alert.get("product_id") or ""
+        if not _RADIATION_STORM_PRODUCT.fullmatch(product_id):
+            continue
+        message = alert.get("message") or ""
+        products.append({
+            "alert": alert,
+            "id": product_id,
+            "type": product_id[3],
+            "serial": _message_field(message, "Serial Number"),
+            "cancels": _message_field(message, "Cancel Serial Number"),
+            "extends": _message_field(message, "Extension to Serial Number"),
+            "issued": _issue_time(alert),
+            "begin": _swpc_time(_message_field(message, "Begin Time")),
+            "end": _swpc_time(_message_field(message, "End Time")),
+            "until": _swpc_time(
+                _message_field(message, "Now Valid Until") or _message_field(message, "Valid To")
+            ),
+        })
+
+    cancelled = {(p["id"], p["cancels"]) for p in products if p["cancels"]}
+    extended = {(p["id"], p["extends"]) for p in products if p["extends"]}
+    current = [
+        p for p in products
+        if not p["cancels"] and (p["id"], p["serial"]) not in cancelled
+    ]
+    summaries = [p for p in current if p["type"] == "S"]
+
+    def ended(alert):
+        """Return True if a summary for the alert's threshold says its event is over."""
+        for summary in summaries:
+            if summary["id"][:3] != alert["id"][:3]:
+                continue
+            if alert["issued"] and summary["issued"] and summary["issued"] < alert["issued"]:
+                continue
+            if alert["begin"] and summary["end"] and summary["end"] < alert["begin"]:
+                continue
+            return True
+        return False
+
+    in_effect = []
+    newest_alert = {}
+    for p in current:
+        if p["type"] == "W":
+            if (p["id"], p["serial"]) not in extended and (p["until"] is None or now < p["until"]):
+                in_effect.append(p)
+        elif p["type"] == "A" and not ended(p):
+            latest = newest_alert.get(p["id"])
+            if latest is None or (p["issued"] or now) > (latest["issued"] or now):
+                newest_alert[p["id"]] = p
+    in_effect.extend(newest_alert.values())
+    in_effect.sort(key=lambda p: p["issued"] or now, reverse=True)
+    return [p["alert"] for p in in_effect]
+
+
 def extract_storm_scale(message: str, product_id: str) -> str:
     """Extract S1-S5 storm scale from message or product ID."""
+    stated = re.search(r"NOAA Scale:[ \t]*(S[1-5])\b", message)
+    if stated:
+        return stated.group(1)
+
     for scale in ['S5', 'S4', 'S3', 'S2', 'S1']:
         if product_id.startswith(scale):
             return scale

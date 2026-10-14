@@ -5,36 +5,77 @@ solar radiation storm alerts.
 """
 
 import logging
+import math
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
-from datetime import timedelta, datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from ..const import (
-    AURORA_KP_THRESHOLDS, SOLAR_RADIATION_STORM_SCALES,
-    SOLAR_RADIATION_KEYWORDS, DOMAIN,
+    AURORA_KP_THRESHOLDS, SOLAR_RADIATION_STORM_SCALES, DOMAIN,
 )
 from ..offices import magnetic_latitude
 from ..parsers import (
     interpret_dst_value,
     rate_kp_index,
-    calculate_aurora_visibility,
     calculate_aurora_duration,
     calculate_aurora_probability,
     get_visibility_class,
     get_required_kp,
+    next_aurora_period,
     extract_storm_scale,
     extract_time_from_message,
     calculate_alert_duration,
     extract_impacts,
     get_severity_level,
     assess_location_risk,
+    radiation_storm_products_in_effect,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class GeomagneticSensor(CoordinatorEntity):
-    """Representation of the Geomagnetic Storm sensor.
+# A newest Dst older than this means the feed has stopped updating.
+_DST_STALE_AFTER = timedelta(hours=2)
+
+
+def _newest_dst(coordinator):
+    """Return the newest Dst sample as (nT to one decimal, its time), or None.
+
+    SWPC's Geospace model feed has a sample a minute for the last hour or so,
+    oldest first, and runs some 20 to 30 minutes ahead, as the model works
+    from solar wind measured upstream of Earth. The sample with the latest
+    time and a finite value is used, whatever the order. None when the fetch
+    failed, nothing is usable, or the newest is over two hours old.
+    """
+    if coordinator.data is None:
+        return None
+    dst_data = coordinator.data.get("dst")
+    if not isinstance(dst_data, list):
+        return None
+    newest = None
+    for sample in dst_data:
+        if not isinstance(sample, dict):
+            continue
+        value = sample.get('dst')
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+            continue
+        try:
+            time = datetime.fromisoformat(sample["time_tag"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if time.tzinfo is None:
+            time = time.replace(tzinfo=timezone.utc)
+        if newest is None or time > newest[1]:
+            # Adding 0.0 turns -0.0 into 0.0.
+            newest = (round(value, 1) + 0.0, time)
+    if newest is None or datetime.now(timezone.utc) - newest[1] > _DST_STALE_AFTER:
+        return None
+    return newest
+
+
+class GeomagneticSensor(CoordinatorEntity, SensorEntity):
+    """Representation of the Geomagnetic Storm sensor: the newest Dst, in nT.
 
     Uses ``_attr_has_entity_name = True`` so that Home Assistant
     automatically combines the device name with the entity name to
@@ -63,14 +104,31 @@ class GeomagneticSensor(CoordinatorEntity):
         return f'noaa_{self._office_code}_geomagnetic_storm'
 
     @property
-    def state(self):
-        """Return the state of the sensor."""
-        if self.coordinator.data is None:
-            return None
-        dst_data = self.coordinator.data.get("dst", [])
-        if dst_data and len(dst_data) > 0:
-            return dst_data[0].get('dst')
-        return None
+    def native_value(self):
+        """Return the newest Dst, to one decimal."""
+        newest = _newest_dst(self.coordinator)
+        return newest[0] if newest else None
+
+    @property
+    def extra_state_attributes(self):
+        """Return the time of the sample, which can be ahead of now."""
+        newest = _newest_dst(self.coordinator)
+        return {'timestamp': newest[1].isoformat()} if newest else {}
+
+    @property
+    def native_unit_of_measurement(self):
+        """Return the unit: nanotesla."""
+        return "nT"
+
+    @property
+    def state_class(self):
+        """Return the state class, so Home Assistant keeps statistics."""
+        return SensorStateClass.MEASUREMENT
+
+    @property
+    def suggested_display_precision(self):
+        """Return how many decimals to show."""
+        return 1
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -99,15 +157,11 @@ class GeomagneticSensorInterpretation(CoordinatorEntity):
 
     @property
     def state(self):
-        """Return the interpretation of the geomagnetic storm."""
-        if self.coordinator.data is None:
+        """Return the interpretation of the newest Dst, as Geomagnetic Storm shows it."""
+        newest = _newest_dst(self.coordinator)
+        if newest is None:
             return None
-        dst_data = self.coordinator.data.get("dst", [])
-        if dst_data and len(dst_data) > 0:
-            dst_value = dst_data[0].get('dst')
-            if dst_value is not None:
-                return interpret_dst_value(dst_value)
-        return None
+        return interpret_dst_value(newest[0])
 
     @property
     def name(self):
@@ -233,8 +287,12 @@ class PlanetaryKIndexSensorRating(CoordinatorEntity):
         )
 
 
-class AuroraNextTimeSensor(CoordinatorEntity):
-    """Representation of Aurora Next Time sensor for specific location.
+class AuroraNextTimeSensor(CoordinatorEntity, SensorEntity):
+    """When aurora may next be visible here, from SWPC's 3-day Kp forecast.
+
+    The state is the start of the next 3-hour forecast period whose Kp
+    reaches the Kp this location needs, or unknown when none in the forecast
+    does or the forecast can't be fetched.
 
     Uses ``_attr_has_entity_name = True`` so that Home Assistant
     automatically combines the device name with the entity name to
@@ -259,58 +317,45 @@ class AuroraNextTimeSensor(CoordinatorEntity):
         """
         return "Aurora Next Time"
 
-    def _compute_aurora_timing(self):
-        """Compute aurora timing state and attributes from coordinator data."""
-        if self.coordinator.data is None:
-            return None, {}
-        kp_data = self.coordinator.data.get("kp_index", [])
-        if not kp_data or len(kp_data) == 0:
-            return 'No Data', {'error': 'No Kp index data available'}
+    @property
+    def device_class(self):
+        """Return the device class: the state is a time."""
+        return SensorDeviceClass.TIMESTAMP
 
-        current_kp = kp_data[-1].get('kp_index', 0)
+    def _required_kp(self):
+        """Return the Kp aurora needs to be visible here."""
         office_lat = magnetic_latitude(self._office_code, self._latitude, self._longitude)
+        return get_required_kp(office_lat, AURORA_KP_THRESHOLDS)
 
-        aurora_possible = calculate_aurora_visibility(
-            current_kp, office_lat, AURORA_KP_THRESHOLDS
+    def _next_period(self):
+        """Return the next forecast period aurora may be visible in, or None."""
+        if self.coordinator.data is None:
+            return None
+        return next_aurora_period(
+            self.coordinator.data.get("kp_forecast"), self._required_kp(), datetime.now(timezone.utc)
         )
 
-        if aurora_possible:
-            next_time = datetime.now(timezone.utc) + timedelta(minutes=30)
-            state = next_time.strftime('%Y-%m-%d %H:%M UTC')
-            attributes = {
-                'current_kp': current_kp,
-                'magnetic_latitude': office_lat,
-                'conditions': 'Favorable',
-                'confidence': 'High' if current_kp >= 5 else 'Moderate'
-            }
-        else:
-            if current_kp < 3:
-                estimated_hours = 12 + (3 - current_kp) * 6
-            else:
-                estimated_hours = 6
-
-            next_time = datetime.now(timezone.utc) + timedelta(hours=estimated_hours)
-            state = next_time.strftime('%Y-%m-%d %H:%M UTC')
-            attributes = {
-                'current_kp': current_kp,
-                'magnetic_latitude': office_lat,
-                'conditions': 'Waiting for activity',
-                'confidence': 'Low'
-            }
-
-        return state, attributes
-
     @property
-    def state(self):
-        """Return the state of the sensor."""
-        state, _ = self._compute_aurora_timing()
-        return state
+    def native_value(self):
+        """Return when that period starts, or None."""
+        period = self._next_period()
+        return period["start"] if period else None
 
     @property
     def extra_state_attributes(self):
-        """Return the state attributes."""
-        _, attributes = self._compute_aurora_timing()
-        return attributes
+        """Return the period's forecast Kp, the Kp needed here and the current Kp."""
+        if self.coordinator.data is None:
+            return {}
+        period = self._next_period()
+        kp_data = self.coordinator.data.get("kp_index")
+        latest = kp_data[-1] if isinstance(kp_data, list) and kp_data else None
+        current_kp = latest.get('kp_index') if isinstance(latest, dict) else None
+        return {
+            'predicted_kp': period["kp"] if period else None,
+            'required_kp': self._required_kp(),
+            'current_kp': current_kp if isinstance(current_kp, (int, float)) else None,
+            'magnetic_latitude': magnetic_latitude(self._office_code, self._latitude, self._longitude),
+        }
 
     @property
     def unique_id(self):
@@ -528,47 +573,36 @@ class SolarRadiationStormAlertsSensor(CoordinatorEntity):
         """
         return "Solar Radiation Storm Alerts"
 
-    def _get_solar_radiation_alerts(self):
-        """Filter and parse solar radiation alerts from coordinator data."""
+    def _products_in_effect(self):
+        """Return the solar radiation storm warnings and alerts in effect.
+
+        None when there is no data or the alerts fetch failed, or returned
+        something other than a list, so the sensor reads unknown rather than 0.
+        """
         if self.coordinator.data is None:
             return None
-        alerts_data = self.coordinator.data.get("space_alerts", [])
-        if not alerts_data:
-            return []
-
-        solar_radiation_alerts = []
-        for alert in alerts_data:
-            message = alert.get('message', '').lower()
-            product_id = alert.get('product_id', '')
-
-            is_solar_radiation = any(
-                keyword in message for keyword in SOLAR_RADIATION_KEYWORDS
-            )
-            is_solar_product = product_id.startswith(
-                ('S1', 'S2', 'S3', 'S4', 'S5', 'TIVA', 'EF3')
-            )
-
-            if is_solar_radiation or is_solar_product:
-                alert_info = self._parse_solar_radiation_alert(alert)
-                if alert_info:
-                    solar_radiation_alerts.append(alert_info)
-
-        return solar_radiation_alerts
+        alerts_data = self.coordinator.data.get("space_alerts")
+        if not isinstance(alerts_data, list):
+            return None
+        return radiation_storm_products_in_effect(alerts_data, datetime.now(timezone.utc))
 
     @property
     def state(self):
-        """Return the state of the sensor."""
-        alerts = self._get_solar_radiation_alerts()
-        if alerts is None:
+        """Return the number of products in effect, parsed or not."""
+        products = self._products_in_effect()
+        if products is None:
             return None
-        return len(alerts)
+        return len(products)
 
     @property
     def extra_state_attributes(self):
         """Return the state attributes."""
-        alerts = self._get_solar_radiation_alerts()
-        if alerts is None:
+        products = self._products_in_effect()
+        if products is None:
             return {}
+        alerts = [
+            info for info in map(self._parse_solar_radiation_alert, products) if info
+        ]
         office_lat = magnetic_latitude(
             self._office_code, self._latitude, self._longitude, default=45.0
         )
@@ -578,7 +612,7 @@ class SolarRadiationStormAlertsSensor(CoordinatorEntity):
             'magnetic_latitude': office_lat,
             'location_impact_risk': assess_location_risk(office_lat, alerts),
             'last_updated': datetime.now(timezone.utc).isoformat(),
-            'total_alerts': len(alerts)
+            'total_alerts': len(products)
         }
 
     @property
@@ -613,8 +647,12 @@ class SolarRadiationStormAlertsSensor(CoordinatorEntity):
             issue_datetime = alert.get('issue_datetime', '')
 
             scale = extract_storm_scale(message, product_id)
-            begin_time = extract_time_from_message(message, 'begin time')
-            end_time = extract_time_from_message(message, 'end time')
+            # A warning gives the time it is valid for.
+            begin_time = (extract_time_from_message(message, 'begin time')
+                          or extract_time_from_message(message, 'valid from'))
+            end_time = (extract_time_from_message(message, 'end time')
+                        or extract_time_from_message(message, 'now valid until')
+                        or extract_time_from_message(message, 'valid to'))
             duration = calculate_alert_duration(begin_time, end_time)
             impacts = extract_impacts(message)
 

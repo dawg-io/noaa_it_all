@@ -313,6 +313,7 @@ cards:
       - type: gauge
         entity: sensor.noaa_ilm_weather_temperature
         name: "Temperature"
+        # In °F; for °C, about min: -18, max: 49, green: 16 and yellow: 29
         min: 0
         max: 120
         severity:

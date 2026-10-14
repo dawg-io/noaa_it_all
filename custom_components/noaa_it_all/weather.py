@@ -232,8 +232,6 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
             # We pair them to get both high (day) and low (night) temperatures
             forecasts = []
             i = 0
-            # Track today's high temperature for use when encountering tonight's period
-            saved_today_high = None
 
             while i < len(periods) and len(forecasts) < 7:
                 period = periods[i]
@@ -244,30 +242,17 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
                     # Look for the following night period for low temp
                     night_period = periods[i + 1] if i + 1 < len(periods) else None
 
-                    # Save today's high temperature before moving forward
-                    # This will be used if we encounter tonight's period later
-                    saved_today_high = day_period.get("temperature")
-                    _LOGGER.debug("Saved today's high temperature: %s", saved_today_high)
-
                     i += 2  # Move past both day and night
                 else:
                     # If we start with night (e.g., querying in evening), this is tonight
-                    # Use the saved high temperature from earlier today
                     night_period = period
                     day_period = periods[i + 1] if i + 1 < len(periods) else None
 
                     # If there's a following day period, it's actually tomorrow
                     # So we create a forecast for "today" using tonight's low
-                    # and the saved high temp from earlier today
                     if day_period and day_period.get("isDaytime", False):
                         # Parse tonight's start time to determine the calendar date
-                        night_dt = None
-                        try:
-                            night_dt = datetime.fromisoformat(
-                                night_period.get("startTime").replace("Z", "+00:00")
-                            )
-                        except (ValueError, AttributeError) as e:
-                            _LOGGER.debug("Could not parse night period startTime: %s", e)
+                        night_dt = self._period_start(night_period)
 
                         # Determine today's datetime string (set to 6 AM on tonight's calendar date)
                         if night_dt is not None:
@@ -285,18 +270,20 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
                             night_dt is not None
                             and night_dt.date() == datetime.now(night_dt.tzinfo).date()
                         )
+                        # After midnight NWS starts with an Overnight period on the same
+                        # date as the day period after it, which gets that date's entry.
+                        day_dt = self._period_start(day_period)
+                        is_early_morning = (
+                            night_dt is not None and day_dt is not None
+                            and night_dt.date() == day_dt.date()
+                        )
 
-                        if saved_today_high is not None or is_tonight_today:
-                            # Use the saved daytime high when available; otherwise fall
-                            # back to the current observed temperature.
-                            high_temp = (
-                                saved_today_high if saved_today_high is not None
-                                else self._attr_native_temperature
-                            )
-
+                        if is_tonight_today and not is_early_morning:
+                            # Today's daytime period has passed, so NWS has no
+                            # forecast high left for it.
                             forecast = Forecast(
                                 datetime=today_datetime,
-                                temperature=high_temp,
+                                temperature=None,
                                 templow=night_period.get("temperature"),
                                 condition=self._map_condition(
                                     night_period.get("shortForecast"),
@@ -314,14 +301,13 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
                             )
                             forecasts.append(forecast)
                             _LOGGER.debug(
-                                "Created today forecast with high=%s, low=%s "
-                                "(queried in evening)",
-                                high_temp, night_period.get("temperature")
+                                "Created today forecast with low=%s (queried in evening)",
+                                night_period.get("temperature")
                             )
                         else:
                             _LOGGER.debug(
                                 "Skipping today forecast - night period belongs to "
-                                "yesterday and no saved high temperature available"
+                                "yesterday or to the day period after it"
                             )
                         i += 1
                         continue
@@ -539,6 +525,15 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
 
         direction_upper = direction_str.upper().strip()
         return direction_map.get(direction_upper)
+
+    @staticmethod
+    def _period_start(period: Optional[dict]) -> Optional[datetime]:
+        """Return when a forecast period starts, in the offset NWS gives it, or None."""
+        try:
+            return datetime.fromisoformat(period.get("startTime").replace("Z", "+00:00"))
+        except (ValueError, AttributeError) as e:
+            _LOGGER.debug("Could not parse forecast period startTime: %s", e)
+            return None
 
     @staticmethod
     def _adjust_forecast_date(timestamp: Optional[str]) -> Optional[str]:

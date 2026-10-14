@@ -255,6 +255,9 @@ _ha_coordinator.CoordinatorEntity = type("CoordinatorEntity", (), {
 _ha_entity.DeviceInfo = dict
 _aiohttp.ClientTimeout = lambda **kwargs: kwargs
 
+_ha_sensor = MagicMock()
+_ha_sensor.SensorEntity = type("SensorEntity", (), {})
+
 _MOCK_MODULES = {
     "homeassistant": MagicMock(),
     "homeassistant.config_entries": MagicMock(),
@@ -266,6 +269,7 @@ _MOCK_MODULES = {
     "homeassistant.helpers.aiohttp_client": MagicMock(),
     "homeassistant.helpers.update_coordinator": _ha_coordinator,
     "homeassistant.components": MagicMock(),
+    "homeassistant.components.sensor": _ha_sensor,
     "homeassistant.components.binary_sensor": MagicMock(),
     "homeassistant.components.weather": MagicMock(),
     "homeassistant.components.image": MagicMock(),

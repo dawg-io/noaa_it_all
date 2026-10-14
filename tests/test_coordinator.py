@@ -707,7 +707,7 @@ class TestUserAgentIsAlwaysSent(unittest.TestCase):
 
     def test_space_weather_sends_user_agent(self):
         from noaa_it_all.coordinator import SpaceWeatherCoordinator
-        self._assert_user_agent(SpaceWeatherCoordinator(HASS), 3)
+        self._assert_user_agent(SpaceWeatherCoordinator(HASS), 4)
 
     def test_hurricane_sends_user_agent(self):
         from noaa_it_all.coordinator import HurricaneCoordinator
@@ -729,7 +729,7 @@ class TestFailureMessagesNameTheCause(unittest.TestCase):
         message = self._failure_message(SpaceWeatherCoordinator(HASS))
         self.assertIn("All space weather API requests failed", message)
         self.assertIn("Temporary failure in name resolution", message)
-        for label in ("DST", "K-index", "space weather alerts"):
+        for label in ("DST", "K-index", "space weather alerts", "K-index forecast"):
             self.assertIn(label, message)
 
     def test_hurricane(self):
