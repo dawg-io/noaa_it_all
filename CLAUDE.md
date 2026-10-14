@@ -100,17 +100,15 @@ git-ignored, so never edit it), then builds `website/dist/`.
 
 ## Testing in Home Assistant
 
-> **For Claude Code in a self-hosted terminal with Docker, not Claude Code on the web.** Cloud
-> sessions block the NOAA APIs, and Home Assistant's HTTP client doesn't use their proxy, so the
-> integration can't fetch any data there. In a cloud session, skip this and say so in the pull
-> request.
-
 Check behaviour changes in a real Home Assistant: on a fresh install, and, when a change touches
 entries or entities, on an upgrade from the last release. The pull request names the Home
-Assistant version.
+Assistant version. This works in a terminal with Docker, and in Claude Code on the web when the
+session's environment allows the hosts in step 1.
 
 1. Start Home Assistant with the integration mounted from the working tree. `stable` is the
    current release; for the oldest supported one, use the version in `hacs.json` as the tag.
+
+   In a terminal with Docker:
 
    ```
    mkdir -p ~/noaa-ha-config
@@ -119,6 +117,36 @@ Assistant version.
      -v "$PWD/custom_components/noaa_it_all:/config/custom_components/noaa_it_all:ro" \
      ghcr.io/home-assistant/home-assistant:stable
    ```
+
+   In Claude Code on the web, the session reaches the internet only through the proxy in
+   `$HTTPS_PROXY`, which re-terminates TLS with `/root/.ccr/ca-bundle.crt`, and Home Assistant's
+   HTTP client ignores proxies. `scripts/noaa_relay.py` bridges the two: it listens on
+   127.0.0.1:443 and tunnels each NOAA host through the proxy.
+   - `S` below is the session's scratchpad directory, which keeps the config and logs out of the
+     repository.
+   - The environment's network access must allow the hosts in the relay's `ALLOWED`, `ghcr.io` and
+     `pkg-containers.githubusercontent.com`. Check with
+     `curl -sS -o /dev/null -w '%{http_connect}\n' https://api.weather.gov/`: 403 means the
+     environment denies it. Then stop and say so in the pull request; never route around it.
+   - Pull from GHCR; Docker Hub isn't needed. If `docker info` fails, start the daemon with
+     `nohup dockerd > $S/dockerd.log 2>&1 &` and wait until `docker info` works.
+
+   ```
+   python3 -I scripts/noaa_relay.py > $S/relay.log 2>&1 & echo $! > $S/relay.pid
+   curl --noproxy '*' --resolve api.weather.gov:443:127.0.0.1 --cacert /root/.ccr/ca-bundle.crt \
+     -A test -o /dev/null -w '%{http_code}\n' https://api.weather.gov/    # must print 200
+   mkdir -p $S/ha-config
+   docker run -d --name noaa-ha-test --network host -e TZ=America/New_York \
+     -e REQUESTS_CA_BUNDLE=/ccr-ca.crt -e SSL_CERT_FILE=/ccr-ca.crt \
+     -v /root/.ccr/ca-bundle.crt:/ccr-ca.crt:ro -v $S/ha-config:/config \
+     -v "$PWD/custom_components/noaa_it_all:/config/custom_components/noaa_it_all:ro" \
+     $(python3 -I scripts/noaa_relay.py --add-host-args) \
+     ghcr.io/home-assistant/home-assistant:stable
+   ```
+
+   `relay.log` has a line per connection with the host and the proxy's answer, and every host
+   Home Assistant uses should show `connect=200`. Home Assistant's own calls to other hosts, such
+   as alerts.home-assistant.io, fail there with DNS errors; ignore them.
 
    After changing the code, run `docker restart noaa-ha-test`. The integration's log lines:
    `docker logs noaa-ha-test 2>&1 | grep noaa_it_all`.
@@ -139,13 +167,25 @@ Assistant version.
    curl -s -X POST $B/api/onboarding/integration -H "Authorization: Bearer $TOKEN" \
      -d "{\"client_id\":\"$CID\",\"redirect_uri\":\"$CID?auth_callback=1\"}"
    ```
+
+   Claude Code doesn't keep shell variables between commands: keep the token in a file with mode
+   600 outside the repository, and delete it when done. Onboarding this way leaves Home Assistant
+   at 0,0 on UTC, so the location step isn't pre-filled.
 3. Add the integration under **Settings → Devices & services → Add integration → NOAA It All**,
    or open http://localhost:8123/config/integrations/dashboard/add?domain=noaa_it_all and choose
    **OK**. For an upgrade, start from the last release's code instead
    (`git worktree add ../noaa-release vX.Y.Z`, and mount
    `../noaa-release/custom_components/noaa_it_all`), set up the entries, then recreate the
    container with the branch's code and the same config directory. Check that entity IDs are
-   unchanged and history continues.
+   unchanged and history continues. (Upgrades haven't been tried in Claude Code on the web yet.)
+
+   Or over the REST API: `POST /api/config/config_entries/flow` with `{"handler": "noaa_it_all"}`,
+   then post each step's answer to `/api/config/config_entries/flow/<flow_id>`. For Raleigh, NC:
+   `{"next_step_id": "location"}`, `{"latitude": 35.7796, "longitude": -78.6382}`,
+   `{"office_code": "RAH"}`, `{"surf_office_code": "none"}` and `{"space_office_code": "RAH"}`.
+   The first location entry also adds the Hurricane entry. The first update runs at setup, and
+   most data updates every 10 minutes after that; check `/api/states` after both for entities that
+   read `unknown` or `unavailable`.
 4. Take screenshots with Playwright: Chromium, dark color scheme, 2× scale, cropped to the
    element, with the mouse moved off it so nothing shows as hovered. For the setup dialog:
 
@@ -166,8 +206,11 @@ Assistant version.
    await dialog.screenshot({ path: 'docs/images/setup-menu.png' });
    ```
 
-   For a card or a device page, screenshot that element instead.
-5. Remove the container when done: `docker rm -f noaa-ha-test`.
+   For a card or a device page, screenshot that element instead. In Claude Code on the web,
+   require `/opt/node-tools/node_modules/playwright` and launch Chromium with
+   `executablePath: '/opt/pw-browsers/chromium'`; never run `playwright install`.
+5. Remove the container when done: `docker rm -f noaa-ha-test`. In Claude Code on the web, also
+   stop the relay and the daemon: `kill $(cat $S/relay.pid); pkill -x dockerd`.
 
 ## Pull requests to the public repository
 
