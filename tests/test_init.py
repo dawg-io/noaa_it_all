@@ -669,6 +669,184 @@ class TestAdoptEntities(unittest.TestCase):
         self.assertEqual(regs.calls, [])
 
 
+class _OwnedDevice:
+    """A device as Home Assistant 2026.8 and later keep it: one config entry."""
+
+    def __init__(self, device_id, config_entry_id, disabled_by=None):
+        self.id = device_id
+        self.config_entry_id = config_entry_id
+        self.disabled_by = disabled_by
+
+    @property
+    def config_entries(self):
+        raise AssertionError("DeviceEntry.config_entries is deprecated (#76)")
+
+
+class _SingleOwnerRegistries(_Registries):
+    """Registries as in Home Assistant 2026.8 and later, where a device has one entry.
+
+    Two entries can each have a device with the same identifier. Looking one up
+    by identifier alone and adding or removing a device's entries are
+    deprecated, to be removed in 2027.8, so those calls fail here. As in
+    Home Assistant's device_registry._async_update_device and
+    entity_registry.async_device_modified: moving a device to another entry
+    deletes its entities still with the old entry and clears a disable that
+    came from it, and removing a device deletes its own entities and unlinks
+    the rest.
+    """
+
+    def __init__(self):
+        super().__init__()
+        self.devices = {}          # (identifier, config entry) -> _OwnedDevice
+
+    def add_device(self, key, device_id, config_entry_id, disabled_by=None):
+        self.devices[(key, config_entry_id)] = _OwnedDevice(device_id, config_entry_id, disabled_by)
+
+    def _find(self, device_id):
+        return next((k, d) for k, d in self.devices.items() if d.id == device_id)
+
+    # -- device registry
+    def async_get_device(self, identifiers):
+        raise AssertionError("async_get_device is deprecated (#76)")
+
+    def async_get_device_by_identifier(self, identifier, config_entry_id):
+        return self.devices.get((identifier[1], config_entry_id))
+
+    def async_get_devices(self, *, identifiers=None, connections=None, config_entry_id=None):
+        keys = {identifier[1] for identifier in identifiers or ()}
+        return [
+            device for (key, owner), device in self.devices.items()
+            if key in keys and config_entry_id in (None, owner)
+        ]
+
+    def async_update_device(self, device_id, new_config_entry_id=None, **changes):
+        if {"add_config_entry_id", "remove_config_entry_id"} & set(changes):
+            raise AssertionError("add/remove_config_entry_id are deprecated (#76)")
+        (key, owner), device = self._find(device_id)
+        if "disabled_by" in changes:
+            self.calls.append(("device_disabled_by", changes["disabled_by"]))
+            device.disabled_by = changes["disabled_by"]
+        if new_config_entry_id:
+            self.calls.append(("move_device", new_config_entry_id))
+            for entity_id, ent in list(self.entities.items()):
+                if ent.device_id == device_id and ent.config_entry_id == owner:
+                    del self.entities[entity_id]
+            del self.devices[(key, owner)]
+            device.config_entry_id = new_config_entry_id
+            # The new entry is enabled; HA clears a disable that came from the old one.
+            if device.disabled_by is not None and device.disabled_by == _CONFIG_ENTRY_DISABLED():
+                device.disabled_by = None
+            self.devices[(key, new_config_entry_id)] = device
+
+    def async_remove_device(self, device_id):
+        self.calls.append(("remove_device", device_id))
+        (key, owner), _ = self._find(device_id)
+        del self.devices[(key, owner)]
+        for entity_id, ent in list(self.entities.items()):
+            if ent.device_id == device_id:
+                if ent.config_entry_id == owner:
+                    del self.entities[entity_id]
+                else:
+                    ent.device_id = None
+
+
+def _CONFIG_ENTRY_DISABLED():
+    import noaa_it_all
+    return noaa_it_all.dr.DeviceEntryDisabler.CONFIG_ENTRY
+
+
+class TestAdoptEntitiesSingleOwnerDevices(TestAdoptEntities):
+    """#76: the same takeover in Home Assistant 2026.8 and later, without deprecated calls."""
+
+    def _wilmington(self, disabled_by=None):
+        regs = _SingleOwnerRegistries()
+        regs.add_device("noaa_ILM_surf", "dev_surf", "weather_1", disabled_by)
+        for platform, suffix in (
+            ("sensor", "rip_current_risk"), ("binary_sensor", "unsafe_to_swim"),
+            ("sensor", "water_temperature"), ("sensor", "surf_height"),
+        ):
+            regs.add_entity(
+                f"{platform}.noaa_ilm_surf_{suffix}", platform,
+                f"noaa_ILM_{suffix}", "weather_1", "dev_surf", disabled_by,
+            )
+        return regs
+
+    def test_moves_the_entities_and_device_keeping_their_ids(self):
+        regs = self._wilmington()
+        keep = self._keep("ILM", ["rip_current_risk", "unsafe_to_swim",
+                                  "water_temperature", "surf_height"])
+        self._adopt(regs, "surf_1", "noaa_ILM_surf", keep)
+        self.assertEqual(
+            sorted((e.entity_id, e.unique_id) for e in regs.entities.values()),
+            [("binary_sensor.noaa_ilm_surf_unsafe_to_swim", "noaa_ILM_unsafe_to_swim"),
+             ("sensor.noaa_ilm_surf_rip_current_risk", "noaa_ILM_rip_current_risk"),
+             ("sensor.noaa_ilm_surf_surf_height", "noaa_ILM_surf_height"),
+             ("sensor.noaa_ilm_surf_water_temperature", "noaa_ILM_water_temperature")],
+        )
+        self.assertEqual({e.config_entry_id for e in regs.entities.values()}, {"surf_1"})
+        self.assertEqual({e.device_id for e in regs.entities.values()}, {"dev_surf"})
+        self.assertEqual(list(regs.devices), [("noaa_ILM_surf", "surf_1")])
+        # The device moves last; any earlier deletes the entities.
+        self.assertEqual(regs.calls[-1], ("move_device", "surf_1"))
+
+    def test_clears_disabled_by_a_disabled_old_entry(self):
+        """The entities' flag is cleared here; moving the device clears the device's."""
+        import noaa_it_all
+        regs = self._wilmington(disabled_by=noaa_it_all.er.RegistryEntryDisabler.CONFIG_ENTRY)
+        regs.devices[("noaa_ILM_surf", "weather_1")].disabled_by = _CONFIG_ENTRY_DISABLED()
+        self._adopt(regs, "surf_1", "noaa_ILM_surf", self._keep("ILM", ["rip_current_risk"]))
+        self.assertIsNone(regs.entities["sensor.noaa_ilm_surf_rip_current_risk"].disabled_by)
+        self.assertIn(("move_device", "surf_1"), regs.calls)
+        # Passing disabled_by=None on a move is inconsistent in 2026.9 and later.
+        self.assertNotIn("device_disabled_by", [call[0] for call in regs.calls])
+
+    def test_a_split_device_moves_the_one_with_the_entities(self):
+        """Home Assistant split a device two entries shared into one per entry."""
+        regs = _SingleOwnerRegistries()
+        regs.add_device("noaa_ILM_space", "dev_w1", "weather_1")
+        regs.add_device("noaa_ILM_space", "dev_w2", "weather_2")
+        regs.add_entity("sensor.noaa_ilm_space_planetary_k_index", "sensor",
+                        "noaa_ILM_planetary_k_index", "weather_2", "dev_w2")
+        self._adopt(regs, "space_1", "noaa_ILM_space",
+                    [("sensor", "noaa_ILM_planetary_k_index")])
+        self.assertEqual(regs.devices[("noaa_ILM_space", "space_1")].id, "dev_w2")
+        entity = regs.entities["sensor.noaa_ilm_space_planetary_k_index"]
+        self.assertEqual((entity.config_entry_id, entity.device_id), ("space_1", "dev_w2"))
+        # The other split is the other entry's; nothing of the user's is deleted.
+        self.assertEqual(regs.devices[("noaa_ILM_space", "weather_1")].id, "dev_w1")
+
+    def test_a_split_device_moves_the_one_with_entities_already_moved(self):
+        """A takeover cut short moved the entities but not their device."""
+        regs = _SingleOwnerRegistries()
+        regs.add_device("noaa_ILM_space", "dev_w1", "weather_1")
+        regs.add_device("noaa_ILM_space", "dev_w2", "weather_2")
+        regs.add_entity("sensor.noaa_ilm_space_planetary_k_index", "sensor",
+                        "noaa_ILM_planetary_k_index", "space_1", "dev_w2")
+        self._adopt(regs, "space_1", "noaa_ILM_space",
+                    [("sensor", "noaa_ILM_planetary_k_index")])
+        self.assertEqual(regs.devices[("noaa_ILM_space", "space_1")].id, "dev_w2")
+
+    def test_an_entry_with_its_own_device_takes_the_entities_and_leaves_the_old_device(self):
+        """The entry's own device gets the entities at setup; the old one keeps what the user set."""
+        regs = _SingleOwnerRegistries()
+        regs.add_device("noaa_ILM_space", "dev_space", "space_1")
+        regs.add_device("noaa_ILM_space", "dev_old", "weather_1")
+        regs.add_entity("sensor.noaa_ilm_space_planetary_k_index", "sensor",
+                        "noaa_ILM_planetary_k_index", "weather_1", "dev_old")
+        self._adopt(regs, "space_1", "noaa_ILM_space",
+                    [("sensor", "noaa_ILM_planetary_k_index")])
+        entity = regs.entities["sensor.noaa_ilm_space_planetary_k_index"]
+        self.assertEqual(entity.config_entry_id, "space_1")
+        self.assertEqual(sorted(regs.devices), [("noaa_ILM_space", "space_1"),
+                                                ("noaa_ILM_space", "weather_1")])
+        self.assertEqual([call for call in regs.calls if call[0] != "move"], [])
+
+    def test_nothing_to_take_over_is_fine(self):
+        regs = _SingleOwnerRegistries()
+        self._adopt(regs, "hurricane_1", "noaa_hurricane", [("sensor", "noaa_hurricane_alerts")])
+        self.assertEqual(regs.calls, [])
+
+
 # The Space entry an upgraded Wilmington weather entry adds.
 _ILM_SPACE = {
     "entry_type": "space", "office_code": "ILM",
@@ -736,6 +914,18 @@ class TestMigrateEntry(unittest.TestCase):
         self.assertIn({"entry_type": "surf", "office_code": "SGX"}, self._added(hass))
         # Its VEF-named surf device held SGX data; nothing can take it over.
         self.assertEqual(regs.devices, {})
+        self.assertEqual(regs.entities, {})
+
+    def test_a_test_build_entry_drops_its_surf_device_without_deprecated_calls(self):
+        """#76: the same on Home Assistant 2026.8 and later."""
+        regs = _SingleOwnerRegistries()
+        regs.add_device("noaa_VEF_surf", "dev_vef", "entry_1")
+        regs.add_device("noaa_VEF_surf", "dev_other", "entry_2")
+        regs.add_entity("sensor.noaa_vef_surf_rip_current_risk", "sensor",
+                        "noaa_VEF_rip_current_risk", "entry_1", "dev_vef")
+        self._migrate({**_VEF, "surf_office_code": "SGX"}, title="NOAA - Las Vegas, NV", regs=regs)
+        # Only this entry's device goes.
+        self.assertEqual(list(regs.devices), [("noaa_VEF_surf", "entry_2")])
         self.assertEqual(regs.entities, {})
 
     def test_a_test_build_entry_with_no_surf_adds_only_hurricanes(self):

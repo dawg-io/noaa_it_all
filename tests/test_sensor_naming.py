@@ -33,6 +33,9 @@ _ha_config_entries = MagicMock()
 _ha_core = MagicMock()
 _ha_platform = MagicMock()
 
+_ha_sensor = MagicMock()
+_ha_sensor.SensorEntity = type("SensorEntity", (), {})
+
 _MOCK_MODULES = {
     "homeassistant": MagicMock(),
     "homeassistant.helpers": MagicMock(),
@@ -41,6 +44,7 @@ _MOCK_MODULES = {
     "homeassistant.helpers.entity_platform": _ha_platform,
     "homeassistant.helpers.aiohttp_client": MagicMock(),
     "homeassistant.components": MagicMock(),
+    "homeassistant.components.sensor": _ha_sensor,
     "homeassistant.components.binary_sensor": _ha_binary,
     "homeassistant.components.weather": _ha_weather_mod,
     "homeassistant.const": _ha_const,

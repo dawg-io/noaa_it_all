@@ -300,11 +300,9 @@ class NextEclipseTimeSensor(_EclipseBaseSensor):
 
     **On the device class.** This returns an ISO-8601 string and declares ``device_class`` as the
     bare string ``"timestamp"``, rather than inheriting ``SensorEntity`` and returning a
-    ``datetime``. The latter is the textbook approach and is deliberately not used here: no sensor
-    in this integration inherits ``SensorEntity``, ``device_class`` is a plain string everywhere it
-    already appears (see ``weather_observations.py``), and adding a second base class to the
-    coordinator entity is what produced a metaclass conflict against the test suite's mocks when
-    it was last tried. An ISO-8601 string with an offset is what the frontend's timestamp renderer
+    ``datetime``. The latter is the textbook approach; this sensor predates any in this integration
+    inheriting ``SensorEntity`` (the observation sensors do from 0.10.3, against a stub of it in
+    the test suite's mocks). An ISO-8601 string with an offset is what the frontend's timestamp renderer
     and the ``time`` trigger parse, so the behaviour is identical for every use this has. What it
     gives up is recorder statistics and core-side validation, neither of which means anything for
     a value that changes a handful of times a year. Promoting it later is a contained change.

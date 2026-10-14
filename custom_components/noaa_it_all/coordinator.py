@@ -68,6 +68,8 @@ def _describe(err: Exception) -> str:
 _DST_URL = "https://services.swpc.noaa.gov/json/geospace/geospace_dst_1_hour.json"
 _KP_INDEX_URL = "https://services.swpc.noaa.gov/json/planetary_k_index_1m.json"
 _SPACE_ALERTS_URL = "https://services.swpc.noaa.gov/products/alerts.json"
+# SWPC's 3-day forecast of the planetary K-index, in 3-hour periods.
+_KP_FORECAST_URL = "https://services.swpc.noaa.gov/products/noaa-planetary-k-index-forecast.json"
 
 # Hurricane API endpoints
 _HURRICANE_ALERTS_URL = (
@@ -82,7 +84,7 @@ _CURRENT_STORMS_URL = "https://www.nhc.noaa.gov/CurrentStorms.json"
 # -------------------------------------------------------------------
 
 class SpaceWeatherCoordinator(DataUpdateCoordinator):
-    """Fetch geomagnetic DST, planetary K-index, and SWPC alerts."""
+    """Fetch geomagnetic DST, planetary K-index and its forecast, and SWPC alerts."""
 
     def __init__(self, hass: HomeAssistant) -> None:
         super().__init__(
@@ -103,6 +105,7 @@ class SpaceWeatherCoordinator(DataUpdateCoordinator):
             ("dst", "DST", _DST_URL),
             ("kp_index", "K-index", _KP_INDEX_URL),
             ("space_alerts", "space weather alerts", _SPACE_ALERTS_URL),
+            ("kp_forecast", "K-index forecast", _KP_FORECAST_URL),
         )
         for key, label, url in endpoints:
             try:

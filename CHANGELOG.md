@@ -5,6 +5,57 @@ All notable changes to NOAA It All for Home Assistant will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.3]
+
+### Fixed
+- **The daily forecast no longer lists today twice between midnight and 6 AM.** After midnight,
+  NWS starts its forecast with an Overnight period, which got an entry of its own for today, with
+  the current temperature as its high, before the entry for Today. Each date now has one entry,
+  from its day and the night after it. The current temperature is no longer shown as a forecast
+  high: in the evening, today's entry has only tonight's low, so a template reading its
+  `temperature` gets nothing.
+- **No deprecation warning about `device_registry.async_get_device` at startup.** Home Assistant
+  2026.9 and later warned that the integration looks devices up in a way that stops working in
+  2027.8, as does moving a device between entries when upgrading from an older release. It now
+  uses the newer device registry calls where Home Assistant has them, from 2026.8, and the older
+  ones before that, so 2026.3 is still the minimum.
+- **The observation sensors follow Home Assistant's unit system.** Temperature, Feels Like,
+  Dewpoint, Wind Speed, Barometric Pressure and Visibility were always in °F, mph, inHg and miles,
+  even in a metric Home Assistant, whose weather entity showed °C, km/h and hPa. They now report
+  NWS's metric values and Home Assistant converts them. A US customary install shows the same units
+  and decimals as before. In a metric one, these sensors added from now on show °C, km/h, hPa and
+  km. Ones you already have keep the units they had, as Home Assistant keeps an existing sensor's
+  unit; pick another in the entity's settings. Changing the unit system, with its option to update
+  existing entities, converts them too. These sensors keep no long-term statistics, so no
+  statistics repair comes up. Their state now has every decimal of Home Assistant's conversion,
+  such as `71.96000000000001` for 22.2 °C, and is only rounded for display: a template that prints
+  one, such as `states('sensor.noaa_ilm_weather_temperature')`, needs `rounded=True` to get `72.0`.
+- **Solar Radiation Storm Alerts counts only solar radiation storms in effect.** It counted every
+  SWPC product that mentioned a coronal mass ejection or solar radiation, and every Type IV radio
+  emission and electron flux alert, however old: on 2026-10-14 it read 14, with no radiation storm
+  at all. It now counts SWPC's solar radiation storm (S1–S5) warnings until they expire or are
+  cancelled, and its alerts until SWPC issues the event's summary, one at most for each of S1 to
+  S4. If the alerts can't be fetched it reads `unknown`, not 0. In the `alerts` attribute, a
+  warning's `begin_time` and `end_time` are the times it is valid for, and `scale` is the one SWPC
+  states.
+- **Aurora Next Time comes from SWPC's Kp forecast.** It was a guess from the current Kp, counted
+  from the time of each update (half an hour, 6 hours or about a day away), so the time never
+  arrived. It is now the start of the next 3-hour period in SWPC's 3-day planetary K-index
+  forecast whose Kp reaches the Kp your location needs, and `unknown` when none does or the
+  forecast can't be fetched. It is a timestamp sensor, so its state is an ISO time, such as
+  `2026-10-14T09:00:00+00:00`, rather than `2026-10-15 00:06 UTC`, and cards show how soon it is.
+  Its `conditions` and `confidence` attributes are gone; `predicted_kp` and `required_kp` are new.
+- **Geomagnetic Storm shows the newest Dst, in nT, to one decimal.** It and Geomagnetic Storm
+  Interpretation read the oldest sample in SWPC's feed, which lists the last hour or so oldest
+  first, so they were more than an hour behind. Geomagnetic Storm also had no unit and showed every
+  decimal, such as `-7.3018999`; it is now in nT, rounded to one decimal, and keeps long-term
+  statistics, so its history shows as a graph. Its `timestamp` attribute is the time of that value,
+  which SWPC's model gives some 20 to 30 minutes ahead. Both read `unknown` if the newest value is
+  over two hours old.
+
+Going back to 0.10.2 needs nothing removed first. Afterwards, **Developer tools → Statistics** lists
+Geomagnetic Storm as no longer having a state class; fix it there to delete its statistics.
+
 ## [0.10.2]
 
 ### Changed

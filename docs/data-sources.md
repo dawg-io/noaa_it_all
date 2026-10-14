@@ -1,7 +1,8 @@
 # Data Sources
 
 - **Space Weather**: NOAA Space Weather Prediction Center
-  - Aurora visibility forecasts and geomagnetic storm data
+  - Aurora visibility forecasts, from the planetary K-index and its 3-day forecast, and
+    geomagnetic storm data
   - Solar radiation storm alerts and classification (S1-S5 scale)
   - Real-time space weather alert monitoring
 - **Meteor Showers**: bundled catalog, computed locally — **not** a NOAA feed
@@ -29,7 +30,7 @@
   radar images from radar.weather.gov, and the office's Area Forecast Discussion (AFD)
 - **Weather Observations**: National Weather Service observation stations (weather.gov API)
   - Real-time temperature, humidity, wind, pressure, and sky conditions
-  - Automatic unit conversions to US customary units
+  - Metric values from NWS, shown in your Home Assistant unit system
 
 ## Update Frequency
 Most entities, images included, update every 10 minutes to provide current conditions while

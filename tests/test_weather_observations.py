@@ -8,6 +8,7 @@ import json
 import os
 import sys
 import unittest
+from enum import StrEnum
 from unittest.mock import MagicMock, patch
 
 _REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -28,6 +29,13 @@ _ha_coordinator.CoordinatorEntity = type("CoordinatorEntity", (), {
 })
 _ha_coordinator.DataUpdateCoordinator = type("DataUpdateCoordinator", (), {})
 _ha_entity.DeviceInfo = dict
+_ha_sensor = MagicMock()
+_ha_sensor.SensorEntity = type("SensorEntity", (), {})
+# A str enum, like Home Assistant's, so a test can tell a member from a plain string.
+_ha_sensor.SensorDeviceClass = StrEnum("SensorDeviceClass", {
+    name.upper(): name
+    for name in ("temperature", "humidity", "wind_speed", "atmospheric_pressure", "distance")
+})
 
 _MOCK_MODULES = {
     "homeassistant": MagicMock(),
@@ -38,6 +46,7 @@ _MOCK_MODULES = {
     "homeassistant.helpers.aiohttp_client": MagicMock(),
     "homeassistant.components": MagicMock(),
     "homeassistant.components.binary_sensor": MagicMock(),
+    "homeassistant.components.sensor": _ha_sensor,
     "homeassistant.components.weather": MagicMock(),
     "homeassistant.components.image": MagicMock(),
     "homeassistant.const": MagicMock(),
@@ -103,19 +112,16 @@ class TestTemperatureSensor(unittest.TestCase):
 
     def test_unit_of_measurement(self):
         sensor = self._make()
-        self.assertEqual(sensor.unit_of_measurement, "°F")
+        self.assertEqual(sensor.native_unit_of_measurement, "°C")
 
-    def test_state_converts_celsius_to_fahrenheit(self):
+    def test_state_is_nws_celsius(self):
         obs = _load_fixture("observations.json")
         sensor = self._make(obs)
-        state = sensor.state
-        self.assertIsNotNone(state)
-        # 22.2°C ≈ 72.0°F
-        self.assertAlmostEqual(state, 72.0, delta=0.5)
+        self.assertEqual(sensor.native_value, 22.2)
 
     def test_state_no_data(self):
         sensor = self._make(None)
-        self.assertIsNone(sensor.state)
+        self.assertIsNone(sensor.native_value)
 
     def test_icon(self):
         sensor = self._make()
@@ -150,19 +156,19 @@ class TestHumiditySensor(unittest.TestCase):
 
     def test_unit(self):
         sensor = self._make()
-        self.assertEqual(sensor.unit_of_measurement, "%")
+        self.assertEqual(sensor.native_unit_of_measurement, "%")
 
     def test_state_rounds_to_int(self):
         obs = _load_fixture("observations.json")
         sensor = self._make(obs)
-        state = sensor.state
+        state = sensor.native_value
         self.assertIsNotNone(state)
         # 63.5 → 64 (rounded)
         self.assertEqual(state, 64)
 
     def test_state_no_data(self):
         sensor = self._make(None)
-        self.assertIsNone(sensor.state)
+        self.assertIsNone(sensor.native_value)
 
     def test_icon(self):
         sensor = self._make()
@@ -190,19 +196,16 @@ class TestWindSpeedSensor(unittest.TestCase):
 
     def test_unit(self):
         sensor = self._make()
-        self.assertEqual(sensor.unit_of_measurement, "mph")
+        self.assertEqual(sensor.native_unit_of_measurement, "km/h")
 
-    def test_state_converts_kmh_to_mph(self):
+    def test_state_is_nws_kmh(self):
         obs = _load_fixture("observations.json")
         sensor = self._make(obs)
-        state = sensor.state
-        self.assertIsNotNone(state)
-        # 16.1 km/h ≈ 10.0 mph
-        self.assertAlmostEqual(state, 10.0, delta=0.5)
+        self.assertEqual(sensor.native_value, 16.1)
 
     def test_state_no_data(self):
         sensor = self._make(None)
-        self.assertIsNone(sensor.state)
+        self.assertIsNone(sensor.native_value)
 
     def test_icon(self):
         sensor = self._make()
@@ -226,18 +229,18 @@ class TestWindDirectionSensor(unittest.TestCase):
 
     def test_unit(self):
         sensor = self._make()
-        self.assertEqual(sensor.unit_of_measurement, "°")
+        self.assertEqual(sensor.native_unit_of_measurement, "°")
 
     def test_state_rounds_to_int(self):
         obs = _load_fixture("observations.json")
         sensor = self._make(obs)
-        state = sensor.state
+        state = sensor.native_value
         self.assertIsNotNone(state)
         self.assertEqual(state, 200)
 
     def test_state_no_data(self):
         sensor = self._make(None)
-        self.assertIsNone(sensor.state)
+        self.assertIsNone(sensor.native_value)
 
     def test_icon(self):
         sensor = self._make()
@@ -267,19 +270,17 @@ class TestBarometricPressureSensor(unittest.TestCase):
 
     def test_unit(self):
         sensor = self._make()
-        self.assertEqual(sensor.unit_of_measurement, "inHg")
+        self.assertEqual(sensor.native_unit_of_measurement, "hPa")
 
-    def test_state_converts_pa_to_inhg(self):
+    def test_state_converts_pa_to_hpa(self):
         obs = _load_fixture("observations.json")
         sensor = self._make(obs)
-        state = sensor.state
-        self.assertIsNotNone(state)
-        # 101325 Pa ≈ 29.92 inHg
-        self.assertAlmostEqual(state, 29.92, delta=0.1)
+        # 101325 Pa = 1013.25 hPa
+        self.assertEqual(sensor.native_value, 1013.25)
 
     def test_state_no_data(self):
         sensor = self._make(None)
-        self.assertIsNone(sensor.state)
+        self.assertIsNone(sensor.native_value)
 
     def test_icon(self):
         sensor = self._make()
@@ -287,7 +288,7 @@ class TestBarometricPressureSensor(unittest.TestCase):
 
     def test_device_class(self):
         sensor = self._make()
-        self.assertEqual(sensor.device_class, "pressure")
+        self.assertEqual(sensor.device_class, "atmospheric_pressure")
 
 
 # ---------------------------------------------------------------
@@ -307,19 +308,16 @@ class TestDewpointSensor(unittest.TestCase):
 
     def test_unit(self):
         sensor = self._make()
-        self.assertEqual(sensor.unit_of_measurement, "°F")
+        self.assertEqual(sensor.native_unit_of_measurement, "°C")
 
-    def test_state_converts_celsius_to_fahrenheit(self):
+    def test_state_is_nws_celsius(self):
         obs = _load_fixture("observations.json")
         sensor = self._make(obs)
-        state = sensor.state
-        self.assertIsNotNone(state)
-        # 15.0°C = 59.0°F
-        self.assertAlmostEqual(state, 59.0, delta=0.5)
+        self.assertEqual(sensor.native_value, 15.0)
 
     def test_state_no_data(self):
         sensor = self._make(None)
-        self.assertIsNone(sensor.state)
+        self.assertIsNone(sensor.native_value)
 
     def test_device_class(self):
         sensor = self._make()
@@ -343,19 +341,17 @@ class TestVisibilitySensor(unittest.TestCase):
 
     def test_unit(self):
         sensor = self._make()
-        self.assertEqual(sensor.unit_of_measurement, "mi")
+        self.assertEqual(sensor.native_unit_of_measurement, "km")
 
-    def test_state_converts_meters_to_miles(self):
+    def test_state_converts_meters_to_km(self):
         obs = _load_fixture("observations.json")
         sensor = self._make(obs)
-        state = sensor.state
-        self.assertIsNotNone(state)
-        # 16093 m ≈ 10.0 miles
-        self.assertAlmostEqual(state, 10.0, delta=0.5)
+        # 16093 m = 16.093 km, which Home Assistant shows as 10.0 mi
+        self.assertEqual(sensor.native_value, 16.093)
 
     def test_state_no_data(self):
         sensor = self._make(None)
-        self.assertIsNone(sensor.state)
+        self.assertIsNone(sensor.native_value)
 
     def test_icon(self):
         sensor = self._make()
@@ -380,12 +376,12 @@ class TestSkyConditionsSensor(unittest.TestCase):
     def test_state_returns_text(self):
         obs = _load_fixture("observations.json")
         sensor = self._make(obs)
-        state = sensor.state
+        state = sensor.native_value
         self.assertEqual(state, "Mostly Cloudy")
 
     def test_state_no_data(self):
         sensor = self._make(None)
-        self.assertIsNone(sensor.state)
+        self.assertIsNone(sensor.native_value)
 
     def test_icon(self):
         sensor = self._make()
@@ -409,19 +405,17 @@ class TestFeelsLikeSensor(unittest.TestCase):
 
     def test_unit(self):
         sensor = self._make()
-        self.assertEqual(sensor.unit_of_measurement, "°F")
+        self.assertEqual(sensor.native_unit_of_measurement, "°C")
 
     def test_state_uses_heat_index(self):
         obs = _load_fixture("observations.json")
         sensor = self._make(obs)
-        state = sensor.state
-        self.assertIsNotNone(state)
-        # heatIndex 23.5°C ≈ 74.3°F
-        self.assertAlmostEqual(state, 74.3, delta=0.5)
+        # heatIndex 23.5°C
+        self.assertEqual(sensor.native_value, 23.5)
 
     def test_state_no_data(self):
         sensor = self._make(None)
-        self.assertIsNone(sensor.state)
+        self.assertIsNone(sensor.native_value)
 
     def test_device_class(self):
         sensor = self._make()
@@ -474,7 +468,7 @@ class TestObservationTimestamps(unittest.TestCase):
     def test_carried_value_has_its_own_time(self):
         from noaa_it_all.sensors.weather_observations import HumiditySensor
         sensor = HumiditySensor(_make_coordinator(self.DATA), OFFICE, LAT, LON)
-        self.assertEqual(sensor.state, 52)
+        self.assertEqual(sensor.native_value, 52)
         self.assertEqual(sensor.extra_state_attributes["timestamp"], "2026-10-13T18:20:00+00:00")
 
     def test_current_value_has_the_observation_time(self):
@@ -499,6 +493,84 @@ class TestObservationTimestamps(unittest.TestCase):
         data = {k: v for k, v in self.DATA.items() if k != "field_times"}
         sensor = HumiditySensor(_make_coordinator(data), OFFICE, LAT, LON)
         self.assertEqual(sensor.extra_state_attributes["timestamp"], "2026-10-13T18:30:00+00:00")
+
+
+# ---------------------------------------------------------------
+# Units: NWS's metric values, converted by Home Assistant (#77)
+# ---------------------------------------------------------------
+class TestObservationsFollowTheUnitSystem(unittest.TestCase):
+    """Each sensor reports NWS's value in its metric unit, with a device class HA converts.
+
+    Home Assistant converts a sensor to the install's unit system only when it
+    is a SensorEntity reporting native_value and native_unit_of_measurement
+    with a device class. The device classes and units are the ones a US
+    customary install shows as °F, mph, inHg and mi.
+    """
+
+    def _make(self, cls):
+        from noaa_it_all.sensors import weather_observations
+        return getattr(weather_observations, cls)(
+            _make_coordinator(_load_fixture("observations.json")), OFFICE, LAT, LON
+        )
+
+    def test_metric_native_values_and_units(self):
+        # observations.json: 22.2 degC, dewpoint 15.0, heat index 23.5, 16.1 km/h,
+        # 101325 Pa, 16093 m.
+        cases = {
+            "TemperatureSensor": (22.2, "°C", "temperature", 1),
+            "DewpointSensor": (15.0, "°C", "temperature", 1),
+            "FeelsLikeSensor": (23.5, "°C", "temperature", 1),
+            "WindSpeedSensor": (16.1, "km/h", "wind_speed", 1),
+            "BarometricPressureSensor": (1013.25, "hPa", "atmospheric_pressure", 1),
+            "VisibilitySensor": (16.093, "km", "distance", 1),
+        }
+        for cls, (value, unit, device_class, precision) in cases.items():
+            with self.subTest(cls):
+                sensor = self._make(cls)
+                self.assertIsInstance(sensor, _ha_sensor.SensorEntity)
+                self.assertEqual(sensor.native_value, value)
+                self.assertEqual(sensor.native_unit_of_measurement, unit)
+                self.assertEqual(sensor.device_class, device_class)
+                self.assertEqual(sensor.suggested_display_precision, precision)
+
+    def test_device_classes_are_home_assistants_enum(self):
+        """HA converts a temperature only if its device class *is* SensorDeviceClass.TEMPERATURE.
+
+        sensor/__init__.py checks ``self.device_class is SensorDeviceClass.TEMPERATURE``,
+        so a plain 'temperature' string left °C in a US customary install.
+        """
+        classes = _ha_sensor.SensorDeviceClass
+        for cls, member in (
+            ("TemperatureSensor", classes.TEMPERATURE), ("DewpointSensor", classes.TEMPERATURE),
+            ("FeelsLikeSensor", classes.TEMPERATURE), ("HumiditySensor", classes.HUMIDITY),
+            ("WindSpeedSensor", classes.WIND_SPEED),
+            ("BarometricPressureSensor", classes.ATMOSPHERIC_PRESSURE),
+            ("VisibilitySensor", classes.DISTANCE),
+        ):
+            with self.subTest(cls):
+                self.assertIs(self._make(cls).device_class, member)
+
+    def test_values_are_not_rounded_before_home_assistant_converts_them(self):
+        """9.252 km/h is 5.7 mph; rounded to 9.3 km/h first it would show 5.8."""
+        from noaa_it_all.sensors.weather_observations import WindSpeedSensor
+        data = {"properties": {"windSpeed": {"value": 9.252}}}
+        sensor = WindSpeedSensor(_make_coordinator(data), OFFICE, LAT, LON)
+        self.assertEqual(sensor.native_value, 9.252)
+
+    def test_a_missing_value_is_unknown(self):
+        for cls in ("TemperatureSensor", "WindSpeedSensor", "BarometricPressureSensor",
+                    "VisibilitySensor", "DewpointSensor"):
+            with self.subTest(cls):
+                from noaa_it_all.sensors import weather_observations
+                sensor = getattr(weather_observations, cls)(
+                    _make_coordinator({"properties": {}}), OFFICE, LAT, LON
+                )
+                self.assertIsNone(sensor.native_value)
+
+    def test_unconverted_sensors_keep_their_units(self):
+        self.assertEqual(self._make("HumiditySensor").native_unit_of_measurement, "%")
+        self.assertEqual(self._make("WindDirectionSensor").native_unit_of_measurement, "°")
+        self.assertIsNone(self._make("SkyConditionsSensor").native_unit_of_measurement)
 
 
 if __name__ == "__main__":

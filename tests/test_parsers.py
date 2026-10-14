@@ -3,10 +3,6 @@
 import unittest
 
 from parsers import (
-    celsius_to_fahrenheit,
-    kmh_to_mph,
-    pascals_to_inhg,
-    meters_to_miles,
     degrees_to_cardinal,
     interpret_dst_value,
     rate_kp_index,
@@ -48,26 +44,6 @@ AURORA_KP_THRESHOLDS = {
 
 class TestUnitConversions(unittest.TestCase):
     """Tests for unit conversion helpers."""
-
-    def test_celsius_to_fahrenheit_basic(self):
-        self.assertAlmostEqual(celsius_to_fahrenheit(0), 32.0)
-        self.assertAlmostEqual(celsius_to_fahrenheit(100), 212.0)
-        self.assertAlmostEqual(celsius_to_fahrenheit(-40), -40.0)
-
-    def test_celsius_to_fahrenheit_none(self):
-        self.assertIsNone(celsius_to_fahrenheit(None))
-
-    def test_kmh_to_mph(self):
-        self.assertAlmostEqual(kmh_to_mph(100), 62.1, places=1)
-        self.assertIsNone(kmh_to_mph(None))
-
-    def test_pascals_to_inhg(self):
-        self.assertAlmostEqual(pascals_to_inhg(101325), 29.92, places=1)
-        self.assertIsNone(pascals_to_inhg(None))
-
-    def test_meters_to_miles(self):
-        self.assertAlmostEqual(meters_to_miles(1609.34), 1.0, places=1)
-        self.assertIsNone(meters_to_miles(None))
 
     def test_degrees_to_cardinal(self):
         self.assertEqual(degrees_to_cardinal(0), 'N')
