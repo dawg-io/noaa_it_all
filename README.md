@@ -52,7 +52,7 @@ Requires Home Assistant **2026.3.0** or newer.
 5. Choose **Space** for the office, or **No space data**.
 6. Assign the device to an area, or choose **Skip and finish**.
 
-The first location also adds the `NOAA Hurricane` entry. Use **Add entry** on the NOAA It All page for more beaches, Great Lakes marine zones, Space for another location, or hurricanes. [Setup and configuration](docs/configuration.md) walks through each step with screenshots, and covers **Configure**, the radar loop and upgrading from 0.9.x or 0.7.x.
+The first location also adds the `NOAA Hurricane` entry. Use **Add entry** on the NOAA It All page for more beaches, Great Lakes marine zones, Space for another location, or hurricanes. [Setup and configuration](https://dawg-io.github.io/noaa_it_all/configuration/) walks through each step with screenshots, and covers **Configure**, the radar loop and upgrading from 0.9.x or 0.7.x.
 
 ## What You Get
 
@@ -66,18 +66,20 @@ Each kind of entry has one device, listed under **Settings → Devices & service
 | Space weather, aurora, meteor showers and eclipses | `NOAA ILM Space` | Kp index, geomagnetic and solar radiation storms, aurora, meteor shower and eclipse forecasts for the location, and SWPC images (20) |
 | Hurricanes and satellite images | `NOAA Hurricane` | NHC activity and watches and warnings, Atlantic and East Pacific outlooks, and GOES satellite images (6) |
 
-Entity IDs are built from the device name, such as `sensor.noaa_ilm_weather_temperature` for the Wilmington, NC (ILM) office. See [Entity Naming Conventions](docs/entity-naming.md) for the exceptions.
+Entity IDs are built from the device name, such as `sensor.noaa_ilm_weather_temperature` for the Wilmington, NC (ILM) office. See [Entity Naming Conventions](https://dawg-io.github.io/noaa_it_all/entity-naming/) for the exceptions.
 
 ## Documentation
 
-- [Setup and configuration](docs/configuration.md): adding locations, beaches, marine zones, Space and hurricanes; **Configure**; radar loop history; upgrading
-- [NWS Forecast Offices](docs/forecast-offices.md): which offices give surf, water temperature, surf height and marine forecasts
-- [Devices](docs/devices.md) and [Entities](docs/entities.md): every device and entity, with their states and attributes
-- [Entity Naming Conventions](docs/entity-naming.md): how entity IDs are built, and IDs that changed
-- [Automation and Script Examples](docs/automations.md)
-- [Dashboard Card Examples](docs/dashboards.md), with screenshots
-- [Troubleshooting & FAQ](docs/troubleshooting.md)
-- [Data Sources](docs/data-sources.md) and update frequency
+The documentation is at **[dawg-io.github.io/noaa_it_all](https://dawg-io.github.io/noaa_it_all/)**, with search. The same pages are in [`docs/`](docs/) in this repository.
+
+- [Setup and configuration](https://dawg-io.github.io/noaa_it_all/configuration/): adding locations, beaches, marine zones, Space and hurricanes; **Configure**; radar loop history; upgrading
+- [NWS Forecast Offices](https://dawg-io.github.io/noaa_it_all/forecast-offices/): which offices give surf, water temperature, surf height and marine forecasts
+- [Devices](https://dawg-io.github.io/noaa_it_all/devices/) and [Entities](https://dawg-io.github.io/noaa_it_all/entities/): every device and entity, with their states and attributes
+- [Entity Naming Conventions](https://dawg-io.github.io/noaa_it_all/entity-naming/): how entity IDs are built, and IDs that changed
+- [Automation and Script Examples](https://dawg-io.github.io/noaa_it_all/automations/)
+- [Dashboard Card Examples](https://dawg-io.github.io/noaa_it_all/dashboards/), with screenshots
+- [Troubleshooting & FAQ](https://dawg-io.github.io/noaa_it_all/troubleshooting/)
+- [Data Sources](https://dawg-io.github.io/noaa_it_all/data-sources/) and update frequency
 
 ## Support
 

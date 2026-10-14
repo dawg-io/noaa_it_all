@@ -91,6 +91,32 @@ class TestDocLinks(unittest.TestCase):
                 self.assertIn(os.path.join(_IMAGES, name), used, "image is not referenced by any doc")
 
 
+class TestSiteLinks(unittest.TestCase):
+    """Links to the documentation site point at pages that exist in docs/.
+
+    README.md and info.md link to the GitHub Pages site built from docs/
+    (website/), so renaming a page or a heading there would break them.
+    """
+
+    _SITE = "https://dawg-io.github.io/noaa_it_all/"
+
+    def test_site_links_resolve(self):
+        found = 0
+        for name in ("README.md", "info.md"):
+            body = _INLINE_CODE.sub("", _FENCE.sub("", _read(os.path.join(_REPO, name))))
+            for target in _MD_LINK.findall(body):
+                if not target.startswith(self._SITE):
+                    continue
+                found += 1
+                path, _, anchor = target[len(self._SITE):].partition("#")
+                page = os.path.join(_DOCS, (path.strip("/") or "README") + ".md")
+                with self.subTest(doc=name, target=target):
+                    self.assertTrue(os.path.isfile(page), "no such page in docs/")
+                    if anchor:
+                        self.assertIn(anchor, _slugs(_read(page)), "no heading has this anchor")
+        self.assertTrue(found, "no links to the documentation site found -- extraction is broken")
+
+
 class TestSlugs(unittest.TestCase):
     """The slug function matches GitHub for the heading shapes the docs use."""
 
