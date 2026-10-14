@@ -16,17 +16,20 @@ from .const import (
     CONF_ENTRY_TYPE, CONF_SURF_OFFICE_CODE,
     ENTRY_TYPE_HURRICANE, ENTRY_TYPE_SURF, ENTRY_TYPE_WEATHER,
     HURRICANE_DEVICE_ID,
-    OFFICE_TIDE_STATIONS, OFFICE_BUOY_STATIONS,
+    OFFICE_COORDINATES, OFFICE_TIDE_STATIONS, OFFICE_BUOY_STATIONS,
     RADAR_FRAME_DIR,
 )
-from .config_flow import add_entry_by_import
+from .config_flow import add_entry_by_import, add_space_entry_by_import
 from .entry_config import resolve_entry_config
 from .offices import (
     ALL_SURF_ENTITIES,
     HURRICANE_ENTITIES,
+    SPACE_ENTITIES,
     is_hurricane_entry,
     is_marine_entry,
+    is_space_entry,
     is_surf_entry,
+    is_weather_entry,
     radar_site as entry_radar_site,
     surf_entities,
     surf_office,
@@ -56,6 +59,9 @@ SURF_PLATFORMS = ["sensor", "binary_sensor"]
 HURRICANE_PLATFORMS = ["sensor", "image"]
 # A marine entry has its zone's Period and Forecast sensors.
 MARINE_PLATFORMS = ["sensor"]
+# A Space entry has the space weather, aurora, meteor shower and eclipse
+# sensors, the meteor and eclipse binary sensors and two space weather images.
+SPACE_PLATFORMS = ["sensor", "binary_sensor", "image"]
 
 
 def _platforms(conf):
@@ -66,6 +72,8 @@ def _platforms(conf):
         return HURRICANE_PLATFORMS
     if is_marine_entry(conf):
         return MARINE_PLATFORMS
+    if is_space_entry(conf):
+        return SPACE_PLATFORMS
     return PLATFORMS
 
 
@@ -89,21 +97,42 @@ async def async_setup(hass: HomeAssistant, config: dict):
 
 
 async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Split an entry from before 0.8.0 into weather, surf and hurricane entries.
+    """Bring an entry from an older release up to version 3.
+
+    A version 1 entry, from before 0.8.0, is split into weather, surf and
+    hurricane entries. A weather entry from before 0.10.0 had a Space device
+    for its office as well, which moves into a Space entry. Each new entry
+    takes over its device and entities when it sets up, keeping their entity
+    IDs and history (see _async_adopt_entities). An entry that already exists,
+    from another upgraded entry, is shared.
+    """
+    if entry.version > 3:
+        # Written by a newer release; this one cannot read it.
+        return False
+    if entry.version == 3:
+        return True
+
+    changes = _async_split_version_1(hass, entry) if entry.version == 1 else {}
+    conf = {
+        **changes.get("data", entry.data),
+        **(changes.get("options", entry.options) or {}),
+    }
+    if is_weather_entry(conf):
+        _async_add_space_entry(
+            hass, entry, conf, changes.get("data", entry.data), changes.get("title", entry.title)
+        )
+    hass.config_entries.async_update_entry(entry, **changes, version=3)
+    return True
+
+
+def _async_split_version_1(hass: HomeAssistant, entry: ConfigEntry) -> dict:
+    """Split a version 1 entry into weather, surf and hurricane entries.
 
     A version 1 entry was a location with its office's surf inside, and the
     first of them also hosted the hurricane entities. It becomes a weather
-    entry. Its surf office gets a surf entry, and the hurricane entities get
-    the hurricane entry; each takes over its device and entities when it sets
-    up, keeping their entity IDs and history (see _async_adopt_entities). An
-    entry that already exists, from another upgraded entry, is shared.
+    entry, and its surf office and the hurricane entities get entries of their
+    own. Returns the weather entry's new data, options and title.
     """
-    if entry.version > 2:
-        # Written by a newer release; this one cannot read it.
-        return False
-    if entry.version == 2:
-        return True
-
     conf = resolve_entry_config(entry)
     office = conf.get(CONF_OFFICE_CODE)
     surf = surf_office(conf)
@@ -123,9 +152,6 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     title = entry.title
     if title.startswith("NOAA - "):
         title = "NOAA Weather - " + title[len("NOAA - "):]
-    hass.config_entries.async_update_entry(
-        entry, data=data, options=options, title=title, version=2
-    )
 
     if surf:
         add_entry_by_import(hass, {CONF_ENTRY_TYPE: ENTRY_TYPE_SURF, CONF_OFFICE_CODE: surf})
@@ -142,7 +168,83 @@ async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "Moved %s to a weather entry%s", entry.title,
         f" and its surf to a surf entry for {surf}" if surf else "",
     )
-    return True
+    return {"data": data, "options": options, "title": title}
+
+
+def _async_add_space_entry(
+    hass: HomeAssistant, entry: ConfigEntry, conf: dict, data: dict, title: str
+) -> None:
+    """Add the Space entry of a weather entry's office, where its Space was.
+
+    Before 0.10.0 every weather entry had a Space device for its office.
+    Weather entries in the same office share one Space entry: their Space
+    entities had the same unique IDs, so only the one that set up first ever
+    had any, and the Space entry goes to that one's location. Only the first of
+    them to upgrade adds it, so a Space entry deleted after the upgrade stays
+    deleted when another of them is enabled later.
+    """
+    office = conf.get(CONF_OFFICE_CODE)
+    if _space_already_moved(hass, entry, office):
+        return
+    owner = _space_owner(hass, entry, office)
+    if owner is not None:
+        conf, data, title = resolve_entry_config(owner), owner.data, owner.title
+    latitude, longitude = conf.get(CONF_LATITUDE), conf.get(CONF_LONGITUDE)
+    if latitude is None or longitude is None:
+        # Saved without a location, its Space had no meteor showers or
+        # eclipses; the office's own location gives it them.
+        latitude, longitude = OFFICE_COORDINATES.get(office, (None, None))
+    if latitude is None or longitude is None:
+        _LOGGER.warning(
+            "Could not move the Space of %s: it has no location. Add it with Add entry > Space",
+            title,
+        )
+        return
+    place = _space_place(office, data.get(CONF_OFFICE_CODE), title)
+    add_space_entry_by_import(hass, office, latitude, longitude, place)
+
+
+def _space_already_moved(hass: HomeAssistant, entry: ConfigEntry, office: str) -> bool:
+    """Return True if another weather entry in the office is on version 3 already."""
+    for other in hass.config_entries.async_entries(DOMAIN):
+        if other.entry_id == entry.entry_id or other.version < 3:
+            continue
+        other_conf = resolve_entry_config(other)
+        if is_weather_entry(other_conf) and other_conf.get(CONF_OFFICE_CODE) == office:
+            return True
+    return False
+
+
+def _space_owner(hass: HomeAssistant, entry: ConfigEntry, office: str):
+    """Return the other weather entry the office's Space entities belong to, or None."""
+    try:
+        ent_reg = er.async_get(hass)
+        for platform, suffix in SPACE_ENTITIES:
+            entity_id = ent_reg.async_get_entity_id(platform, DOMAIN, f"noaa_{office}_{suffix}")
+            if not entity_id:
+                continue
+            owner = hass.config_entries.async_get_entry(ent_reg.async_get(entity_id).config_entry_id)
+            if (
+                owner is not None and owner.entry_id != entry.entry_id
+                and is_weather_entry(resolve_entry_config(owner))
+            ):
+                return owner
+            return None
+    except Exception:  # noqa: BLE001 - the upgrading entry's own location is used instead
+        _LOGGER.exception("Could not read which entry has the %s Space entities", office)
+    return None
+
+
+def _space_place(office: str, setup_office: str, title: str):
+    """Return the place an upgraded Space entry's title names, or None for its office's name.
+
+    A weather entry's title names the office it was set up with, and keeps it
+    when Configure moves the entry to another office.
+    """
+    prefix = "NOAA Weather - "
+    if office == setup_office and title.startswith(prefix) and len(title) > len(prefix):
+        return title[len(prefix):]
+    return None
 
 
 def _surf_device(hass: HomeAssistant, office: str):
@@ -281,6 +383,43 @@ async def _async_setup_surf_entry(hass: HomeAssistant, entry: ConfigEntry, conf:
     return True
 
 
+async def _async_setup_space_entry(hass: HomeAssistant, entry: ConfigEntry, conf: dict) -> bool:
+    """Set up a Space entry: space weather, aurora, meteor showers and eclipses."""
+    office_code = conf[CONF_OFFICE_CODE]
+    latitude = conf[CONF_LATITUDE]
+    longitude = conf[CONF_LONGITUDE]
+    _LOGGER.info("Setting up NOAA Space for %s", office_code)
+    _async_adopt_safely(
+        hass, entry, f"{office_code} space", f"noaa_{office_code}_space",
+        [(platform, f"noaa_{office_code}_{suffix}") for platform, suffix in SPACE_ENTITIES],
+    )
+
+    # Space weather is the same everywhere. Each Space entry polls it itself:
+    # a coordinator stops when the entry that made it unloads, so one shared
+    # between entries would stop for all of them.
+    space_weather_coord = SpaceWeatherCoordinator(hass)
+    # Meteor showers are computed locally from a bundled catalog rather than fetched,
+    # but they still need the observer's coordinates to place the radiant in the sky.
+    meteor_coord = MeteorShowerCoordinator(hass, office_code, latitude, longitude)
+    # Eclipses are the same story: bundled Besselian elements plus local astronomy, no
+    # feed to poll, but the observer's coordinates decide almost everything about them.
+    eclipse_coord = EclipseCoordinator(hass, office_code, latitude, longitude)
+    await asyncio.gather(
+        space_weather_coord.async_refresh(),
+        meteor_coord.async_refresh(),
+        eclipse_coord.async_refresh(),
+        return_exceptions=True,
+    )
+    hass.data[DOMAIN][entry.entry_id] = {
+        "config": conf,
+        "space_weather_coordinator": space_weather_coord,
+        "meteor_coordinator": meteor_coord,
+        "eclipse_coordinator": eclipse_coord,
+    }
+    await hass.config_entries.async_forward_entry_setups(entry, SPACE_PLATFORMS)
+    return True
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     """Set up NOAA Integration from a config entry."""
     hass.data.setdefault(DOMAIN, {})
@@ -292,6 +431,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         return await _async_setup_hurricane_entry(hass, entry, conf)
     if is_marine_entry(conf):
         return await _async_setup_marine_entry(hass, entry, conf)
+    if is_space_entry(conf):
+        return await _async_setup_space_entry(hass, entry, conf)
 
     office_code = conf[CONF_OFFICE_CODE]
     latitude = conf.get(CONF_LATITUDE)
@@ -301,10 +442,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     # ---- Create coordinators ----
 
-    # Global coordinators (no location dependency)
-    space_weather_coord = SpaceWeatherCoordinator(hass)
-
-    # Office-specific coordinators. Surf and hurricanes have entries of their own.
+    # Office-specific coordinators. Surf, Space and hurricanes have entries of their own.
     discussion_coord = ForecastDiscussionCoordinator(hass, office_code)
 
     radar_site = entry_radar_site(conf)
@@ -318,8 +456,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     observations_coord = None
     forecast_coord = None
     cloud_cover_coord = None
-    meteor_coord = None
-    eclipse_coord = None
 
     if latitude is not None and longitude is not None:
         alerts_coord = NWSAlertsCoordinator(hass, latitude, longitude)
@@ -332,22 +468,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         cloud_cover_coord = CloudCoverCoordinator(
             hass, office_code, latitude, longitude
         )
-        # Meteor showers are computed locally from a bundled catalog rather than fetched,
-        # but they still need the observer's coordinates to place the radiant in the sky.
-        meteor_coord = MeteorShowerCoordinator(
-            hass, office_code, latitude, longitude
-        )
-        # Eclipses are the same story: bundled Besselian elements plus local astronomy, no
-        # feed to poll, but the observer's coordinates decide almost everything about them.
-        eclipse_coord = EclipseCoordinator(
-            hass, office_code, latitude, longitude
-        )
 
     # ---- Initial refresh (non-blocking, errors are logged) ----
-    refresh_tasks = [
-        space_weather_coord.async_refresh(),
-        discussion_coord.async_refresh(),
-    ]
+    refresh_tasks = [discussion_coord.async_refresh()]
     if radar_coord:
         refresh_tasks.append(radar_coord.async_refresh())
     if alerts_coord:
@@ -358,25 +481,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         refresh_tasks.append(forecast_coord.async_refresh())
     if cloud_cover_coord:
         refresh_tasks.append(cloud_cover_coord.async_refresh())
-    if meteor_coord:
-        refresh_tasks.append(meteor_coord.async_refresh())
-    if eclipse_coord:
-        refresh_tasks.append(eclipse_coord.async_refresh())
 
     await asyncio.gather(*refresh_tasks, return_exceptions=True)
 
     # ---- Store everything for platform setup ----
     hass.data[DOMAIN][entry.entry_id] = {
         "config": conf,
-        "space_weather_coordinator": space_weather_coord,
         "forecast_discussion_coordinator": discussion_coord,
         "radar_timestamp_coordinator": radar_coord,
         "alerts_coordinator": alerts_coord,
         "observations_coordinator": observations_coord,
         "forecast_coordinator": forecast_coord,
         "cloud_cover_coordinator": cloud_cover_coord,
-        "meteor_coordinator": meteor_coord,
-        "eclipse_coordinator": eclipse_coord,
     }
 
     # Reload the entry whenever its options change. The coordinators capture

@@ -1,9 +1,10 @@
 """What kind of entry this is, and where its office's data comes from.
 
 A weather entry names the NWS forecast office for its location; a surf entry
-names one coastal office that issues Surf Zone Forecasts. The tables in
-const.py cover only those coastal offices, so anything they do not cover for
-an inland office is stored on the entry at setup or estimated.
+names one coastal office that issues Surf Zone Forecasts, and a Space entry the
+office its location is in. The tables in const.py cover only those coastal
+offices, so anything they do not cover for an inland office is stored on the
+entry at setup or estimated.
 """
 
 import math
@@ -13,6 +14,7 @@ from .const import (
     CONF_ENTRY_TYPE,
     ENTRY_TYPE_HURRICANE,
     ENTRY_TYPE_MARINE,
+    ENTRY_TYPE_SPACE,
     ENTRY_TYPE_WEATHER,
     CONF_OFFICE_CODE,
     CONF_RADAR_SITE,
@@ -35,6 +37,32 @@ UNSAFE_TO_SWIM = ("binary_sensor", "unsafe_to_swim")
 WATER_TEMPERATURE = ("sensor", "water_temperature")
 SURF_HEIGHT = ("sensor", "surf_height")
 ALL_SURF_ENTITIES = (RIP_CURRENT_RISK, UNSAFE_TO_SWIM, WATER_TEMPERATURE, SURF_HEIGHT)
+
+# The Space entities, as (platform, unique ID suffix). Their unique IDs are
+# noaa_<office>_<suffix>, from the days Space lived in the weather entry, so an
+# upgraded entry's entities keep their IDs and history in the Space entry.
+SPACE_ENTITIES = (
+    ("sensor", "geomagnetic_storm"),
+    ("sensor", "geomagnetic_storm_interpretation"),
+    ("sensor", "planetary_k_index"),
+    ("sensor", "planetary_k_index_rating"),
+    ("sensor", "aurora_next_time"),
+    ("sensor", "aurora_duration"),
+    ("sensor", "aurora_visibility_probability"),
+    ("sensor", "solar_radiation_storm_alerts"),
+    ("sensor", "meteor_shower_activity"),
+    ("sensor", "next_meteor_shower"),
+    ("sensor", "meteor_viewing_score"),
+    ("sensor", "next_eclipse"),
+    ("sensor", "next_eclipse_time"),
+    ("sensor", "eclipse_coverage"),
+    ("sensor", "eclipse_viewing_score"),
+    ("binary_sensor", "meteor_shower_active"),
+    ("binary_sensor", "eclipse_visible_now"),
+    ("binary_sensor", "eclipse_coming_up"),
+    ("image", "geoelectric_image"),
+    ("image", "aurora_image"),
+)
 
 # The hurricane entry's entities, as (platform, unique ID). The same IDs they
 # had when the first weather entry hosted them, so they keep their history.
@@ -60,7 +88,7 @@ def is_radar_site(value):
 
 
 def entry_type(conf):
-    """Return what an entry is: weather, surf or hurricane."""
+    """Return what an entry is: weather, surf, marine, space or hurricane."""
     return conf.get(CONF_ENTRY_TYPE, ENTRY_TYPE_WEATHER)
 
 
@@ -80,8 +108,13 @@ def is_marine_entry(conf):
 
 
 def is_weather_entry(conf):
-    """Return True for a weather entry: a location's forecast, radar and space."""
+    """Return True for a weather entry: a location's forecast, alerts and radar."""
     return entry_type(conf) == ENTRY_TYPE_WEATHER
+
+
+def is_space_entry(conf):
+    """Return True for a Space entry: space weather, aurora, meteors and eclipses."""
+    return entry_type(conf) == ENTRY_TYPE_SPACE
 
 
 def surf_entities(office):

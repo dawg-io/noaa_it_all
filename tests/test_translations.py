@@ -49,9 +49,9 @@ class TestTranslationsValid(unittest.TestCase):
         self.assertIn("user", self.en["config"]["step"])
 
     def test_user_step_is_the_menu_of_entry_types(self):
-        """Add entry starts by choosing weather, surf or hurricanes."""
+        """Add entry starts by choosing weather, surf, marine, Space or hurricanes."""
         options = self.en["config"]["step"]["user"]["menu_options"]
-        self.assertEqual({"location", "surf", "marine", "hurricane"}, set(options))
+        self.assertEqual({"location", "surf", "marine", "space", "hurricane"}, set(options))
 
     def test_location_step_has_required_fields(self):
         location = self.en["config"]["step"]["location"]
@@ -70,7 +70,10 @@ class TestTranslationsValid(unittest.TestCase):
             source = f.read()
         config_class, options_class = source.split("class NOAAOptionsFlow")
         for section, code in (("config", config_class), ("options", options_class)):
-            for step in set(re.findall(r'step_id="(\w+)"', code)):
+            # A step is shown with step_id="...", or by name through the
+            # shared location and office forms.
+            shown = re.findall(r'(?:step_id=|_async_location_step\(|_office_form\()\s*"(\w+)"', code)
+            for step in set(shown):
                 with self.subTest(section=section, step=step):
                     self.assertIn(step, self.en[section]["step"])
         for reason in set(re.findall(r'(?:reason|error)="(\w+)"', config_class)):

@@ -45,9 +45,9 @@ CONF_LATITUDE = "latitude"
 CONF_LONGITUDE = "longitude"
 CONF_RADAR_LOOP_HOURS = "radar_loop_hours"
 CONF_MARINE_ZONE = "marine_zone"
-# What a config entry is: weather for a location (forecast, alerts, radar and
-# space), or the surf forecast of one coastal office. Entries from before 0.8.0
-# have no type; migrating them adds it.
+# What a config entry is: weather for a location (forecast, alerts and radar),
+# or the surf forecast of one coastal office. Entries from before 0.8.0 have no
+# type; migrating them adds it.
 CONF_ENTRY_TYPE = "entry_type"
 ENTRY_TYPE_WEATHER = "weather"
 ENTRY_TYPE_SURF = "surf"
@@ -56,6 +56,11 @@ ENTRY_TYPE_HURRICANE = "hurricane"
 HURRICANE_ENTRY_TITLE = "NOAA Hurricane"
 # The nearshore marine forecast for one marine zone, such as LMZ741.
 ENTRY_TYPE_MARINE = "marine"
+# Space weather, aurora, meteor showers and eclipses at a location, one entry
+# per forecast office and named after it, as weather entries had before 0.10.0.
+ENTRY_TYPE_SPACE = "space"
+# The office chosen on the location flow's Space step. Only a form field.
+CONF_SPACE_OFFICE_CODE = "space_office_code"
 # The surf office chosen on the surf step. A 0.8.0 test build also saved it on
 # weather entries, before surf became its own entry; that copy is only read
 # when migrating them.
