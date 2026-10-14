@@ -5,6 +5,12 @@ All notable changes to NOAA It All for Home Assistant will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.2]
+
+### Changed
+- **The ? on the integration's page opens the documentation site.** Under **Settings → Devices &
+  services → NOAA It All**, it opened the GitHub repository.
+
 ## [0.10.1]
 
 ### Changed
@@ -12,8 +18,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   [dawg-io.github.io/noaa_it_all](https://dawg-io.github.io/noaa_it_all/), with search, a sidebar,
   and light and dark themes. Its pages are the `docs/` folder in the repository, which reads the
   same on GitHub.
-- **The ? on the integration's page opens the documentation site.** Under **Settings → Devices &
-  services → NOAA It All**, it opened the GitHub repository.
 - **The README is a short landing page**: installation, getting started, what each entry gives you,
   and links to the documentation. The setup walkthrough, entity reference, entity naming, example
   automations, scripts and dashboard cards, troubleshooting and data sources moved to the
@@ -22,7 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **`CONFIGURATION.md` is gone.** It repeated the README; what only it had is now in the
   documentation.
 
-Apart from that link, nothing in the integration itself changed.
+Nothing in the integration itself changed.
 
 ## [0.10.0]
 
