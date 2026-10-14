@@ -4,6 +4,7 @@ import asyncio
 import os
 import sys
 import unittest
+from datetime import datetime
 from unittest.mock import MagicMock, patch
 
 _REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -253,6 +254,114 @@ class TestMapCondition(unittest.TestCase):
     def test_clear_by_day_and_night(self):
         self.assertEqual(self._map("Clear", "2026-10-03T15:00:00Z"), "sunny")
         self.assertEqual(self._map("Clear", "2026-10-03T03:00:00Z"), "clear-night")
+
+
+def _period(start, is_daytime, temperature, name):
+    """An NWS extended forecast period, as api.weather.gov serves it."""
+    return {
+        "name": name,
+        "startTime": start,
+        "isDaytime": is_daytime,
+        "temperature": temperature,
+        "shortForecast": "Partly Cloudy",
+        "windSpeed": "5 mph",
+        "windDirection": "SW",
+        "probabilityOfPrecipitation": {"unitCode": "wmoUnit:percent", "value": None},
+    }
+
+
+def _frozen_now(hour, minute):
+    """A datetime class whose now() is 2026-10-14 at the given local time."""
+    class _Frozen(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime(2026, 10, 14, hour, minute, tzinfo=tz)
+    return _Frozen
+
+
+class TestDailyForecast(unittest.TestCase):
+    """#75: one daily forecast entry per date, and never the observed temperature as a high."""
+
+    OBSERVED = 61.3
+
+    def _daily(self, periods, hour, minute):
+        from noaa_it_all.weather import NOAAWeather
+        entity = NOAAWeather(_make_coordinator(None), _make_coordinator({"extended": {
+            "properties": {"periods": periods}}}), OFFICE, LAT, LON)
+        entity._attr_native_temperature = self.OBSERVED
+        with patch("noaa_it_all.weather.Forecast", dict), \
+                patch("noaa_it_all.weather.datetime", _frozen_now(hour, minute)):
+            return asyncio.run(entity.async_forecast_daily())
+
+    def test_after_midnight_one_entry_for_today(self):
+        """At 03:30 NWS starts with an Overnight period; today has one entry, from Today and Tonight."""
+        forecasts = self._daily([
+            _period("2026-10-14T03:00:00-04:00", False, 55, "Overnight"),
+            _period("2026-10-14T06:00:00-04:00", True, 75, "Today"),
+            _period("2026-10-14T18:00:00-04:00", False, 52, "Tonight"),
+            _period("2026-10-15T06:00:00-04:00", True, 77, "Thursday"),
+            _period("2026-10-15T18:00:00-04:00", False, 50, "Thursday Night"),
+        ], 3, 30)
+        dates = [f["datetime"][:10] for f in forecasts]
+        self.assertEqual(dates, ["2026-10-14", "2026-10-15"])
+        self.assertEqual((forecasts[0]["temperature"], forecasts[0]["templow"]), (75, 52))
+        self.assertNotIn(self.OBSERVED, [f["temperature"] for f in forecasts])
+
+    def test_evening_today_has_tonights_low_and_no_high(self):
+        """In the evening NWS has no high left for today, so the observed temperature isn't used as one."""
+        forecasts = self._daily([
+            _period("2026-10-14T20:00:00-04:00", False, 52, "Tonight"),
+            _period("2026-10-15T06:00:00-04:00", True, 77, "Thursday"),
+            _period("2026-10-15T18:00:00-04:00", False, 50, "Thursday Night"),
+        ], 20, 0)
+        dates = [f["datetime"][:10] for f in forecasts]
+        self.assertEqual(dates, ["2026-10-14", "2026-10-15"])
+        self.assertEqual((forecasts[0]["temperature"], forecasts[0]["templow"]), (None, 52))
+        self.assertEqual((forecasts[1]["temperature"], forecasts[1]["templow"]), (77, 50))
+
+    def test_overnight_starting_before_3am_is_not_a_separate_entry(self):
+        """An Overnight period from 01:00 falls in the 3 AM cutoff window; still one entry for today."""
+        forecasts = self._daily([
+            _period("2026-10-14T01:00:00-04:00", False, 55, "Overnight"),
+            _period("2026-10-14T06:00:00-04:00", True, 75, "Today"),
+            _period("2026-10-14T18:00:00-04:00", False, 52, "Tonight"),
+            _period("2026-10-15T06:00:00-04:00", True, 77, "Thursday"),
+        ], 1, 30)
+        self.assertEqual([(f["datetime"][:10], f["temperature"]) for f in forecasts],
+                         [("2026-10-14", 75), ("2026-10-15", 77)])
+
+    def test_last_nights_period_after_midnight_is_skipped(self):
+        """A forecast fetched before midnight still starts with yesterday's Tonight; it gets no entry."""
+        forecasts = self._daily([
+            _period("2026-10-13T18:00:00-04:00", False, 54, "Tonight"),
+            _period("2026-10-14T06:00:00-04:00", True, 75, "Wednesday"),
+            _period("2026-10-14T18:00:00-04:00", False, 52, "Wednesday Night"),
+        ], 0, 30)
+        self.assertEqual([(f["datetime"][:10], f["temperature"], f["templow"]) for f in forecasts],
+                         [("2026-10-14", 75, 52)])
+
+    def test_a_night_after_a_day_never_takes_that_days_high(self):
+        """With a day period missing, the night that follows gets no entry with the earlier day's high."""
+        forecasts = self._daily([
+            _period("2026-10-14T10:00:00-04:00", True, 75, "Today"),
+            _period("2026-10-14T18:00:00-04:00", False, 52, "Tonight"),
+            _period("2026-10-15T18:00:00-04:00", False, 50, "Thursday Night"),
+            _period("2026-10-16T06:00:00-04:00", True, 80, "Friday"),
+            _period("2026-10-16T18:00:00-04:00", False, 55, "Friday Night"),
+        ], 10, 0)
+        self.assertEqual([(f["datetime"][:10], f["temperature"]) for f in forecasts],
+                         [("2026-10-14", 75), ("2026-10-16", 80)])
+
+    def test_daytime_start_unchanged(self):
+        """During the day the forecast starts with Today, as before."""
+        forecasts = self._daily([
+            _period("2026-10-14T10:00:00-04:00", True, 75, "Today"),
+            _period("2026-10-14T18:00:00-04:00", False, 52, "Tonight"),
+            _period("2026-10-15T06:00:00-04:00", True, 77, "Thursday"),
+            _period("2026-10-15T18:00:00-04:00", False, 50, "Thursday Night"),
+        ], 10, 0)
+        self.assertEqual([(f["datetime"][:10], f["temperature"], f["templow"]) for f in forecasts],
+                         [("2026-10-14", 75, 52), ("2026-10-15", 77, 50)])
 
 
 if __name__ == "__main__":

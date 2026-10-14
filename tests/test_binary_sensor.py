@@ -27,6 +27,9 @@ _ha_coordinator.DataUpdateCoordinator = type("DataUpdateCoordinator", (), {})
 _ha_entity.DeviceInfo = dict
 _ha_binary.BinarySensorEntity = type("BinarySensorEntity", (), {})
 
+_ha_sensor = MagicMock()
+_ha_sensor.SensorEntity = type("SensorEntity", (), {})
+
 _MOCK_MODULES = {
     "homeassistant": MagicMock(),
     "homeassistant.helpers": MagicMock(),
@@ -35,6 +38,7 @@ _MOCK_MODULES = {
     "homeassistant.helpers.entity_platform": MagicMock(),
     "homeassistant.helpers.aiohttp_client": MagicMock(),
     "homeassistant.components": MagicMock(),
+    "homeassistant.components.sensor": _ha_sensor,
     "homeassistant.components.binary_sensor": _ha_binary,
     "homeassistant.components.weather": MagicMock(),
     "homeassistant.components.image": MagicMock(),

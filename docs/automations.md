@@ -312,10 +312,10 @@ conditions:
     state: "off"
   - condition: numeric_state
     entity_id: sensor.noaa_ilm_weather_temperature
-    above: 75
+    above: 75  # °F; 24 for °C
   - condition: numeric_state
     entity_id: sensor.noaa_ilm_weather_wind_speed
-    below: 15
+    below: 15  # mph; 24 for km/h
   - condition: state
     entity_id: binary_sensor.noaa_ilm_weather_active_alerts
     state: "off"
@@ -324,7 +324,7 @@ actions:
     data:
       title: "🏖️ Perfect Beach Day!"
       message: >-
-        Temperature {{ states('sensor.noaa_ilm_weather_temperature') }}°F,
+        Temperature {{ states('sensor.noaa_ilm_weather_temperature', rounded=True, with_unit=True) }},
         rip current risk {{ states('sensor.noaa_ilm_surf_rip_current_risk') }},
         surf {{ states('sensor.noaa_ilm_surf_surf_height') }} ft,
         water {{ states('sensor.noaa_ilm_surf_water_temperature') }}°F.
@@ -386,10 +386,10 @@ check_weather_conditions:
       data:
         media_player_entity_id: media_player.home_speaker
         message: >-
-          Current conditions: temperature {{ states('sensor.noaa_ilm_weather_temperature') }} degrees,
-          feels like {{ states('sensor.noaa_ilm_weather_feels_like') }} degrees.
+          Current conditions: temperature {{ states('sensor.noaa_ilm_weather_temperature', rounded=True) }} degrees,
+          feels like {{ states('sensor.noaa_ilm_weather_feels_like', rounded=True) }} degrees.
           {{ states('sensor.noaa_ilm_weather_sky_conditions') }} skies.
-          Wind {{ states('sensor.noaa_ilm_weather_wind_speed') }} miles per hour from the
+          Wind {{ states('sensor.noaa_ilm_weather_wind_speed', rounded=True, with_unit=True) }} from the
           {{ state_attr('sensor.noaa_ilm_weather_wind_direction', 'cardinal_direction') }}.
           {% if is_state('binary_sensor.noaa_ilm_weather_active_alerts', 'on') %}
           {{ state_attr('sensor.noaa_ilm_weather_active_nws_alerts', 'alert_count') }} weather alerts are active.
@@ -410,8 +410,11 @@ space_weather_report:
           ({{ states('sensor.noaa_ilm_space_planetary_k_index_rating') }}).
           Geomagnetic storm: {{ states('sensor.noaa_ilm_space_geomagnetic_storm_interpretation') }}.
           {% if states('sensor.noaa_ilm_space_aurora_visibility_probability') | int(0) > 0 %}
-          Aurora visibility: {{ states('sensor.noaa_ilm_space_aurora_visibility_probability') }}%,
-          expected at {{ states('sensor.noaa_ilm_space_aurora_next_time') }}.
+          Aurora visibility: {{ states('sensor.noaa_ilm_space_aurora_visibility_probability') }}%.
+          {% endif %}
+          {% set aurora = states('sensor.noaa_ilm_space_aurora_next_time') | as_datetime(None) %}
+          {% if aurora %}
+          Aurora may be visible from {{ (aurora | as_local).strftime('%a %-I:%M %p') }}.
           {% endif %}
           Solar radiation alerts: {{ states('sensor.noaa_ilm_space_solar_radiation_storm_alerts') }}.
 ```
@@ -427,8 +430,8 @@ morning_weather_briefing:
       data:
         title: "☀️ Good Morning - Weather Briefing"
         message: |-
-          🌡️ {{ states('sensor.noaa_ilm_weather_temperature') }}°F (feels like {{ states('sensor.noaa_ilm_weather_feels_like') }}°F)
-          💨 Wind {{ states('sensor.noaa_ilm_weather_wind_speed') }} mph
+          🌡️ {{ states('sensor.noaa_ilm_weather_temperature', rounded=True, with_unit=True) }} (feels like {{ states('sensor.noaa_ilm_weather_feels_like', rounded=True, with_unit=True) }})
+          💨 Wind {{ states('sensor.noaa_ilm_weather_wind_speed', rounded=True, with_unit=True) }}
           ☁️ {{ states('sensor.noaa_ilm_weather_sky_conditions') }}
           🌊 Surf {{ states('sensor.noaa_ilm_surf_surf_height') }} ft, rip current risk {{ states('sensor.noaa_ilm_surf_rip_current_risk') }}
           🏊 Water {{ states('sensor.noaa_ilm_surf_water_temperature') }}°F

@@ -551,15 +551,3 @@ ECLIPSE_VISIBLE_MIN_COVERAGE = 10    # % of the disc covered at the best visible
 ECLIPSE_VISIBLE_LEAD_MINUTES = 60    # turn on this long before first contact
 ECLIPSE_UPCOMING_DAYS = 14           # how far ahead "coming up" looks
 ECLIPSE_UPCOMING_MIN_COVERAGE = 25   # % -- worth a calendar entry, not just a glance
-
-# Solar Radiation Storm alert keywords for filtering NOAA alerts
-SOLAR_RADIATION_KEYWORDS = [
-    "solar radiation",
-    "radiation storm",
-    "proton event",
-    "proton flux",
-    "solar proton",
-    "Type IV",
-    "coronal mass ejection",
-    "solar particle"
-]

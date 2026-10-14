@@ -247,20 +247,29 @@ def _space_place(office: str, setup_office: str, title: str):
     return None
 
 
-def _surf_device(hass: HomeAssistant, office: str):
-    """Return the device the surf entities of ``office`` are grouped under."""
-    return dr.async_get(hass).async_get_device(
-        identifiers={(DOMAIN, f"noaa_{office}_surf")}
-    )
+def _single_owner_devices(dev_reg) -> bool:
+    """Return True if a device belongs to one config entry, as from Home Assistant 2026.8.
+
+    From then on two entries can each have a device with the same identifier,
+    and looking a device up by identifier alone, or adding and removing a
+    device's config entries, is deprecated, to be removed in 2027.8. Older
+    releases have neither the lookups by entry nor moving a device.
+    """
+    return hasattr(dev_reg, "async_get_device_by_identifier")
 
 
 def _async_release_surf_device(hass: HomeAssistant, entry: ConfigEntry, office: str) -> None:
     """Take an entry off its surf device; HA removes the device and its entities."""
-    device = _surf_device(hass, office)
+    dev_reg = dr.async_get(hass)
+    identifier = (DOMAIN, f"noaa_{office}_surf")
+    if _single_owner_devices(dev_reg):
+        device = dev_reg.async_get_device_by_identifier(identifier, entry.entry_id)
+        if device is not None:
+            dev_reg.async_remove_device(device.id)
+        return
+    device = dev_reg.async_get_device(identifiers={identifier})
     if device is not None and entry.entry_id in device.config_entries:
-        dr.async_get(hass).async_update_device(
-            device.id, remove_config_entry_id=entry.entry_id
-        )
+        dev_reg.async_update_device(device.id, remove_config_entry_id=entry.entry_id)
 
 
 def _async_adopt_entities(hass: HomeAssistant, entry: ConfigEntry, device_key: str, entities) -> None:
@@ -277,30 +286,52 @@ def _async_adopt_entities(hass: HomeAssistant, entry: ConfigEntry, device_key: s
     Home Assistant only clears "disabled by its config entry" when that entry
     is enabled, which this one already is, so the flag is cleared here for
     anything that came from a disabled entry.
+
+    From Home Assistant 2026.8 a device belongs to one entry, and moving it
+    to this one clears such a flag on the device itself. Another entry can
+    then have a device with the same identifier too, as when Home Assistant
+    split one that entries shared. Only the one the entities are on moves
+    here, and only if this entry has none yet; the others are left alone, as
+    deleting one would lose what the user set on it.
     """
     ent_reg = er.async_get(hass)
     dev_reg = dr.async_get(hass)
-    device = dev_reg.async_get_device(identifiers={(DOMAIN, device_key)})
+    identifier = (DOMAIN, device_key)
+    if _single_owner_devices(dev_reg):
+        devices = dev_reg.async_get_devices(identifiers={identifier})
+        held = _async_move_entities(ent_reg, entry, entities)
+        if devices and all(device.config_entry_id != entry.entry_id for device in devices):
+            device = next((device for device in devices if device.id in held), devices[0])
+            dev_reg.async_update_device(device.id, new_config_entry_id=entry.entry_id)
+        return
+
+    device = dev_reg.async_get_device(identifiers={identifier})
     if device is not None and entry.entry_id not in device.config_entries:
         dev_reg.async_update_device(device.id, add_config_entry_id=entry.entry_id)
         if device.disabled_by is dr.DeviceEntryDisabler.CONFIG_ENTRY:
             dev_reg.async_update_device(device.id, disabled_by=None)
+    _async_move_entities(ent_reg, entry, entities)
+    if device is not None:
+        for other in set(device.config_entries) - {entry.entry_id}:
+            dev_reg.async_update_device(device.id, remove_config_entry_id=other)
 
+
+def _async_move_entities(ent_reg, entry: ConfigEntry, entities) -> set:
+    """Move ``entities`` to ``entry``; return the IDs of the devices they are on."""
+    held = set()
     for platform, unique_id in entities:
         entity_id = ent_reg.async_get_entity_id(platform, DOMAIN, unique_id)
         if not entity_id:
             continue
         registered = ent_reg.async_get(entity_id)
+        held.add(registered.device_id)
         if registered.config_entry_id == entry.entry_id:
             continue
         changes = {"config_entry_id": entry.entry_id}
         if registered.disabled_by is er.RegistryEntryDisabler.CONFIG_ENTRY:
             changes["disabled_by"] = None
         ent_reg.async_update_entity(entity_id, **changes)
-
-    if device is not None:
-        for other in set(device.config_entries) - {entry.entry_id}:
-            dev_reg.async_update_device(device.id, remove_config_entry_id=other)
+    return held
 
 
 def _async_adopt_safely(hass: HomeAssistant, entry: ConfigEntry, label: str, *args) -> None:
