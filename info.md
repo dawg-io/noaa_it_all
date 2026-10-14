@@ -105,7 +105,7 @@ Entities are automatically grouped into logical devices:
   - **Pacific & Caribbean**: Honolulu (HFO), Guam (GUM), San Juan (SJU)
 - **Nearshore marine**: the Great Lakes nearshore zones
 
-*See the [full documentation](https://github.com/dawg-io/noaa_it_all#nws-forecast-offices) for every surf office and which have water temperature and surf height.*
+*See the [full documentation](https://dawg-io.github.io/noaa_it_all/forecast-offices/) for every surf office and which have water temperature and surf height.*
 
 ## Update Frequency
 
@@ -113,7 +113,7 @@ Most entities, images included, update every 10 minutes with fresh data from NOA
 
 ## Links
 
-- [Full Documentation](https://github.com/dawg-io/noaa_it_all)
+- [Full Documentation](https://dawg-io.github.io/noaa_it_all/)
 - [Report Issues](https://github.com/dawg-io/noaa_it_all/issues)
 - [Changelog](https://github.com/dawg-io/noaa_it_all/releases)
 - [Full Changelog](https://github.com/dawg-io/noaa_it_all/blob/main/CHANGELOG.md)

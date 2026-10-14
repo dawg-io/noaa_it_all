@@ -1,0 +1,118 @@
+name: Documentation Site
+
+# Builds docs/ into the Starlight site in website/ and checks its links on every
+# pull request and push that touches them. Only the public repository's main
+# deploys it to GitHub Pages; in turbo5000c/dev-noaa_it_all it builds and
+# checks but never publishes a second site.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'website/**'
+      - 'icon.png'
+      - '.github/workflows/docs-pages.yml'
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'website/**'
+      - 'icon.png'
+      - '.github/workflows/docs-pages.yml'
+  # Republish without a docs change, e.g. after setting a custom domain.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DEPLOY: ${{ github.repository == 'dawg-io/noaa_it_all' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: website
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: website/.nvmrc
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+
+      # Only where it deploys: configure-pages fails in a repository without Pages.
+      - name: Setup GitHub Pages
+        id: pages
+        if: env.DEPLOY == 'true'
+        uses: actions/configure-pages@v6
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build with Astro
+        env:
+          PAGES_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+          PAGES_BASE_URL: ${{ steps.pages.outputs.base_url }}
+        run: |
+          set -euo pipefail
+
+          # When deploying, build for the address Pages actually serves:
+          # "/noaa_it_all" on github.io, "" once a custom domain is set. Other
+          # builds use the defaults in website/site.mjs.
+          if [ -n "$PAGES_BASE_URL" ]; then
+            PAGES_BASE_URL="${PAGES_BASE_URL%/}"
+            export DOCS_SITE="${PAGES_BASE_URL%"$PAGES_BASE_PATH"}"
+            export DOCS_BASE="${PAGES_BASE_PATH:-/}"
+          fi
+          echo "Building with site=${DOCS_SITE:-default} base=${DOCS_BASE:-default}"
+
+          npm run build
+
+      - name: Verify generated site
+        env:
+          PAGES_BASE_PATH: ${{ steps.pages.outputs.base_path }}
+          PAGES_BASE_URL: ${{ steps.pages.outputs.base_url }}
+        run: |
+          set -euo pipefail
+
+          # Fail rather than publish an empty or broken site over a working one.
+          test -s dist/index.html
+          test -s dist/entities/index.html
+          test -d dist/pagefind
+          test -s dist/sitemap-index.xml
+
+          if [ -n "$PAGES_BASE_URL" ]; then
+            export DOCS_BASE="${PAGES_BASE_PATH:-/}"
+          fi
+          npm run check-links
+
+      - name: Upload Pages artifact
+        if: env.DEPLOY == 'true'
+        uses: actions/upload-pages-artifact@v5
+        with:
+          path: website/dist
+
+  deploy:
+    if: github.repository == 'dawg-io/noaa_it_all' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      # Never cancel a deploy that is under way because a newer push landed.
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
