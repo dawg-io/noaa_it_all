@@ -1,0 +1,74 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "urn:oid:2.49.0.1.840.0.3e8c20ff6ecf3490175fe5c1b8844e3797b375fe.002.2",
+        "areaDesc": "Wilmette Harbor to Northerly Island IL",
+        "sent": "2026-10-14T15:24:00-05:00",
+        "effective": "2026-10-14T15:24:00-05:00",
+        "onset": "2026-10-16T13:00:00-05:00",
+        "expires": "2026-10-14T23:30:00-05:00",
+        "ends": "2026-10-17T01:00:00-05:00",
+        "status": "Actual",
+        "messageType": "Alert",
+        "category": "Met",
+        "severity": "Moderate",
+        "certainty": "Possible",
+        "urgency": "Future",
+        "event": "Gale Watch",
+        "senderName": "NWS Chicago IL",
+        "headline": "Gale Watch issued October 14 at 3:24PM CDT until October 17 at 1:00AM CDT by NWS Chicago IL",
+        "description": "* WHAT...For the Small Craft Advisory, significant waves to 6 ft\noccasionally to 8 ft expected. For the Gale Watch, north gales\nto 40 kt and significant waves to 12 ft occasionally to 16 ft\npossible.\n\n* WHERE...Wilmette Harbor to Northerly Island IL.\n\n* WHEN...For the Small Craft Advisory, until 10 AM CDT Thursday.\nFor the Gale Watch, from Friday afternoon through late Friday\nnight.\n\n* IMPACTS...Strong winds can cause hazardous waves which could\ncapsize or damage vessels and reduce visibility.",
+        "instruction": "Mariners should consider altering plans to avoid possible\nhazardous conditions.  Remain in port, seek safe harbor, alter\ncourse, and/or secure the vessel for severe wind and waves.",
+        "response": "Prepare",
+        "parameters": {
+          "NWSheadline": [
+            "SMALL CRAFT ADVISORY NOW IN EFFECT UNTIL 10 AM CDT THURSDAY... ...GALE WATCH IN EFFECT FROM FRIDAY AFTERNOON THROUGH LATE FRIDAY NIGHT"
+          ],
+          "VTEC": [
+            "/O.NEW.KLOT.GL.A.0011.261016T1800Z-261017T0600Z/"
+          ]
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "urn:oid:2.49.0.1.840.0.3e8c20ff6ecf3490175fe5c1b8844e3797b375fe.002.1",
+        "areaDesc": "Wilmette Harbor to Northerly Island IL",
+        "sent": "2026-10-14T15:24:00-05:00",
+        "effective": "2026-10-14T15:24:00-05:00",
+        "onset": "2026-10-14T18:00:00-05:00",
+        "expires": "2026-10-14T23:30:00-05:00",
+        "ends": "2026-10-15T10:00:00-05:00",
+        "status": "Actual",
+        "messageType": "Update",
+        "category": "Met",
+        "severity": "Minor",
+        "certainty": "Likely",
+        "urgency": "Expected",
+        "event": "Small Craft Advisory",
+        "senderName": "NWS Chicago IL",
+        "headline": "Small Craft Advisory issued October 14 at 3:24PM CDT until October 15 at 10:00AM CDT by NWS Chicago IL",
+        "description": "* WHAT...For the Small Craft Advisory, significant waves to 6 ft\noccasionally to 8 ft expected. For the Gale Watch, north gales\nto 40 kt and significant waves to 12 ft occasionally to 16 ft\npossible.\n\n* WHERE...Wilmette Harbor to Northerly Island IL.\n\n* WHEN...For the Small Craft Advisory, until 10 AM CDT Thursday.\nFor the Gale Watch, from Friday afternoon through late Friday\nnight.\n\n* IMPACTS...Strong winds can cause hazardous waves which could\ncapsize or damage vessels and reduce visibility.",
+        "instruction": "Mariners should consider altering plans to avoid possible\nhazardous conditions.  Remain in port, seek safe harbor, alter\ncourse, and/or secure the vessel for severe wind and waves.",
+        "response": "Avoid",
+        "parameters": {
+          "NWSheadline": [
+            "SMALL CRAFT ADVISORY NOW IN EFFECT UNTIL 10 AM CDT THURSDAY... ...GALE WATCH IN EFFECT FROM FRIDAY AFTERNOON THROUGH LATE FRIDAY NIGHT"
+          ],
+          "VTEC": [
+            "/O.EXT.KLOT.SC.Y.0089.261014T2300Z-261015T1500Z/"
+          ],
+          "expiredReferences": [
+            "w-nws.webmaster@noaa.gov,urn:oid:2.49.0.1.840.0.4276cb109af8a32ce10e75513d0351d0a37ab393.002.1,2026-10-14T03:02:00-05:00"
+          ]
+        }
+      }
+    }
+  ],
+  "title": "Current watches, warnings, and advisories for LMZ741",
+  "updated": "2026-10-15T01:35:25+00:00"
+}

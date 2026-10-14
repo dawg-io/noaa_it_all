@@ -356,3 +356,55 @@ class MarineForecastSensor(MarineSensor):
             "periods": forecast.get("periods", []),
             "forecast_source": data.get("source_url", ""),
         }
+
+
+class MarineHazardSensor(MarineSensor):
+    """The most severe NWS marine hazard in effect for the zone, or "None".
+
+    Reads the zone's active NWS alerts, so a Small Craft Advisory, Gale
+    Warning or Storm Warning shows from the moment it takes effect until it
+    ends or is cancelled. Issued hazards that have not started yet, and
+    watches, are only in the attributes. When the alerts cannot be fetched the
+    sensor is unavailable, never "None".
+    """
+
+    def __init__(self, coordinator, office_code, marine_zone):
+        """Initialize the sensor."""
+        super().__init__(coordinator, office_code, marine_zone, "hazard")
+
+    @property
+    def name(self):
+        """Return the local name of the sensor."""
+        return "Hazard"
+
+    @property
+    def state(self):
+        """Return the most severe hazard in effect, or "None"."""
+        data = self.coordinator.data
+        if not data:
+            return None
+        return data.get("hazard") or "None"
+
+    @property
+    def icon(self):
+        """Return the icon."""
+        data = self.coordinator.data
+        if data and data.get("hazard"):
+            return "mdi:alert"
+        return "mdi:check-circle-outline"
+
+    @property
+    def extra_state_attributes(self):
+        """Return the hazards in effect, those still to start, and watches."""
+        data = self.coordinator.data
+        if not data:
+            return {}
+        return {
+            "zone": self._marine_zone,
+            "office_code": self._office_code,
+            "hazard_count": len(data.get("hazards", [])),
+            "hazards": data.get("hazards", []),
+            "upcoming": data.get("upcoming", []),
+            "watches": data.get("watches", []),
+            "alerts_source": data.get("source_url", ""),
+        }

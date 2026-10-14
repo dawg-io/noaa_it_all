@@ -15,6 +15,7 @@ from .const import (
     CONF_ENTRY_TYPE,
     CONF_LATITUDE,
     CONF_LONGITUDE,
+    CONF_MARINE_LAKE,
     CONF_MARINE_ZONE,
     CONF_OFFICE_CODE,
     CONF_RADAR_LOOP_HOURS,
@@ -42,12 +43,14 @@ from .const import (
     USER_AGENT,
 )
 from .entry_config import resolve_entry_config
+from .marine_zones import LAKES, MARINE_ZONES
 from .parsers import normalize_marine_zone, parse_nearshore_forecast, product_is_stale
 from .offices import (
     SURF_HEIGHT,
     WATER_TEMPERATURE,
     entry_type,
     is_hurricane_entry,
+    is_marine_entry,
     is_radar_site,
     is_space_entry,
     is_surf_entry,
@@ -209,6 +212,83 @@ def _format_office_label(code, distance_miles):
     """Build a human-readable label for an office in the dropdown."""
     name = NWS_OFFICES.get(code, "Unknown")
     return f"{code} - {name} ({distance_miles:.1f} mi)"
+
+
+# The last choice on the lake and zone steps: type a zone ID the list lacks.
+MARINE_OTHER_ZONE = "other"
+_MARINE_OTHER_LABEL = "Other zone: enter its ID"
+
+
+def _marine_zone_distances(latitude, longitude):
+    """Return {zone: miles} from a point to each marine zone, or {} without a point."""
+    if latitude is None or longitude is None:
+        return {}
+    return {
+        zone: haversine_miles(latitude, longitude, lat, lon)
+        for zone, _name, _office, lat, lon in MARINE_ZONES
+    }
+
+
+def _build_marine_lake_options(latitude, longitude):
+    """Return (options, default) for the lake step.
+
+    Only lakes with a zone in the table are offered. With a home location
+    they are listed nearest first, with the distance to their nearest zone,
+    and the nearest is the default; without one, west to east.
+    """
+    distances = _marine_zone_distances(latitude, longitude)
+    nearest = {}
+    for zone, *_rest in MARINE_ZONES:
+        lake = zone[:2]
+        miles = distances.get(zone)
+        if lake not in nearest or (miles is not None and miles < nearest[lake]):
+            nearest[lake] = miles
+    lakes = [lake for lake in LAKES if lake in nearest]
+    if distances:
+        lakes.sort(key=lambda lake: nearest[lake])
+    options = {}
+    for lake in lakes:
+        if distances:
+            options[lake] = f"{LAKES[lake]} (nearest zone {nearest[lake]:.1f} mi)"
+        else:
+            options[lake] = LAKES[lake]
+    options[MARINE_OTHER_ZONE] = _MARINE_OTHER_LABEL
+    return options, lakes[0]
+
+
+def _format_marine_zone_label(zone, name, distance_miles=None, added=False):
+    """Build a zone dropdown label like the office ones: ID, name, distance, whether added."""
+    label = f"{zone} - {name}"
+    if distance_miles is not None:
+        label += f" ({distance_miles:.1f} mi)"
+    if added:
+        label += " - already added"
+    return label
+
+
+def _build_marine_zone_options(lake, latitude, longitude, configured=()):
+    """Return (options, default) for one lake's zones.
+
+    With a home location the zones are listed nearest first and the default is
+    the nearest zone without an entry; without one, they are in zone ID order
+    and the default is the first without an entry. (Zone IDs do not follow the
+    shore, so distance is the useful order.)
+    """
+    distances = _marine_zone_distances(latitude, longitude)
+    rows = [row for row in MARINE_ZONES if row[0][:2] == lake]
+    if distances:
+        rows.sort(key=lambda row: distances[row[0]])
+    options = {
+        zone: _format_marine_zone_label(zone, name, distances.get(zone), zone in configured)
+        for zone, name, *_rest in rows
+    }
+    free = [zone for zone, *_rest in rows if zone not in configured] or [row[0] for row in rows]
+    if distances:
+        default = min(free, key=lambda zone: distances[zone])
+    else:
+        default = free[0]
+    options[MARINE_OTHER_ZONE] = _MARINE_OTHER_LABEL
+    return options, default
 
 
 def _format_surf_label(code, distance_miles, issuing=None, added=False):
@@ -499,6 +579,7 @@ class NOAAConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._surf_code = None
         self._issuing = None
         self._issuing_checked = False
+        self._marine_lake = None
 
     async def async_step_user(self, user_input=None):
         """Step 1: choose weather for a location, surf, marine, Space or hurricanes."""
@@ -508,7 +589,57 @@ class NOAAConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return self.async_show_menu(step_id="user", menu_options=menu_options)
 
     async def async_step_marine(self, user_input=None):
-        """Add a nearshore marine forecast for one marine zone."""
+        """Add a nearshore marine forecast: choose the lake, nearest first."""
+        latitude, longitude = _ha_home_coords(getattr(self, "hass", None))
+        options, default = _build_marine_lake_options(latitude, longitude)
+        if user_input is not None:
+            lake = user_input.get(CONF_MARINE_LAKE)
+            if lake == MARINE_OTHER_ZONE:
+                return await self.async_step_marine_manual()
+            if lake in LAKES:
+                self._marine_lake = lake
+                return await self.async_step_marine_zone()
+
+        return self.async_show_form(
+            step_id="marine",
+            data_schema=vol.Schema({
+                vol.Required(CONF_MARINE_LAKE, default=default): vol.In(options),
+            }),
+        )
+
+    async def async_step_marine_zone(self, user_input=None):
+        """Choose a zone on the chosen lake, nearest first and pre-selected."""
+        if self._marine_lake not in LAKES:
+            return await self.async_step_marine()
+        latitude, longitude = _ha_home_coords(getattr(self, "hass", None))
+        options, default = _build_marine_zone_options(
+            self._marine_lake, latitude, longitude, self._configured_marine_zones()
+        )
+        errors = {}
+        placeholders = {"zone": ""}
+        if user_input is not None:
+            zone = user_input.get(CONF_MARINE_ZONE)
+            if zone == MARINE_OTHER_ZONE:
+                return await self.async_step_marine_manual()
+            if zone in options:
+                result, error = await self._async_add_marine_zone(zone)
+                if result is not None:
+                    return result
+                errors[CONF_MARINE_ZONE] = error
+                placeholders["zone"] = zone
+                default = zone
+
+        return self.async_show_form(
+            step_id="marine_zone",
+            data_schema=vol.Schema({
+                vol.Required(CONF_MARINE_ZONE, default=default): vol.In(options),
+            }),
+            errors=errors,
+            description_placeholders=placeholders,
+        )
+
+    async def async_step_marine_manual(self, user_input=None):
+        """Type a marine zone ID, for a zone the list does not have."""
         errors = {}
         placeholders = {"zone": ""}
         suggested = ""
@@ -518,23 +649,14 @@ class NOAAConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if zone is None:
                 errors[CONF_MARINE_ZONE] = "invalid_marine_zone"
             else:
-                await self.async_set_unique_id(f"noaa_marine_{zone}")
-                self._abort_if_unique_id_configured(error="marine_already_configured")
-                found, error = await async_lookup_marine_zone(self.hass, zone)
-                if found is not None:
-                    return self.async_create_entry(
-                        title=f"NOAA Marine - {found['name']}",
-                        data={
-                            CONF_ENTRY_TYPE: ENTRY_TYPE_MARINE,
-                            CONF_MARINE_ZONE: zone,
-                            CONF_OFFICE_CODE: found["office"],
-                        },
-                    )
+                result, error = await self._async_add_marine_zone(zone)
+                if result is not None:
+                    return result
                 errors[CONF_MARINE_ZONE] = error
                 placeholders["zone"] = zone
 
         return self.async_show_form(
-            step_id="marine",
+            step_id="marine_manual",
             data_schema=vol.Schema({
                 vol.Required(
                     CONF_MARINE_ZONE, description={"suggested_value": suggested}
@@ -725,6 +847,34 @@ class NOAAConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def _entries(self):
         """Return this integration's entries, leaving out ignored ones."""
         return self._async_current_entries(include_ignore=False)
+
+    def _configured_marine_zones(self):
+        """Return the zones that already have a marine entry."""
+        return {
+            entry.data.get(CONF_MARINE_ZONE)
+            for entry in self._entries()
+            if is_marine_entry(entry.data)
+        }
+
+    async def _async_add_marine_zone(self, zone):
+        """Check a zone with NWS and add its entry.
+
+        Returns (result, None) with the created entry, or (None, error) with
+        the form error key. A zone that already has an entry aborts the flow.
+        """
+        await self.async_set_unique_id(f"noaa_marine_{zone}")
+        self._abort_if_unique_id_configured(error="marine_already_configured")
+        found, error = await async_lookup_marine_zone(self.hass, zone)
+        if found is None:
+            return None, error
+        return self.async_create_entry(
+            title=f"NOAA Marine - {found['name']}",
+            data={
+                CONF_ENTRY_TYPE: ENTRY_TYPE_MARINE,
+                CONF_MARINE_ZONE: zone,
+                CONF_OFFICE_CODE: found["office"],
+            },
+        ), None
 
     def _configured_surf_offices(self):
         """Return the offices that already have a surf entry."""

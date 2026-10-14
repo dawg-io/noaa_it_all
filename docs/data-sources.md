@@ -25,7 +25,9 @@
   - Real-time alert monitoring with automatic filtering
 - **Rip Current/Surf Data**: NWS Surf Zone Forecasts (SRF products) for rip current risk,
   water temperature from NOAA CO-OPS tide stations, and surf height from NDBC buoys
-- **Marine Forecasts**: NWS Nearshore Marine Forecasts (NSH products) from the Great Lakes offices
+- **Marine Forecasts**: NWS Nearshore Marine Forecasts (NSH products) from the Great Lakes offices,
+  and the NWS active alerts for each marine zone (advisories, warnings and watches) for its Hazard sensor.
+  The zones offered at setup come from `marine_zones.py`, generated from NWS by `scripts/build_marine_zones.py`
 - **Forecasts, Radar and Discussion**: NWS forecasts and gridpoint data (weather.gov API), NEXRAD
   radar images from radar.weather.gov, and the office's Area Forecast Discussion (AFD)
 - **Weather Observations**: National Weather Service observation stations (weather.gov API)
