@@ -39,10 +39,11 @@ class TestManifest(unittest.TestCase):
         self.assertTrue(self.manifest.get("config_flow"))
 
     def test_documentation_url(self):
-        # NOTE: documentation and issue_tracker must point to the primary
-        # dawg-io/noaa_it_all repository, NOT this dev fork.
+        # The (?) on the integration's page in Home Assistant opens this URL:
+        # the documentation site that website/ builds from docs/ and the public
+        # repository deploys, NOT this dev fork or its repository page.
         doc = self.manifest.get("documentation", "")
-        self.assertIn("github.com/dawg-io/noaa_it_all", doc)
+        self.assertEqual(doc, "https://dawg-io.github.io/noaa_it_all/")
 
     def test_issue_tracker_url(self):
         # NOTE: Must point to dawg-io/noaa_it_all, not the dev repo.

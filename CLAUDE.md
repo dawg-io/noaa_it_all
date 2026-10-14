@@ -39,7 +39,8 @@ is always ready to release. Changes to docs, tests or CI alone don't.
 - A new page in `docs/` needs an entry in `SIDEBAR` in `website/site.mjs`, or the build fails.
 - `.github/workflows/docs-pages.yml` builds the site and checks its links whenever `docs/` or
   `website/` changes. It deploys to GitHub Pages only from the public repository's `main`, at
-  `https://dawg-io.github.io/noaa_it_all/`, which the README and `info.md` link to.
+  `https://dawg-io.github.io/noaa_it_all/`, which the README, `info.md` and the manifest's
+  `documentation` URL (the **?** on the integration's page) link to.
 
 ## Releasing to public
 
