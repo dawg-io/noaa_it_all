@@ -78,7 +78,8 @@ The docs change with the code. Any change users can see updates the documentatio
 pull request:
 
 - **The pages that describe it** in `docs/`: setup steps, entities and their attributes, example
-  automations and cards, troubleshooting. The README too, when its summary changes.
+  automations and cards, troubleshooting. The README and `info.md` (the HACS info page) too, when
+  their summary of the features, devices or entities changes.
 - **The screenshots** in `docs/images/`. Retake each one whose screen or entities the change
   alters, from a real Home Assistant (see **Testing in Home Assistant**): dark theme, 2× scale,
   cropped to the dialog or card. Replace the file under the same name, or add a new one and use
