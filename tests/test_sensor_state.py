@@ -4,7 +4,7 @@ import json
 import os
 import sys
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from enum import StrEnum
 from unittest.mock import MagicMock, patch
 
@@ -30,7 +30,9 @@ _ha_entity.DeviceInfo = dict
 _ha_sensor = MagicMock()
 _ha_sensor.SensorEntity = type("SensorEntity", (), {})
 # Str enums, like Home Assistant's.
-_ha_sensor.SensorDeviceClass = StrEnum("SensorDeviceClass", {"TIMESTAMP": "timestamp"})
+_ha_sensor.SensorDeviceClass = StrEnum("SensorDeviceClass", {
+    "TIMESTAMP": "timestamp", "TEMPERATURE": "temperature", "DISTANCE": "distance",
+})
 _ha_sensor.SensorStateClass = StrEnum("SensorStateClass", {"MEASUREMENT": "measurement"})
 
 _MOCK_MODULES = {
@@ -169,10 +171,22 @@ class TestPlanetaryKIndexSensor(unittest.TestCase):
         return PlanetaryKIndexSensor(coord, OFFICE)
 
     def test_state_returns_latest_kp(self):
+        """SWPC lists the samples oldest first; the state is the newest, 16:47's Kp 1."""
         kp_data = _load_fixture("space_weather_kp.json")
-        sensor = self._make(kp_data)
-        # PlanetaryKIndexSensor uses kp_data[-1] (last element)
-        self.assertEqual(sensor.state, 3.00)
+        newest = kp_data[-1]["kp_index"]
+        # So that reading any other sample, or the newest one's estimated_kp, fails.
+        self.assertNotIn(newest, [s["kp_index"] for s in kp_data[:-1]])
+        self.assertNotEqual(kp_data[-1]["estimated_kp"], newest)
+        self.assertEqual(self._make(kp_data).state, 1)
+
+    def test_the_fixture_is_in_the_feed_order(self):
+        """Five samples of the live planetary_k_index_1m.json, 2026-10-14 16:43 to 16:47 UTC.
+
+        The feed held 358 samples that day, 11:02 to 16:59, oldest first.
+        """
+        tags = [s["time_tag"] for s in _load_fixture("space_weather_kp.json")]
+        self.assertGreater(len(tags), 1)
+        self.assertTrue(all(a < b for a, b in zip(tags, tags[1:])), tags)
 
     def test_state_no_data(self):
         from noaa_it_all.sensors.space_weather import PlanetaryKIndexSensor
@@ -193,6 +207,38 @@ class TestPlanetaryKIndexSensor(unittest.TestCase):
         info = sensor.device_info
         ids = list(info["identifiers"])[0]
         self.assertIn("space", ids[1])
+
+
+class TestEveryKpReaderUsesTheNewestSample(unittest.TestCase):
+    """#84: each sensor that reads the 1-minute Kp feed takes its last, newest sample.
+
+    A storm sample (Kp 7) before the fixture's newest (Kp 1) gives each of them
+    a different reading if it read the oldest instead.
+    """
+
+    def _readings(self, kp_data):
+        from noaa_it_all.sensors.space_weather import (
+            AuroraDurationSensor, AuroraNextTimeSensor, AuroraVisibilityProbabilitySensor,
+            PlanetaryKIndexSensor, PlanetaryKIndexSensorRating,
+        )
+        coord = _make_coordinator({"kp_index": kp_data, "kp_forecast": []})
+        return {
+            "Planetary K-index": PlanetaryKIndexSensor(coord, "DLH").state,
+            "Planetary K-index Rating": PlanetaryKIndexSensorRating(coord, "DLH").state,
+            "Aurora Duration": AuroraDurationSensor(coord, "DLH").state,
+            "Aurora Visibility Probability": AuroraVisibilityProbabilitySensor(coord, "DLH").state,
+            "Aurora Next Time current_kp": AuroraNextTimeSensor(coord, "DLH").extra_state_attributes["current_kp"],
+        }
+
+    def test_each_reads_the_newest_sample(self):
+        samples = _load_fixture("space_weather_kp.json")
+        storm = dict(samples[0], kp_index=7, estimated_kp=7.0, kp="7Z")
+        readings = self._readings([storm, samples[-1]])
+        newest, oldest = self._readings([samples[-1]]), self._readings([storm])
+        for name, reading in readings.items():
+            with self.subTest(name):
+                self.assertEqual(reading, newest[name])
+                self.assertNotEqual(reading, oldest[name])
 
 
 class TestPlanetaryKIndexSensorRating(unittest.TestCase):
@@ -284,9 +330,15 @@ class TestSurfHeightSensor(unittest.TestCase):
     def test_state_from_fixture(self):
         text = _load_fixture("surf_srf.txt")
         sensor = self._make(text)
-        # Should parse "3 TO 5 FEET" as numeric
-        state = sensor.state
-        self.assertIsNotNone(state)
+        # "3 TO 5 FEET" averages to 4 ft. With a device class Home Assistant
+        # rejects a state that isn't a number, so a range string would break it.
+        self.assertEqual(sensor.native_value, 4.0)
+        self.assertIsInstance(sensor.native_value, float)
+
+    def test_state_from_ndbc(self):
+        from noaa_it_all.sensors.surf import SurfHeightSensor
+        coord = _make_coordinator({"forecast_text": "", "source_url": "", "wave_height_ft": 2.0})
+        self.assertEqual(SurfHeightSensor(coord, OFFICE).native_value, 2.0)
 
 
 class TestWaterTemperatureSensor(unittest.TestCase):
@@ -304,14 +356,65 @@ class TestWaterTemperatureSensor(unittest.TestCase):
 
     def test_state_from_coops(self):
         sensor = self._make(water_temp_f=62.4)
-        state = sensor.state
+        state = sensor.native_value
         self.assertEqual(state, 62.4)
 
     def test_state_no_data(self):
         from noaa_it_all.sensors.surf import WaterTemperatureSensor
         coord = _make_coordinator(None)
         sensor = WaterTemperatureSensor(coord, OFFICE)
-        self.assertIsNone(sensor.state)
+        self.assertIsNone(sensor.native_value)
+
+    def test_state_from_srf_is_a_number(self):
+        sensor = self._make("WATER TEMPERATURE.......IN THE MID 60S.")
+        self.assertEqual(sensor.native_value, 65.0)
+        self.assertIsInstance(sensor.native_value, float)
+
+
+class TestSurfSensorUnits(unittest.TestCase):
+    """Water Temperature and Surf Height let Home Assistant convert them (#82).
+
+    Home Assistant converts only a SensorEntity that reports native_value and
+    native_unit_of_measurement with a device class; it compares the class with
+    ``is``, so it has to be the SensorDeviceClass member, not a string.
+    """
+
+    def _sensors(self):
+        from noaa_it_all.sensors.surf import SurfHeightSensor, WaterTemperatureSensor
+        data = {"forecast_text": "", "source_url": "", "water_temp_f": 62.4, "wave_height_ft": 2.0}
+        coord = _make_coordinator(data)
+        classes = _ha_sensor.SensorDeviceClass
+        return (
+            (WaterTemperatureSensor(coord, OFFICE), classes.TEMPERATURE, "°F", 62.4),
+            (SurfHeightSensor(coord, OFFICE), classes.DISTANCE, "ft", 2.0),
+        )
+
+    def test_they_are_sensor_entities_with_a_native_unit_and_device_class(self):
+        for sensor, device_class, unit, value in self._sensors():
+            with self.subTest(type(sensor).__name__):
+                self.assertIsInstance(sensor, _ha_sensor.SensorEntity)
+                self.assertIs(sensor.device_class, device_class)
+                self.assertEqual(sensor.native_unit_of_measurement, unit)
+                self.assertEqual(sensor.native_value, value)
+                # In °F and ft, the units they suggest, as before.
+                self.assertEqual(sensor.suggested_display_precision, 1)
+
+    def test_they_suggest_their_us_customary_unit(self):
+        """Shown in any install unless another is picked in the entity's settings.
+
+        Home Assistant stores it when it first sees the sensor, so the unit system
+        doesn't change it, and a restart doesn't either (#87).
+        """
+        for sensor, _, unit, _ in self._sensors():
+            with self.subTest(type(sensor).__name__):
+                self.assertEqual(sensor.suggested_unit_of_measurement, unit)
+
+    def test_they_leave_the_state_and_unit_to_home_assistant(self):
+        """Overriding state or unit_of_measurement would bypass the conversion."""
+        for sensor, *_ in self._sensors():
+            with self.subTest(type(sensor).__name__):
+                self.assertNotIn("state", vars(type(sensor)))
+                self.assertNotIn("unit_of_measurement", vars(type(sensor)))
 
 
 # ---------------------------------------------------------------
@@ -660,6 +763,8 @@ class TestAuroraNextTimeFromTheKpForecast(unittest.TestCase):
     2026-10-14 08:05 UTC, oldest first: observed periods to 03:00, estimated
     ones for the rest of the day (3.67 at 06:00 and 09:00, then 2.67, 3.0,
     3.33 and 3.33) and predicted ones to 2026-10-17 00:00 (at most 3.33).
+    Without its own location, Duluth (DLH) uses the office's coordinates; it
+    is dark there, the Sun 12 degrees down, from about 00:29 to 11:20 UTC.
     """
 
     NOW = "2026-10-14 08:05"
@@ -693,15 +798,109 @@ class TestAuroraNextTimeFromTheKpForecast(unittest.TestCase):
         self.assertEqual(value, datetime(2026, 10, 14, 9, tzinfo=timezone.utc))
 
     def test_periods_below_the_threshold_are_skipped(self):
-        """After 09:00 the next period at 3 or more is 15:00 (3.0)."""
-        value, _ = self._value(self._sensor("DLH"), "2026-10-14 09:30")
-        self.assertEqual(value, datetime(2026, 10, 14, 15, tzinfo=timezone.utc))
+        """At 21:30 the next period, 00:00 on the 15th, is forecast at 2.67; 03:00 (3.33) is the next at 3."""
+        value, _ = self._value(self._sensor("DLH"), "2026-10-14 21:30")
+        self.assertEqual(value, datetime(2026, 10, 15, 3, tzinfo=timezone.utc))
 
     def test_observed_periods_never_count(self):
+        """Without 09:00, the next period at 3 or more after dark is 03:00 on the 15th."""
         forecast = [dict(p, observed="observed") if p["time_tag"] == "2026-10-14T09:00:00" else p
                     for p in _load_fixture("space_weather_kp_forecast.json")]
         value, _ = self._value(self._sensor("DLH", forecast=forecast))
+        self.assertEqual(value, datetime(2026, 10, 15, 3, tzinfo=timezone.utc))
+
+    def test_periods_in_daylight_are_skipped(self):
+        """#85: 15:00, 18:00 and 21:00 (3.0 to 3.33) are 10 AM to 7 PM in Duluth; 03:00 on the 15th is after dark."""
+        value, attrs = self._value(self._sensor("DLH"), "2026-10-14 09:30")
+        self.assertEqual(value, datetime(2026, 10, 15, 3, tzinfo=timezone.utc))
+        self.assertEqual(attrs["predicted_kp"], 3.33)
+
+    NIGHTFALL_15TH = [
+        {"time_tag": "2026-10-15T00:00:00", "kp": 5.0, "observed": "predicted", "noaa_scale": "G1"},
+        {"time_tag": "2026-10-15T03:00:00", "kp": 1.0, "observed": "predicted", "noaa_scale": None},
+    ]
+
+    def test_a_period_that_gets_dark_counts_from_nightfall(self):
+        """#85: the 00:00 to 03:00 period gets dark in Duluth, the Sun 12 degrees down, at 00:29 (7:29 PM)."""
+        from noaa_it_all.astro import find_window_below
+        value, attrs = self._value(self._sensor("DLH", forecast=self.NIGHTFALL_15TH), "2026-10-14 20:00")
+        nightfall, _ = find_window_below(date(2026, 10, 14), 46.8369, -92.1833, -12)
+        self.assertTrue(nightfall <= value < nightfall + timedelta(minutes=1), (nightfall, value))
+        self.assertEqual(value, datetime(2026, 10, 15, 0, 29, tzinfo=timezone.utc))
+        self.assertEqual(attrs["predicted_kp"], 5.0)
+
+    def test_nightfall_is_a_whole_minute(self):
+        value, _ = self._value(self._sensor("DLH", forecast=self.NIGHTFALL_15TH), "2026-10-14 20:00")
+        self.assertEqual((value.second, value.microsecond), (0, 0))
+
+    def test_nightfall_in_a_period_under_way_stays_until_it_comes(self):
+        """Once the 00:00 period begins, its nightfall is still ahead; it goes once nightfall has come."""
+        sensor = self._sensor("DLH", forecast=self.NIGHTFALL_15TH)
+        before, _ = self._value(sensor, "2026-10-14 23:50")
+        self.assertEqual(self._value(sensor, "2026-10-15 00:10")[0], before)
+        self.assertIsNone(self._value(sensor, "2026-10-15 00:40")[0])
+
+    def test_the_entrys_own_location_decides_when_it_is_dark(self):
+        """At 15:00 UTC it is day at the Duluth office but night at an entry in Guam with that office."""
+        forecast = [{"time_tag": "2026-10-14T15:00:00", "kp": 9.0, "observed": "predicted", "noaa_scale": "G5"}]
+        office, _ = self._value(self._sensor("DLH", forecast=forecast))
+        guam, _ = self._value(self._sensor("DLH", forecast=forecast, lat=13.48, lon=144.79))
+        self.assertIsNone(office)
+        self.assertEqual(guam, datetime(2026, 10, 14, 15, tzinfo=timezone.utc))
+
+    def test_without_any_location_daylight_isnt_known(self):
+        """An office outside the table, with no location, can't tell day from night: the period start counts."""
+        forecast = [{"time_tag": "2026-10-14T15:00:00", "kp": 9.0, "observed": "predicted", "noaa_scale": "G5"}]
+        value, _ = self._value(self._sensor("XYZ", forecast=forecast))
         self.assertEqual(value, datetime(2026, 10, 14, 15, tzinfo=timezone.utc))
+
+    def test_darkness_changes_smoothly_with_latitude(self):
+        """On a June night Seattle and Bellingham, a degree apart, get dark within minutes of each other."""
+        forecast = [{"time_tag": f"2026-06-21T{hour:02d}:00:00", "kp": 9.0, "observed": "predicted",
+                     "noaa_scale": "G5"} for hour in (3, 6)]
+        seattle, _ = self._value(self._sensor("SEW", forecast=forecast, lat=47.61, lon=-122.33), "2026-06-20 20:00")
+        bellingham, _ = self._value(self._sensor("SEW", forecast=forecast, lat=48.75, lon=-122.48),
+                                    "2026-06-20 20:00")
+        # About 05:48 and 06:00. Astronomical night, with a nautical fallback where there is
+        # none, would give Seattle 07:19 and Bellingham 05:59.
+        self.assertLess(abs(bellingham - seattle), timedelta(minutes=30))
+        self.assertTrue(datetime(2026, 6, 21, 5, 30, tzinfo=timezone.utc) < seattle
+                        < datetime(2026, 6, 21, 6, tzinfo=timezone.utc), seattle)
+
+    def test_unknown_when_the_darkness_cant_be_worked_out(self):
+        """A failure reads unknown, not a time that may be in daylight."""
+        from noaa_it_all.sensors import space_weather
+        space_weather._dark_windows.cache_clear()
+        with patch.object(space_weather, "find_window_below", side_effect=ValueError("math domain error")):
+            value, attrs = self._value(self._sensor("DLH"))
+        self.assertIsNone(value)
+        self.assertIsNone(attrs["predicted_kp"])
+
+    def test_the_nights_are_worked_out_once_a_day(self):
+        from noaa_it_all import astro
+        from noaa_it_all.sensors import space_weather
+        space_weather._dark_windows.cache_clear()
+        with patch.object(space_weather, "find_window_below", wraps=astro.find_window_below) as search:
+            self._value(self._sensor("DLH"))
+            self._value(self._sensor("DLH"), "2026-10-14 09:55")
+        self.assertEqual(search.call_count, len(space_weather._AURORA_NIGHTS))
+
+    def test_the_state_and_predicted_kp_describe_the_same_period(self):
+        """The attributes reuse the period the state was worked out from, whatever the time when they're read."""
+        sensor = self._sensor("DLH")
+        with patch("noaa_it_all.sensors.space_weather.datetime", _at("2026-10-14 08:59")):
+            value = sensor.native_value
+        with patch("noaa_it_all.sensors.space_weather.datetime", _at("2026-10-14 09:01")):
+            attrs = sensor.extra_state_attributes
+        self.assertEqual(value, datetime(2026, 10, 14, 9, tzinfo=timezone.utc))
+        self.assertEqual(attrs["predicted_kp"], 3.67)
+
+    def test_unknown_where_it_never_gets_dark(self):
+        """Fairbanks has no night in June, so even a Kp 9 forecast doesn't count."""
+        forecast = [{"time_tag": f"2026-06-21T{hour:02d}:00:00", "kp": 9.0, "observed": "predicted",
+                     "noaa_scale": "G5"} for hour in range(0, 24, 3)]
+        value, _ = self._value(self._sensor("AFG", forecast=forecast, lat=64.84, lon=-147.72), "2026-06-20 23:00")
+        self.assertIsNone(value)
 
     def test_the_earliest_period_wins_whatever_the_feed_order(self):
         forecast = list(reversed(_load_fixture("space_weather_kp_forecast.json")))
@@ -741,13 +940,13 @@ class TestAuroraNextTimeFromTheKpForecast(unittest.TestCase):
 
     def test_a_null_or_missing_kp_is_skipped(self):
         forecast = [
-            {"time_tag": "2026-10-14T09:00:00", "kp": None, "observed": "estimated", "noaa_scale": None},
-            {"time_tag": "2026-10-14T12:00:00", "observed": "predicted", "noaa_scale": None},
-            {"time_tag": "2026-10-14T15:00:00", "kp": "5", "observed": "predicted", "noaa_scale": None},
-            {"time_tag": "2026-10-14T18:00:00", "kp": 4.0, "observed": "predicted", "noaa_scale": None},
+            {"time_tag": "2026-10-15T00:00:00", "kp": None, "observed": "predicted", "noaa_scale": None},
+            {"time_tag": "2026-10-15T03:00:00", "observed": "predicted", "noaa_scale": None},
+            {"time_tag": "2026-10-15T06:00:00", "kp": "5", "observed": "predicted", "noaa_scale": None},
+            {"time_tag": "2026-10-15T09:00:00", "kp": 4.0, "observed": "predicted", "noaa_scale": None},
         ]
         value, _ = self._value(self._sensor("DLH", forecast=forecast))
-        self.assertEqual(value, datetime(2026, 10, 14, 18, tzinfo=timezone.utc))
+        self.assertEqual(value, datetime(2026, 10, 15, 9, tzinfo=timezone.utc))
 
     def test_no_data_at_all_is_unknown(self):
         from noaa_it_all.sensors.space_weather import AuroraNextTimeSensor
