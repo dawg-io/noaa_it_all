@@ -2,9 +2,16 @@
 
 Covers rip current risk, surf height and water temperature from NWS
 Surf Zone Forecasts (SRF product).
+
+Water temperature is in °F, as CO-OPS and the SRF text give it, and surf height
+in feet, as the SRF text gives it and NDBC's metres are converted to in
+parsers.py. They suggest those units, so Home Assistant shows them in any
+install, and with a device class it converts them to the unit chosen in an
+entity's settings.
 """
 
 import logging
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -94,7 +101,7 @@ class RipCurrentRiskSensor(CoordinatorEntity):
         )
 
 
-class SurfHeightSensor(CoordinatorEntity):
+class SurfHeightSensor(CoordinatorEntity, SensorEntity):
     """Representation of Surf Height sensor for specific NWS office location.
 
     Uses ``_attr_has_entity_name = True`` so that Home Assistant
@@ -122,8 +129,8 @@ class SurfHeightSensor(CoordinatorEntity):
         return "Surf Height"
 
     @property
-    def state(self):
-        """Return the state of the sensor."""
+    def native_value(self):
+        """Return the surf height in feet."""
         if not self.coordinator.data:
             return self._state
         # Prefer NDBC API wave height, fall back to SRF text parsing
@@ -134,9 +141,24 @@ class SurfHeightSensor(CoordinatorEntity):
         return normalize_numeric(parse_surf_height(text))
 
     @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement."""
-        return 'ft'
+    def native_unit_of_measurement(self):
+        """Return feet; Home Assistant converts them."""
+        return "ft"
+
+    @property
+    def suggested_unit_of_measurement(self):
+        """Return feet, shown unless another unit is chosen in the entity's settings."""
+        return "ft"
+
+    @property
+    def suggested_display_precision(self):
+        """Return how many decimals to show, in feet."""
+        return 1
+
+    @property
+    def device_class(self):
+        """Return the device class."""
+        return SensorDeviceClass.DISTANCE
 
     @property
     def icon(self):
@@ -168,7 +190,7 @@ class SurfHeightSensor(CoordinatorEntity):
         )
 
 
-class WaterTemperatureSensor(CoordinatorEntity):
+class WaterTemperatureSensor(CoordinatorEntity, SensorEntity):
     """Representation of Water Temperature sensor for specific NWS office location.
 
     Uses ``_attr_has_entity_name = True`` so that Home Assistant
@@ -196,8 +218,8 @@ class WaterTemperatureSensor(CoordinatorEntity):
         return "Water Temperature"
 
     @property
-    def state(self):
-        """Return the state of the sensor."""
+    def native_value(self):
+        """Return the water temperature in °F."""
         if not self.coordinator.data:
             return self._state
         # Prefer CO-OPS API water temp, fall back to SRF text parsing
@@ -208,9 +230,24 @@ class WaterTemperatureSensor(CoordinatorEntity):
         return normalize_numeric(parse_water_temperature(text))
 
     @property
-    def unit_of_measurement(self):
-        """Return the unit of measurement."""
-        return '°F'
+    def native_unit_of_measurement(self):
+        """Return °F; Home Assistant converts it."""
+        return "°F"
+
+    @property
+    def suggested_unit_of_measurement(self):
+        """Return °F, shown unless another unit is chosen in the entity's settings."""
+        return "°F"
+
+    @property
+    def suggested_display_precision(self):
+        """Return how many decimals to show, in °F."""
+        return 1
+
+    @property
+    def device_class(self):
+        """Return the device class."""
+        return SensorDeviceClass.TEMPERATURE
 
     @property
     def icon(self):

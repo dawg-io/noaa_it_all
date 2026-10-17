@@ -168,8 +168,8 @@ class TestAsyncAddedToHass(unittest.TestCase):
         }
         entity = self._make(obs_data=obs_data)
         self._run(entity.async_added_to_hass())
-        # Temperature 20°C -> 68°F
-        self.assertAlmostEqual(entity._attr_native_temperature, 68.0, places=0)
+        # 20 °C, as NWS reports it; Home Assistant converts it.
+        self.assertEqual(entity._attr_native_temperature, 20.0)
         self.assertEqual(entity._attr_humidity, 65)
         self.assertIsNotNone(entity._attr_native_pressure)
 
@@ -270,6 +270,19 @@ def _period(start, is_daytime, temperature, name):
     }
 
 
+def _f(celsius):
+    """A native °C forecast temperature as a US customary install shows it: whole °F.
+
+    Home Assistant converts with ×1.8 + 32 and rounds °F to whole degrees.
+    """
+    return None if celsius is None else round(celsius * 1.8 + 32)
+
+
+def _highs_and_lows(forecasts):
+    """Each entry's date, high and low, in the whole °F a US customary install shows."""
+    return [(f["datetime"][:10], _f(f["native_temperature"]), _f(f["native_templow"])) for f in forecasts]
+
+
 def _frozen_now(hour, minute):
     """A datetime class whose now() is 2026-10-14 at the given local time."""
     class _Frozen(datetime):
@@ -302,10 +315,8 @@ class TestDailyForecast(unittest.TestCase):
             _period("2026-10-15T06:00:00-04:00", True, 77, "Thursday"),
             _period("2026-10-15T18:00:00-04:00", False, 50, "Thursday Night"),
         ], 3, 30)
-        dates = [f["datetime"][:10] for f in forecasts]
-        self.assertEqual(dates, ["2026-10-14", "2026-10-15"])
-        self.assertEqual((forecasts[0]["temperature"], forecasts[0]["templow"]), (75, 52))
-        self.assertNotIn(self.OBSERVED, [f["temperature"] for f in forecasts])
+        self.assertEqual(_highs_and_lows(forecasts), [("2026-10-14", 75, 52), ("2026-10-15", 77, 50)])
+        self.assertNotIn(self.OBSERVED, [f["native_temperature"] for f in forecasts])
 
     def test_evening_today_has_tonights_low_and_no_high(self):
         """In the evening NWS has no high left for today, so the observed temperature isn't used as one."""
@@ -314,10 +325,7 @@ class TestDailyForecast(unittest.TestCase):
             _period("2026-10-15T06:00:00-04:00", True, 77, "Thursday"),
             _period("2026-10-15T18:00:00-04:00", False, 50, "Thursday Night"),
         ], 20, 0)
-        dates = [f["datetime"][:10] for f in forecasts]
-        self.assertEqual(dates, ["2026-10-14", "2026-10-15"])
-        self.assertEqual((forecasts[0]["temperature"], forecasts[0]["templow"]), (None, 52))
-        self.assertEqual((forecasts[1]["temperature"], forecasts[1]["templow"]), (77, 50))
+        self.assertEqual(_highs_and_lows(forecasts), [("2026-10-14", None, 52), ("2026-10-15", 77, 50)])
 
     def test_overnight_starting_before_3am_is_not_a_separate_entry(self):
         """An Overnight period from 01:00 falls in the 3 AM cutoff window; still one entry for today."""
@@ -327,7 +335,7 @@ class TestDailyForecast(unittest.TestCase):
             _period("2026-10-14T18:00:00-04:00", False, 52, "Tonight"),
             _period("2026-10-15T06:00:00-04:00", True, 77, "Thursday"),
         ], 1, 30)
-        self.assertEqual([(f["datetime"][:10], f["temperature"]) for f in forecasts],
+        self.assertEqual([entry[:2] for entry in _highs_and_lows(forecasts)],
                          [("2026-10-14", 75), ("2026-10-15", 77)])
 
     def test_last_nights_period_after_midnight_is_skipped(self):
@@ -337,8 +345,7 @@ class TestDailyForecast(unittest.TestCase):
             _period("2026-10-14T06:00:00-04:00", True, 75, "Wednesday"),
             _period("2026-10-14T18:00:00-04:00", False, 52, "Wednesday Night"),
         ], 0, 30)
-        self.assertEqual([(f["datetime"][:10], f["temperature"], f["templow"]) for f in forecasts],
-                         [("2026-10-14", 75, 52)])
+        self.assertEqual(_highs_and_lows(forecasts), [("2026-10-14", 75, 52)])
 
     def test_a_night_after_a_day_never_takes_that_days_high(self):
         """With a day period missing, the night that follows gets no entry with the earlier day's high."""
@@ -349,7 +356,7 @@ class TestDailyForecast(unittest.TestCase):
             _period("2026-10-16T06:00:00-04:00", True, 80, "Friday"),
             _period("2026-10-16T18:00:00-04:00", False, 55, "Friday Night"),
         ], 10, 0)
-        self.assertEqual([(f["datetime"][:10], f["temperature"]) for f in forecasts],
+        self.assertEqual([entry[:2] for entry in _highs_and_lows(forecasts)],
                          [("2026-10-14", 75), ("2026-10-16", 80)])
 
     def test_daytime_start_unchanged(self):
@@ -360,8 +367,148 @@ class TestDailyForecast(unittest.TestCase):
             _period("2026-10-15T06:00:00-04:00", True, 77, "Thursday"),
             _period("2026-10-15T18:00:00-04:00", False, 50, "Thursday Night"),
         ], 10, 0)
-        self.assertEqual([(f["datetime"][:10], f["temperature"], f["templow"]) for f in forecasts],
-                         [("2026-10-14", 75, 52), ("2026-10-15", 77, 50)])
+        self.assertEqual(_highs_and_lows(forecasts), [("2026-10-14", 75, 52), ("2026-10-15", 77, 50)])
+
+
+class TestImperialByDefault(unittest.TestCase):
+    """A new weather entity shows US customary units in any install.
+
+    A weather entity has no suggested units, so the entity's own unit settings
+    are stored when Home Assistant first sees it; it shows the unit system's
+    units without them. Picking others in its settings replaces them.
+    """
+
+    def _initial(self, from_home_assistant=None):
+        from noaa_it_all.weather import NOAAWeather
+        entity = NOAAWeather(_make_coordinator(None), _make_coordinator(None), OFFICE, LAT, LON)
+        with patch.object(_ha_weather_mod.WeatherEntity, "get_initial_entity_options",
+                          lambda self: from_home_assistant, create=True):
+            return entity.get_initial_entity_options()
+
+    def test_its_settings_start_with_us_customary_units(self):
+        self.assertEqual(self._initial(), {
+            _ha_weather_mod.DOMAIN: {
+                _ha_weather_mod.ATTR_WEATHER_TEMPERATURE_UNIT: _ha_const.UnitOfTemperature.FAHRENHEIT,
+                _ha_weather_mod.ATTR_WEATHER_PRESSURE_UNIT: _ha_const.UnitOfPressure.INHG,
+                _ha_weather_mod.ATTR_WEATHER_WIND_SPEED_UNIT: _ha_const.UnitOfSpeed.MILES_PER_HOUR,
+                _ha_weather_mod.ATTR_WEATHER_VISIBILITY_UNIT: _ha_const.UnitOfLength.MILES,
+                _ha_weather_mod.ATTR_WEATHER_PRECIPITATION_UNIT: _ha_const.UnitOfPrecipitationDepth.INCHES,
+            },
+        })
+
+    def test_home_assistants_own_options_are_kept(self):
+        options = self._initial({"cloud.alexa": {"should_expose": False}})
+        self.assertEqual(options["cloud.alexa"], {"should_expose": False})
+        self.assertIn(_ha_weather_mod.DOMAIN, options)
+
+    def test_home_assistants_weather_options_are_kept_and_the_units_win(self):
+        """Should WeatherEntity start to give weather options, they aren't dropped."""
+        temperature_unit = _ha_weather_mod.ATTR_WEATHER_TEMPERATURE_UNIT
+        weather = self._initial({_ha_weather_mod.DOMAIN: {"other": 1, temperature_unit: "°C"}})[
+            _ha_weather_mod.DOMAIN]
+        self.assertEqual(weather["other"], 1)
+        self.assertIs(weather[temperature_unit], _ha_const.UnitOfTemperature.FAHRENHEIT)
+
+
+class TestNativeUnits(unittest.TestCase):
+    """#83: observations stay in NWS's metric units, so Home Assistant converts them once.
+
+    Converting to °F, inHg, mph and mi and rounding first made a metric install convert
+    them back: 101830 Pa showed as 1018.29 hPa next to the Barometric Pressure sensor's
+    1018.3.
+    """
+
+    OBSERVATION = {
+        "properties": {
+            "temperature": {"value": 22.2},
+            "relativeHumidity": {"value": 65.0},
+            "barometricPressure": {"value": 101830},
+            "textDescription": "Sunny",
+            "timestamp": "2026-10-14T16:00:00+00:00",
+            "dewpoint": {"value": 15.6},
+            "visibility": {"value": 16090},
+            "windSpeed": {"value": 9.252},
+            "windDirection": {"value": 180},
+            "windChill": {"value": None},
+            "heatIndex": {"value": 24.1},
+        },
+    }
+
+    def _entity(self, obs_data=None, forecast_data=None):
+        from noaa_it_all.weather import NOAAWeather
+        return NOAAWeather(_make_coordinator(obs_data), _make_coordinator(forecast_data), OFFICE, LAT, LON)
+
+    def test_the_native_units_are_nws_metric_ones(self):
+        from noaa_it_all.weather import NOAAWeather
+        self.assertIs(NOAAWeather._attr_native_temperature_unit, _ha_const.UnitOfTemperature.CELSIUS)
+        self.assertIs(NOAAWeather._attr_native_pressure_unit, _ha_const.UnitOfPressure.HPA)
+        self.assertIs(NOAAWeather._attr_native_wind_speed_unit, _ha_const.UnitOfSpeed.KILOMETERS_PER_HOUR)
+        self.assertIs(NOAAWeather._attr_native_visibility_unit, _ha_const.UnitOfLength.KILOMETERS)
+
+    def test_observations_are_nws_values_unrounded(self):
+        entity = self._entity(self.OBSERVATION)
+        entity._handle_coordinator_update()
+        self.assertEqual(entity._attr_native_temperature, 22.2)
+        self.assertEqual(entity._attr_native_dew_point, 15.6)
+        self.assertEqual(entity._attr_native_apparent_temperature, 24.1)
+        self.assertEqual(entity._attr_native_pressure, 1018.3)
+        self.assertEqual(entity._attr_native_wind_speed, 9.252)
+        self.assertEqual(entity._attr_native_visibility, 16.09)
+
+    def test_the_forecast_is_converted_to_the_native_units(self):
+        hourly = {"properties": {"periods": [_period("2026-10-14T12:00:00-04:00", True, 75, "")]}}
+        extended = {"properties": {"periods": [
+            _period("2026-10-14T10:00:00-04:00", True, 75, "Today"),
+            _period("2026-10-14T18:00:00-04:00", False, 52, "Tonight"),
+        ]}}
+        entity = self._entity(None, {"hourly": hourly, "extended": extended})
+        with patch("noaa_it_all.weather.Forecast", dict), \
+                patch("noaa_it_all.weather.datetime", _frozen_now(10, 0)):
+            (day,) = asyncio.run(entity.async_forecast_daily())
+            (hour,) = asyncio.run(entity.async_forecast_hourly())
+        self.assertAlmostEqual(day["native_temperature"], 23.8889, places=4)
+        self.assertAlmostEqual(day["native_templow"], 11.1111, places=4)
+        self.assertAlmostEqual(hour["native_temperature"], 23.8889, places=4)
+        # "5 mph"
+        self.assertAlmostEqual(day["native_wind_speed"], 8.04672)
+        self.assertAlmostEqual(hour["native_wind_speed"], 8.04672)
+
+    def test_the_forecast_uses_the_native_keys(self):
+        """The plain keys only convert through a fallback Home Assistant keeps for old integrations."""
+        extended = {"properties": {"periods": [
+            _period("2026-10-14T10:00:00-04:00", True, 75, "Today"),
+            _period("2026-10-14T18:00:00-04:00", False, 52, "Tonight"),
+        ]}}
+        entity = self._entity(None, {"extended": extended})
+        with patch("noaa_it_all.weather.Forecast", dict), \
+                patch("noaa_it_all.weather.datetime", _frozen_now(10, 0)):
+            (day,) = asyncio.run(entity.async_forecast_daily())
+        self.assertEqual({"temperature", "templow", "wind_speed"} & set(day), set())
+
+    def test_a_us_customary_install_still_shows_nws_fahrenheit(self):
+        """Home Assistant converts °C back with ×1.8 + 32 and shows whole °F there."""
+        from noaa_it_all.weather import NOAAWeather
+        for fahrenheit in range(-60, 131):
+            with self.subTest(fahrenheit):
+                period = {"temperature": fahrenheit, "temperatureUnit": "F"}
+                self.assertEqual(_f(NOAAWeather._forecast_temperature(period)), fahrenheit)
+
+    def test_a_forecast_in_si_units_is_not_converted(self):
+        from noaa_it_all.weather import NOAAWeather
+        self.assertEqual(NOAAWeather._forecast_temperature({"temperature": 20, "temperatureUnit": "C"}), 20)
+        self.assertEqual(NOAAWeather._parse_wind_speed("10 to 20 km/h"), 15)
+
+    def test_an_odd_forecast_value_empties_only_that_field(self):
+        """Before, Home Assistant skipped a field it couldn't convert; the conversion here must too."""
+        from noaa_it_all.weather import NOAAWeather
+        for temperature in (None, "75", True, {"unitCode": "wmoUnit:degF", "value": 75}):
+            with self.subTest(temperature=temperature):
+                self.assertIsNone(NOAAWeather._forecast_temperature({"temperature": temperature}))
+        self.assertIsNone(NOAAWeather._forecast_temperature(None))
+        for wind in (None, "", "calm", {"unitCode": "wmoUnit:km_h-1", "value": 10}):
+            with self.subTest(wind=wind):
+                self.assertIsNone(NOAAWeather._parse_wind_speed(wind))
+        self.assertAlmostEqual(NOAAWeather._parse_wind_speed("5 to 10 mph"), 12.07008)
 
 
 if __name__ == "__main__":

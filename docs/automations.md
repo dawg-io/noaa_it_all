@@ -326,8 +326,8 @@ actions:
       message: >-
         Temperature {{ states('sensor.noaa_ilm_weather_temperature', rounded=True, with_unit=True) }},
         rip current risk {{ states('sensor.noaa_ilm_surf_rip_current_risk') }},
-        surf {{ states('sensor.noaa_ilm_surf_surf_height') }} ft,
-        water {{ states('sensor.noaa_ilm_surf_water_temperature') }}°F.
+        surf {{ states('sensor.noaa_ilm_surf_surf_height', rounded=True, with_unit=True) }},
+        water {{ states('sensor.noaa_ilm_surf_water_temperature', rounded=True, with_unit=True) }}.
 ```
 
 ### Severe Weather Preparation
@@ -433,8 +433,8 @@ morning_weather_briefing:
           🌡️ {{ states('sensor.noaa_ilm_weather_temperature', rounded=True, with_unit=True) }} (feels like {{ states('sensor.noaa_ilm_weather_feels_like', rounded=True, with_unit=True) }})
           💨 Wind {{ states('sensor.noaa_ilm_weather_wind_speed', rounded=True, with_unit=True) }}
           ☁️ {{ states('sensor.noaa_ilm_weather_sky_conditions') }}
-          🌊 Surf {{ states('sensor.noaa_ilm_surf_surf_height') }} ft, rip current risk {{ states('sensor.noaa_ilm_surf_rip_current_risk') }}
-          🏊 Water {{ states('sensor.noaa_ilm_surf_water_temperature') }}°F
+          🌊 Surf {{ states('sensor.noaa_ilm_surf_surf_height', rounded=True, with_unit=True) }}, rip current risk {{ states('sensor.noaa_ilm_surf_rip_current_risk') }}
+          🏊 Water {{ states('sensor.noaa_ilm_surf_water_temperature', rounded=True, with_unit=True) }}
           {% if is_state('binary_sensor.noaa_ilm_weather_active_alerts', 'on') -%}
           ⚠️ {{ state_attr('sensor.noaa_ilm_weather_active_nws_alerts', 'alert_count') }} active weather alert(s)
           {%- else -%}

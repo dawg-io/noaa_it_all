@@ -1,14 +1,7 @@
 [
-  {
-    "time_tag": "2026-04-07T15:00:00",
-    "kp_index": 3.33,
-    "a_running": 12,
-    "station_count": 8
-  },
-  {
-    "time_tag": "2026-04-07T14:57:00",
-    "kp_index": 3.00,
-    "a_running": 11,
-    "station_count": 8
-  }
+  {"time_tag": "2026-10-14T16:43:00", "kp_index": 2, "estimated_kp": 1.67, "kp": "2M"},
+  {"time_tag": "2026-10-14T16:44:00", "kp_index": 2, "estimated_kp": 1.67, "kp": "2M"},
+  {"time_tag": "2026-10-14T16:45:00", "kp_index": 2, "estimated_kp": 1.67, "kp": "2M"},
+  {"time_tag": "2026-10-14T16:46:00", "kp_index": 2, "estimated_kp": 1.67, "kp": "2M"},
+  {"time_tag": "2026-10-14T16:47:00", "kp_index": 1, "estimated_kp": 1.33, "kp": "1P"}
 ]

@@ -4,6 +4,7 @@ This module contains pure functions with no Home Assistant dependency,
 making them independently unit-testable.
 """
 
+import math
 import re
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple, Union
@@ -12,6 +13,27 @@ from typing import Any, Dict, List, Optional, Tuple, Union
 # ---------------------------------------------------------------------------
 # Unit conversion helpers
 # ---------------------------------------------------------------------------
+
+def pascals_to_hectopascals(pascals: Optional[float]) -> Optional[float]:
+    """Return an NWS pressure in hPa, or None.
+
+    NWS gives pascals to 2 decimals; the rounding only drops float noise. The
+    observation sensors and the weather entity both use this, so they agree.
+    """
+    if pascals is None:
+        return None
+    return round(pascals / 100, 4)
+
+
+def meters_to_kilometers(meters: Optional[float]) -> Optional[float]:
+    """Return an NWS visibility in km, or None.
+
+    NWS gives meters to 2 decimals; the rounding only drops float noise.
+    """
+    if meters is None:
+        return None
+    return round(meters / 1000, 5)
+
 
 def degrees_to_cardinal(degrees: Union[int, float]) -> str:
     """Convert degrees to cardinal direction."""
@@ -148,20 +170,34 @@ def get_required_kp(
     return 9
 
 
+# The length of a period in SWPC's Kp forecast.
+_KP_FORECAST_PERIOD = timedelta(hours=3)
+
+
 def next_aurora_period(
     forecast: Optional[List[Dict[str, Any]]],
     required_kp: float,
     now: datetime,
+    dark: Optional[List[Tuple[datetime, datetime]]] = None,
 ) -> Optional[Dict[str, Any]]:
-    """Return the first forecast Kp period starting after ``now`` whose Kp reaches ``required_kp``.
+    """Return the first forecast Kp period after ``now`` that reaches ``required_kp`` while dark.
 
     ``forecast`` is SWPC's noaa-planetary-k-index-forecast.json: 3-hour
     periods, each ``observed``, ``estimated`` or ``predicted``. Estimated
     periods cover the rest of today and predicted ones the next two days, so
-    both are forecasts. The period in progress is left out: part of it is
-    already measured, and the current Kp says more about it than its
-    forecast. A period without a numeric Kp is skipped. Returns
-    ``{"start": datetime, "kp": float}``, or None when no period does.
+    both are forecasts. A period without a numeric Kp is skipped.
+
+    ``dark``, when given, lists the ``(start, end)`` times it is dark enough
+    to see aurora. A period then counts only for the part of it that is dark,
+    and its time is the first dark moment in it: its start, or nightfall when
+    that comes later in it. A period entirely in daylight doesn't count.
+
+    A period whose time has come is left out: part of it is already measured,
+    and the current Kp says more about it than its forecast. So a time, once
+    given, stays until it arrives, even when it is nightfall in a period that
+    has begun.
+
+    Returns ``{"start": datetime, "kp": float}``, or None when no period does.
     """
     found = None
     for period in forecast or []:
@@ -176,9 +212,23 @@ def next_aurora_period(
             continue
         if start.tzinfo is None:
             start = start.replace(tzinfo=timezone.utc)
-        if start > now and (found is None or start < found["start"]):
+        if dark is not None:
+            start = _first_dark_moment(start, start + _KP_FORECAST_PERIOD, dark)
+            if start is None:
+                continue
+        if start <= now:
+            continue
+        if found is None or start < found["start"]:
             found = {"start": start, "kp": kp}
     return found
+
+
+def _first_dark_moment(
+    start: datetime, end: datetime, dark: List[Tuple[datetime, datetime]]
+) -> Optional[datetime]:
+    """Return the first moment from ``start`` to ``end`` inside one of the ``dark`` windows, or None."""
+    moments = [max(start, dark_start) for dark_start, dark_end in dark if dark_start < end and dark_end > start]
+    return min(moments, default=None)
 
 
 # ---------------------------------------------------------------------------
@@ -589,7 +639,11 @@ def parse_coops_water_temperature(data: Dict[str, Any]) -> Optional[float]:
         value = records[-1].get("v")
         if value is None or value == "":
             return None
-        return round(float(value), 1)
+        value = float(value)
+        # "NaN" or "inf" would parse; Home Assistant rejects them as a state.
+        if not math.isfinite(value):
+            return None
+        return round(value, 1)
     except (TypeError, ValueError, IndexError, KeyError):
         return None
 
@@ -619,10 +673,14 @@ def parse_ndbc_wave_height(text: str) -> Optional[float]:
             # Missing value for this observation; try the next line.
             continue
         try:
-            return round(float(wvht) * _M_TO_FT, 1)
+            height = float(wvht)
         except (ValueError, TypeError):
             # Invalid numeric value; try the next line.
             continue
+        if not math.isfinite(height):
+            # "nan" or "inf" parse as floats but are no reading either.
+            continue
+        return round(height * _M_TO_FT, 1)
     return None
 
 

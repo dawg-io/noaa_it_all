@@ -5,6 +5,56 @@ All notable changes to NOAA It All for Home Assistant will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.1]
+
+### Changed
+- **US customary units in any Home Assistant.** The observation sensors, Water Temperature, Surf
+  Height and the weather entity show °F, mph, inHg, miles and feet even in a metric Home Assistant.
+  For a metric unit, pick it in the entity's settings; it stays after a restart, whatever the unit
+  system. A US customary install shows the sensors in the same units and decimals as before. In a
+  metric install, sensors added under 0.10.3 or 0.11.0 keep the metric units they show until you
+  pick others, or change the unit system with its option to update existing entities, which sets
+  them to US customary; a weather entity added before keeps following the unit system. Without
+  that option, a temperature sensor added before 0.11.1, Water Temperature included, shows the
+  new system's unit after a unit-system change, until the next restart.
+
+### Fixed
+- **Water Temperature and Surf Height can be shown in °C and m.** They had no device class, so
+  Home Assistant couldn't convert them. They stay in °F and ft unless you pick another unit in
+  their settings. A converted state has every decimal of the conversion, so a template that
+  prints one needs `rounded=True`.
+- **The weather entity's current conditions match the observation sensors in metric units.** It
+  converted NWS's metric observations to °F, inHg, mph and miles and rounded them, and Home
+  Assistant then converted them back, so the weather card could show 1018.29 hPa next to a
+  Barometric Pressure of 1018.3 hPa. It now reports NWS's values as they are, and converts the
+  forecast, which NWS gives in °F and mph, to °C and km/h; Home Assistant converts both once, to
+  the units it shows. In US customary units the pressure is as before. A temperature is now rounded
+  to whole °F once, from NWS's value, so about one reading in 25 shows 1 °F off from before: the
+  correctly rounded one. Wind speed and visibility have Home Assistant's two decimals, such as
+  5.75 mph rather than 5.7.
+- **Aurora Next Time skips daylight.** It named the next 3-hour period in SWPC's Kp forecast with
+  enough Kp even in the middle of the day, such as 10 AM in Duluth. Now only the part of a period
+  that is dark at your location counts: the Sun at least 12° below the horizon, from nautical dusk
+  to dawn. A period that gets dark partway through gives the time of nightfall, to the minute, such
+  as 7:29 PM in Duluth, and one in daylight is skipped. Where it doesn't get that dark, as in
+  Fairbanks in June, it reads `unknown`.
+- **Space weather is fetched faster, and fetched again when SWPC's response isn't JSON.** The four
+  SWPC feeds were fetched one after another, so a slow SWPC could hold up adding a Space entry for
+  two minutes; they are now fetched together. A feed whose response doesn't parse, which SWPC
+  served twice in one day while 0.10.3 was tested, or is empty or cut off, is fetched once more
+  two seconds later, rather than its entities reading `unknown` until the next update ten minutes
+  on. A feed that still fails reads `unknown`, as before, and the log names the cause of a timeout.
+- **A unit no longer changes at a restart.** After the unit system was changed with its option to
+  update existing entities, the observation sensors went back at the next restart to the units
+  they had before, such as Temperature in °F in a metric Home Assistant. Home Assistant now stores
+  the unit at such a change, US customary unless one is picked in the sensor's settings, so a
+  restart keeps it. A sensor that already went back keeps that unit until you pick one in its
+  settings.
+
+Going back to 0.11.0 needs nothing removed first. The sensors and the weather entity keep the
+units they show, except Water Temperature and Surf Height, which show °F and ft again whatever
+unit was picked for them, so their history then mixes the two.
+
 ## [0.11.0]
 
 ### Added
