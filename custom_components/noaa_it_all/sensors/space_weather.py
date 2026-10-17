@@ -6,13 +6,15 @@ solar radiation storm alerts.
 
 import logging
 import math
+from functools import lru_cache
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.helpers.entity import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from datetime import datetime, timedelta, timezone
 
+from ..astro import NAUTICAL_TWILIGHT_DEG, find_window_below
 from ..const import (
-    AURORA_KP_THRESHOLDS, SOLAR_RADIATION_STORM_SCALES, DOMAIN,
+    AURORA_KP_THRESHOLDS, OFFICE_COORDINATES, SOLAR_RADIATION_STORM_SCALES, DOMAIN,
 )
 from ..offices import magnetic_latitude
 from ..parsers import (
@@ -37,6 +39,41 @@ _LOGGER = logging.getLogger(__name__)
 
 # A newest Dst older than this means the feed has stopped updating.
 _DST_STALE_AFTER = timedelta(hours=2)
+
+# Aurora Next Time before its state has been read.
+_NOT_READ = object()
+
+# Aurora needs a dark sky: the Sun at least 12 degrees below the horizon,
+# from nautical dusk to nautical dawn.
+_AURORA_SUN_BELOW = NAUTICAL_TWILIGHT_DEG
+
+# The nights Aurora Next Time looks at, from the one before today's UTC date
+# (a night still under way) to the one SWPC's 3-day Kp forecast ends in.
+_AURORA_NIGHTS = range(-1, 4)
+
+
+def _ceil_minute(moment):
+    """Return the moment rounded up to a whole minute."""
+    floor = moment.replace(second=0, microsecond=0)
+    return floor if floor == moment else floor + timedelta(minutes=1)
+
+
+@lru_cache(maxsize=32)
+def _dark_windows(today, latitude, longitude):
+    """Return when it is dark enough for aurora around a day's Kp forecast, as ``(start, end)`` UTC times.
+
+    Each start is rounded up and each end down to the minute, so nightfall is
+    never early and has no seconds. They depend only on the day and place, so
+    they are worked out once a day for each location.
+    """
+    windows = []
+    for days in _AURORA_NIGHTS:
+        window = find_window_below(today + timedelta(days=days), latitude, longitude, _AURORA_SUN_BELOW)
+        if window is not None:
+            start, end = _ceil_minute(window[0]), window[1].replace(second=0, microsecond=0)
+            if start < end:
+                windows.append((start, end))
+    return tuple(windows)
 
 
 def _newest_dst(coordinator):
@@ -291,8 +328,9 @@ class AuroraNextTimeSensor(CoordinatorEntity, SensorEntity):
     """When aurora may next be visible here, from SWPC's 3-day Kp forecast.
 
     The state is the start of the next 3-hour forecast period whose Kp
-    reaches the Kp this location needs, or unknown when none in the forecast
-    does or the forecast can't be fetched.
+    reaches the Kp this location needs, or nightfall when that comes later
+    in the period. Periods in daylight don't count. It is unknown when none
+    in the forecast does, or the forecast or the darkness can't be worked out.
 
     Uses ``_attr_has_entity_name = True`` so that Home Assistant
     automatically combines the device name with the entity name to
@@ -307,6 +345,7 @@ class AuroraNextTimeSensor(CoordinatorEntity, SensorEntity):
         self._office_code = office_code
         self._latitude = latitude
         self._longitude = longitude
+        self._period = _NOT_READ
 
     @property
     def name(self):
@@ -327,26 +366,43 @@ class AuroraNextTimeSensor(CoordinatorEntity, SensorEntity):
         office_lat = magnetic_latitude(self._office_code, self._latitude, self._longitude)
         return get_required_kp(office_lat, AURORA_KP_THRESHOLDS)
 
+    def _dark(self, now):
+        """Return when it is dark here around the forecast, or None without a location."""
+        if self._latitude is not None and self._longitude is not None:
+            latitude, longitude = self._latitude, self._longitude
+        elif self._office_code in OFFICE_COORDINATES:
+            latitude, longitude = OFFICE_COORDINATES[self._office_code]
+        else:
+            return None
+        return list(_dark_windows(now.date(), latitude, longitude))
+
     def _next_period(self):
         """Return the next forecast period aurora may be visible in, or None."""
         if self.coordinator.data is None:
             return None
-        return next_aurora_period(
-            self.coordinator.data.get("kp_forecast"), self._required_kp(), datetime.now(timezone.utc)
-        )
+        now = datetime.now(timezone.utc)
+        try:
+            dark = self._dark(now)
+        except Exception as err:  # noqa: BLE001 - any failure reads unknown
+            # Unknown, rather than a time that may be in daylight.
+            _LOGGER.warning("Could not work out when it is dark for Aurora Next Time: %r", err)
+            return None
+        return next_aurora_period(self.coordinator.data.get("kp_forecast"), self._required_kp(), now, dark)
 
     @property
     def native_value(self):
         """Return when that period starts, or None."""
-        period = self._next_period()
-        return period["start"] if period else None
+        # Kept for the attributes, which Home Assistant reads after the state
+        # in the same write, so that both describe the same period.
+        self._period = self._next_period()
+        return self._period["start"] if self._period else None
 
     @property
     def extra_state_attributes(self):
         """Return the period's forecast Kp, the Kp needed here and the current Kp."""
         if self.coordinator.data is None:
             return {}
-        period = self._next_period()
+        period = self._next_period() if self._period is _NOT_READ else self._period
         kp_data = self.coordinator.data.get("kp_index")
         latest = kp_data[-1] if isinstance(kp_data, list) and kp_data else None
         current_kp = latest.get('kp_index') if isinstance(latest, dict) else None

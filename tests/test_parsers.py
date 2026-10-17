@@ -1,9 +1,12 @@
 """Unit tests for parsers.py — pure functions, no Home Assistant dependency."""
 
 import unittest
+from datetime import datetime, timezone
 
 from parsers import (
     degrees_to_cardinal,
+    meters_to_kilometers,
+    pascals_to_hectopascals,
     interpret_dst_value,
     rate_kp_index,
     calculate_aurora_visibility,
@@ -11,6 +14,7 @@ from parsers import (
     calculate_aurora_probability,
     get_visibility_class,
     get_required_kp,
+    next_aurora_period,
     extract_storm_scale,
     extract_time_from_message,
     calculate_alert_duration,
@@ -53,6 +57,59 @@ class TestUnitConversions(unittest.TestCase):
         self.assertEqual(degrees_to_cardinal(360), 'N')
         self.assertEqual(degrees_to_cardinal(45), 'NE')
         self.assertEqual(degrees_to_cardinal(225), 'SW')
+
+    def test_nws_pressure_and_visibility_in_hpa_and_km(self):
+        """The weather entity and the observation sensors share these, so they agree (#83)."""
+        self.assertEqual(pascals_to_hectopascals(101830), 1018.3)
+        self.assertEqual(pascals_to_hectopascals(101325.25), 1013.2525)
+        self.assertEqual(meters_to_kilometers(16090), 16.09)
+        self.assertEqual(meters_to_kilometers(402.34), 0.40234)
+        self.assertIsNone(pascals_to_hectopascals(None))
+        self.assertIsNone(meters_to_kilometers(None))
+
+
+# ---------------------------------------------------------------
+# Aurora Next Time: the Kp forecast after dark (#85)
+# ---------------------------------------------------------------
+
+def _utc(hour, minute=0, day=15):
+    return datetime(2026, 10, day, hour, minute, tzinfo=timezone.utc)
+
+
+class TestNextAuroraPeriodAfterDark(unittest.TestCase):
+    """A 3-hour period counts only for its dark part, from its start or nightfall."""
+
+    NOW = _utc(12, day=14)
+
+    def _next(self, start_hour, dark):
+        forecast = [{"time_tag": f"2026-10-15T{start_hour:02d}:00:00", "kp": 5.0, "observed": "predicted"}]
+        found = next_aurora_period(forecast, 5, self.NOW, dark)
+        return found["start"] if found else None
+
+    def test_without_dark_windows_the_period_start_counts(self):
+        self.assertEqual(self._next(15, None), _utc(15))
+
+    def test_a_period_entirely_in_daylight_doesnt_count(self):
+        self.assertIsNone(self._next(15, [(_utc(1, 4), _utc(10, 45))]))
+        self.assertIsNone(self._next(15, []))
+
+    def test_a_period_that_gets_dark_counts_from_nightfall(self):
+        self.assertEqual(self._next(0, [(_utc(1, 4), _utc(10, 45))]), _utc(1, 4))
+
+    def test_a_period_already_dark_counts_from_its_start(self):
+        self.assertEqual(self._next(3, [(_utc(1, 4), _utc(10, 45))]), _utc(3))
+
+    def test_dark_that_ends_as_the_period_starts_doesnt_count(self):
+        self.assertIsNone(self._next(9, [(_utc(1, 4), _utc(9))]))
+        self.assertIsNone(self._next(0, [(_utc(3), _utc(10, 45))]))
+
+    def test_the_earliest_dark_moment_wins_across_periods(self):
+        forecast = [
+            {"time_tag": "2026-10-15T03:00:00", "kp": 5.0, "observed": "predicted"},
+            {"time_tag": "2026-10-15T00:00:00", "kp": 5.0, "observed": "predicted"},
+        ]
+        found = next_aurora_period(forecast, 5, self.NOW, [(_utc(1, 4), _utc(10, 45))])
+        self.assertEqual(found, {"start": _utc(1, 4), "kp": 5.0})
 
 
 # ---------------------------------------------------------------
@@ -322,6 +379,13 @@ class TestCoopsWaterTemperature(unittest.TestCase):
     def test_empty_dict_input(self):
         self.assertIsNone(parse_coops_water_temperature({}))
 
+    def test_a_value_that_is_not_finite_is_no_reading(self):
+        """float() takes "NaN" and "inf", which Home Assistant rejects as a temperature."""
+        for value in ("NaN", "inf", "-Infinity"):
+            with self.subTest(value):
+                data = {"data": [{"t": "2026-03-30 23:06", "v": value, "f": "0,0,0"}]}
+                self.assertIsNone(parse_coops_water_temperature(data))
+
 
 class TestNdbcWaveHeight(unittest.TestCase):
     """Tests for NDBC real-time wave height text parsing."""
@@ -365,6 +429,18 @@ class TestNdbcWaveHeight(unittest.TestCase):
         result = parse_ndbc_wave_height(text)
         self.assertIsNotNone(result)
         self.assertAlmostEqual(result, 3.3, places=1)
+
+    def test_a_height_that_is_not_finite_is_skipped_like_mm(self):
+        """float() takes "nan" and "inf", which Home Assistant rejects as a distance."""
+        for value in ("nan", "inf"):
+            with self.subTest(value):
+                text = (
+                    "#YY  MM DD hh mm WDIR WSPD GST  WVHT   DPD   APD MWD\n"
+                    "#yr  mo dy hr mn degT m/s  m/s     m   sec   sec degT\n"
+                    f"2026 03 31 02 30  MM   MM   MM   {value}     6   4.8 127\n"
+                    "2026 03 31 02 00  90   10   12   1.0     7   5.0 090\n"
+                )
+                self.assertEqual(parse_ndbc_wave_height(text), 3.3)
 
 
 # ---------------------------------------------------------------

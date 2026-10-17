@@ -18,6 +18,9 @@
 - Confirm your latitude and longitude are accurate (you can change them with **Configure** on the `NOAA Weather` entry under **Settings** → **Devices & services** → **NOAA It All**)
 - If no nearby station answers, the last observation stays for up to an hour after the last successful refresh, with a warning naming each station tried and why it failed. After an hour, observation entities show `unavailable` and the log line `Error fetching NOAA Observations data` names the stations again
 - A sensor shows `unknown` only if none of the station's observations in the last two hours has that field
+- NOAA It All shows US customary units, °F, mph, inHg, miles and feet, in any Home Assistant. For another unit, pick it in the entity's settings, which it then keeps after a restart and whatever the unit system. That is the way to change one: changing the unit system with its option to update existing entities sets the unit of every sensor in Home Assistant again, other integrations' too
+- In a metric Home Assistant, sensors added under 0.10.3 or 0.11.0 keep the metric units they show. Before 0.11.1, a restart after a unit-system change could set a sensor back to its old unit, which it keeps until you pick one in its settings
+- An entry deleted and added again within 30 days gets its entities' old settings back from Home Assistant. In a metric Home Assistant, sensors added before 0.11.1 then show metric units until the next restart and US customary ones after it, and the weather entity follows the unit system. Pick the units you want in their settings
 
 ## Binary Sensors Always Off
 - The alert binary sensors only turn on while NWS has an active alert for your coordinates, and Unsafe to Swim only when the Surf Zone Forecast gives a high rip current risk. Their `alerts` and `risk_level` attributes show what they're reading

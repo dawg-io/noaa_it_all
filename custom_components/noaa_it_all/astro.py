@@ -563,6 +563,36 @@ def find_dark_window(
     affairs at high latitude in summer; sampling degrades gracefully instead of raising. The
     fallback ladder is astronomical night, then nautical twilight, then nothing at all.
     """
+    samples, altitudes = _sample_night(night_of, latitude, longitude)
+
+    for threshold, label in (
+        (ASTRONOMICAL_TWILIGHT_DEG, DARKNESS_ASTRONOMICAL),
+        (NAUTICAL_TWILIGHT_DEG, DARKNESS_NAUTICAL),
+    ):
+        window = _window_below(samples, altitudes, latitude, longitude, threshold)
+        if window is not None:
+            return window[0], window[1], label
+
+    return None, None, DARKNESS_NONE
+
+
+def find_window_below(
+    night_of: date,
+    latitude: float,
+    longitude: float,
+    altitude: float,
+) -> Optional[Tuple[datetime, datetime]]:
+    """Return ``(start_utc, end_utc)`` while the Sun is below *altitude* in the night beginning on *night_of*.
+
+    The same search as :func:`find_dark_window`, for one Sun altitude and no fallback, so the
+    result changes smoothly with latitude. Returns None when the Sun never gets that low.
+    """
+    samples, altitudes = _sample_night(night_of, latitude, longitude)
+    return _window_below(samples, altitudes, latitude, longitude, altitude)
+
+
+def _sample_night(night_of: date, latitude: float, longitude: float) -> Tuple[List[float], List[float]]:
+    """Return Julian Days across the 24 hours from local solar noon on *night_of*, and the Sun's altitudes."""
     anchor = solar_noon_utc(night_of, longitude)
     jd_start = julian_day(anchor)
     jd_end = julian_day(anchor + timedelta(days=1))
@@ -571,29 +601,33 @@ def find_dark_window(
     sample_count = int(round((jd_end - jd_start) / step_days)) + 1
     samples = [jd_start + index * step_days for index in range(sample_count)]
     altitudes = [sun_altitude(jd, latitude, longitude) for jd in samples]
+    return samples, altitudes
 
-    for threshold, label in (
-        (ASTRONOMICAL_TWILIGHT_DEG, DARKNESS_ASTRONOMICAL),
-        (NAUTICAL_TWILIGHT_DEG, DARKNESS_NAUTICAL),
-    ):
-        run = _longest_run_below(altitudes, threshold)
-        if run is None:
-            continue
-        first, last = run
 
-        if first == 0:
-            start_jd = samples[0]
-        else:
-            start_jd = _bisect_twilight(samples[first], samples[first - 1], latitude, longitude, threshold)
+def _window_below(
+    samples: List[float],
+    altitudes: List[float],
+    latitude: float,
+    longitude: float,
+    threshold: float,
+) -> Optional[Tuple[datetime, datetime]]:
+    """Return the longest stretch of the samples with the Sun below *threshold*, bisected to its edges."""
+    run = _longest_run_below(altitudes, threshold)
+    if run is None:
+        return None
+    first, last = run
 
-        if last == len(samples) - 1:
-            end_jd = samples[-1]
-        else:
-            end_jd = _bisect_twilight(samples[last], samples[last + 1], latitude, longitude, threshold)
+    if first == 0:
+        start_jd = samples[0]
+    else:
+        start_jd = _bisect_twilight(samples[first], samples[first - 1], latitude, longitude, threshold)
 
-        return datetime_from_jd(start_jd), datetime_from_jd(end_jd), label
+    if last == len(samples) - 1:
+        end_jd = samples[-1]
+    else:
+        end_jd = _bisect_twilight(samples[last], samples[last + 1], latitude, longitude, threshold)
 
-    return None, None, DARKNESS_NONE
+    return datetime_from_jd(start_jd), datetime_from_jd(end_jd)
 
 
 def _longest_run_below(values: List[float], threshold: float) -> Optional[Tuple[int, int]]:

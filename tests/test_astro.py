@@ -17,6 +17,7 @@ from astro import (
     datetime_from_jd,
     equatorial_to_horizontal,
     find_dark_window,
+    find_window_below,
     gmst_degrees,
     julian_day,
     local_sidereal_time,
@@ -341,6 +342,15 @@ class TestDarkWindow(unittest.TestCase):
         self.assertEqual(label, DARKNESS_NONE)
         self.assertIsNone(start)
         self.assertIsNone(end)
+
+    def test_window_below_one_altitude_matches_the_dark_window(self):
+        """find_window_below is the same search for one altitude, with no fallback."""
+        start, end, _ = find_dark_window(date(2026, 8, 12), *self.LA)
+        self.assertEqual(find_window_below(date(2026, 8, 12), *self.LA, -18.0), (start, end))
+        self.assertIsNone(find_window_below(date(2026, 6, 21), *self.REYKJAVIK, -12.0))
+        nautical_start, nautical_end = find_window_below(date(2026, 8, 12), *self.LA, -12.0)
+        self.assertLess(nautical_start, start)
+        self.assertGreater(nautical_end, end)
 
     def test_high_latitude_winter_has_long_night(self):
         start, end, label = find_dark_window(date(2026, 12, 21), *self.REYKJAVIK)

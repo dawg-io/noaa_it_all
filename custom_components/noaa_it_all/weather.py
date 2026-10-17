@@ -5,6 +5,12 @@ from datetime import datetime, timedelta
 from typing import List, Optional
 
 from homeassistant.components.weather import (
+    ATTR_WEATHER_PRECIPITATION_UNIT,
+    ATTR_WEATHER_PRESSURE_UNIT,
+    ATTR_WEATHER_TEMPERATURE_UNIT,
+    ATTR_WEATHER_VISIBILITY_UNIT,
+    ATTR_WEATHER_WIND_SPEED_UNIT,
+    DOMAIN as WEATHER_DOMAIN,
     WeatherEntity,
     WeatherEntityFeature,
     Forecast,
@@ -14,6 +20,7 @@ from homeassistant.const import (
     UnitOfPressure,
     UnitOfSpeed,
     UnitOfLength,
+    UnitOfPrecipitationDepth,
 )
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -28,8 +35,12 @@ from .const import (
     DOMAIN,
 )
 from .entry_config import resolve_entry_config
+from .parsers import meters_to_kilometers, pascals_to_hectopascals
 
 _LOGGER = logging.getLogger(__name__)
+
+# Kilometers in a mile: the international mile is exactly 1.609344 km.
+_KM_PER_MILE = 1.609344
 
 
 async def async_setup_entry(
@@ -62,12 +73,18 @@ async def async_setup_entry(
 
 
 class NOAAWeather(CoordinatorEntity, WeatherEntity):
-    """Representation of NOAA weather data."""
+    """Representation of NOAA weather data.
 
-    _attr_native_temperature_unit = UnitOfTemperature.FAHRENHEIT
-    _attr_native_pressure_unit = UnitOfPressure.INHG
-    _attr_native_wind_speed_unit = UnitOfSpeed.MILES_PER_HOUR
-    _attr_native_visibility_unit = UnitOfLength.MILES
+    The native units are the metric ones NWS reports observations in, so Home
+    Assistant converts each observation once, to the units in the entity's
+    settings: US customary ones unless others are chosen there. NWS gives the
+    forecast in °F and mph, which is converted to the native units.
+    """
+
+    _attr_native_temperature_unit = UnitOfTemperature.CELSIUS
+    _attr_native_pressure_unit = UnitOfPressure.HPA
+    _attr_native_wind_speed_unit = UnitOfSpeed.KILOMETERS_PER_HOUR
+    _attr_native_visibility_unit = UnitOfLength.KILOMETERS
     _attr_supported_features = (
         WeatherEntityFeature.FORECAST_DAILY | WeatherEntityFeature.FORECAST_HOURLY
     )
@@ -80,6 +97,29 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
         self._office_code = office_code
         self._latitude = latitude
         self._longitude = longitude
+
+    def get_initial_entity_options(self):
+        """Return US customary units for the entity's settings, for Home Assistant to store.
+
+        It stores them when it first registers the entity, as the units chosen in
+        its settings, so they are shown whatever the unit system. One registered
+        before has none, and shows the units of the unit system.
+
+        Home Assistant's docstring says component base classes implement this and
+        integrations shouldn't extend it, but a weather entity has no suggested
+        units, and WeatherEntity doesn't implement it in 2026.3.0 to 2026.10.1.
+        Should it start to, its weather options are kept and the units here win.
+        """
+        options = dict(super().get_initial_entity_options() or {})
+        options[WEATHER_DOMAIN] = {
+            **(options.get(WEATHER_DOMAIN) or {}),
+            ATTR_WEATHER_TEMPERATURE_UNIT: UnitOfTemperature.FAHRENHEIT,
+            ATTR_WEATHER_PRESSURE_UNIT: UnitOfPressure.INHG,
+            ATTR_WEATHER_WIND_SPEED_UNIT: UnitOfSpeed.MILES_PER_HOUR,
+            ATTR_WEATHER_VISIBILITY_UNIT: UnitOfLength.MILES,
+            ATTR_WEATHER_PRECIPITATION_UNIT: UnitOfPrecipitationDepth.INCHES,
+        }
+        return options
 
     async def async_added_to_hass(self) -> None:
         """Process coordinator data immediately when added to HA."""
@@ -155,43 +195,33 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
         if self.coordinator.data:
             properties = self.coordinator.data.get("properties", {})
 
-            # Temperature (C to F)
-            temp_c = self._get_value(properties, "temperature", "value")
-            self._attr_native_temperature = self._celsius_to_fahrenheit(temp_c)
+            # Temperature (°C)
+            self._attr_native_temperature = self._get_value(properties, "temperature", "value")
 
             # Humidity
             humidity = self._get_value(properties, "relativeHumidity", "value")
             self._attr_humidity = round(humidity) if humidity is not None else None
 
-            # Pressure (Pa to inHg)
-            pressure_pa = self._get_value(properties, "barometricPressure", "value")
-            if pressure_pa is not None:
-                self._attr_native_pressure = round(pressure_pa * 0.00029530, 2)
-            else:
-                self._attr_native_pressure = None
+            # Pressure (Pa to hPa), as the Barometric Pressure sensor has it
+            self._attr_native_pressure = pascals_to_hectopascals(
+                self._get_value(properties, "barometricPressure", "value")
+            )
 
             # Condition
             text_description = properties.get("textDescription")
             timestamp = properties.get("timestamp")
             self._attr_condition = self._map_condition(text_description, timestamp)
 
-            # Dewpoint (C to F)
-            dewpoint_c = self._get_value(properties, "dewpoint", "value")
-            self._attr_native_dew_point = self._celsius_to_fahrenheit(dewpoint_c)
+            # Dewpoint (°C)
+            self._attr_native_dew_point = self._get_value(properties, "dewpoint", "value")
 
-            # Visibility (m to mi)
-            visibility_m = self._get_value(properties, "visibility", "value")
-            if visibility_m is not None:
-                self._attr_native_visibility = round(visibility_m * 0.000621371, 1)
-            else:
-                self._attr_native_visibility = None
+            # Visibility (m to km), as the Visibility sensor has it
+            self._attr_native_visibility = meters_to_kilometers(
+                self._get_value(properties, "visibility", "value")
+            )
 
-            # Wind speed (km/h to mph)
-            wind_speed_kmh = self._get_value(properties, "windSpeed", "value")
-            if wind_speed_kmh is not None:
-                self._attr_native_wind_speed = round(wind_speed_kmh * 0.621371, 1)
-            else:
-                self._attr_native_wind_speed = None
+            # Wind speed (km/h)
+            self._attr_native_wind_speed = self._get_value(properties, "windSpeed", "value")
 
             # Wind direction
             wind_dir = self._get_value(properties, "windDirection", "value")
@@ -201,9 +231,9 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
             wind_chill_c = self._get_value(properties, "windChill", "value")
             heat_index_c = self._get_value(properties, "heatIndex", "value")
             if wind_chill_c is not None:
-                self._attr_native_apparent_temperature = self._celsius_to_fahrenheit(wind_chill_c)
+                self._attr_native_apparent_temperature = wind_chill_c
             elif heat_index_c is not None:
-                self._attr_native_apparent_temperature = self._celsius_to_fahrenheit(heat_index_c)
+                self._attr_native_apparent_temperature = heat_index_c
             else:
                 self._attr_native_apparent_temperature = self._attr_native_temperature
 
@@ -283,8 +313,8 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
                             # forecast high left for it.
                             forecast = Forecast(
                                 datetime=today_datetime,
-                                temperature=None,
-                                templow=night_period.get("temperature"),
+                                native_temperature=None,
+                                native_templow=self._forecast_temperature(night_period),
                                 condition=self._map_condition(
                                     night_period.get("shortForecast"),
                                     night_period.get("startTime")
@@ -292,7 +322,7 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
                                 precipitation_probability=(
                                     self._extract_precipitation_probability(night_period)
                                 ),
-                                wind_speed=self._parse_wind_speed(
+                                native_wind_speed=self._parse_wind_speed(
                                     night_period.get("windSpeed")
                                 ),
                                 wind_bearing=self._parse_wind_direction(
@@ -322,10 +352,8 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
                         datetime=self._adjust_forecast_date(
                             day_period.get("startTime")
                         ),
-                        temperature=day_period.get("temperature"),
-                        templow=(
-                            night_period.get("temperature") if night_period else None
-                        ),
+                        native_temperature=self._forecast_temperature(day_period),
+                        native_templow=self._forecast_temperature(night_period),
                         condition=self._map_condition(
                             day_period.get("shortForecast"),
                             day_period.get("startTime")
@@ -333,7 +361,7 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
                         precipitation_probability=(
                             self._extract_precipitation_probability(day_period)
                         ),
-                        wind_speed=self._parse_wind_speed(
+                        native_wind_speed=self._parse_wind_speed(
                             day_period.get("windSpeed")
                         ),
                         wind_bearing=self._parse_wind_direction(
@@ -369,7 +397,7 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
             for period in periods[:48]:
                 forecast = Forecast(
                     datetime=period.get("startTime"),
-                    temperature=period.get("temperature"),
+                    native_temperature=self._forecast_temperature(period),
                     condition=self._map_condition(
                         period.get("shortForecast"),
                         period.get("startTime")
@@ -377,7 +405,7 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
                     precipitation_probability=(
                         self._extract_precipitation_probability(period)
                     ),
-                    wind_speed=self._parse_wind_speed(period.get("windSpeed")),
+                    native_wind_speed=self._parse_wind_speed(period.get("windSpeed")),
                     wind_bearing=self._parse_wind_direction(
                         period.get("windDirection")
                     ),
@@ -403,11 +431,22 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
         return value
 
     @staticmethod
-    def _celsius_to_fahrenheit(celsius: Optional[float]) -> Optional[float]:
-        """Convert Celsius to Fahrenheit."""
-        if celsius is None:
+    def _forecast_temperature(period: Optional[dict]) -> Optional[float]:
+        """Return a forecast period's temperature in °C, or None.
+
+        NWS gives the forecast in °F, or in °C when asked for SI units, and says
+        which in ``temperatureUnit``. The value isn't rounded: Home Assistant
+        converts it to the entity's temperature unit and rounds it for display,
+        so in °F it shows NWS's whole °F.
+        """
+        if not period:
             return None
-        return round((celsius * 9 / 5) + 32, 1)
+        temperature = period.get("temperature")
+        if isinstance(temperature, bool) or not isinstance(temperature, (int, float)):
+            return None
+        if period.get("temperatureUnit") == "C":
+            return temperature
+        return (temperature - 32) * 5 / 9
 
     @staticmethod
     def _map_condition(description: Optional[str], timestamp: Optional[str] = None) -> Optional[str]:
@@ -494,8 +533,8 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
 
     @staticmethod
     def _parse_wind_speed(wind_speed_str: Optional[str]) -> Optional[float]:
-        """Parse wind speed from string like '5 to 10 mph' to average value."""
-        if not wind_speed_str:
+        """Parse NWS's forecast wind speed, such as '5 to 10 mph', to its average in km/h."""
+        if not wind_speed_str or not isinstance(wind_speed_str, str):
             return None
 
         # Try to extract numbers from the string
@@ -503,9 +542,13 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
         if numbers:
             # If range like "5 to 10", take average
             if len(numbers) >= 2:
-                return (int(numbers[0]) + int(numbers[1])) / 2
-            # Single number
-            return float(numbers[0])
+                speed = (int(numbers[0]) + int(numbers[1])) / 2
+            else:
+                speed = float(numbers[0])
+            # NWS gives mph, or km/h when asked for SI units.
+            if "km/h" in wind_speed_str:
+                return speed
+            return speed * _KM_PER_MILE
 
         return None
 
