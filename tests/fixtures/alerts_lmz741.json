@@ -1,0 +1,39 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "urn:oid:2.49.0.1.840.0.4276cb109af8a32ce10e75513d0351d0a37ab393.002.1",
+        "areaDesc": "Wilmette Harbor to Northerly Island IL",
+        "sent": "2026-10-14T03:02:00-05:00",
+        "effective": "2026-10-14T03:02:00-05:00",
+        "onset": "2026-10-14T16:00:00-05:00",
+        "expires": "2026-10-14T11:15:00-05:00",
+        "ends": "2026-10-15T10:00:00-05:00",
+        "status": "Actual",
+        "messageType": "Alert",
+        "category": "Met",
+        "severity": "Minor",
+        "certainty": "Likely",
+        "urgency": "Expected",
+        "event": "Small Craft Advisory",
+        "senderName": "NWS Chicago IL",
+        "headline": "Small Craft Advisory issued October 14 at 3:02AM CDT until October 15 at 10:00AM CDT by NWS Chicago IL",
+        "description": "* WHAT...Significant waves to 6 ft occasionally to 8 ft expected.\n\n* WHERE...Wilmette Harbor to Northerly Island IL.\n\n* WHEN...From 4 PM this afternoon to 10 AM CDT Thursday.\n\n* IMPACTS...Conditions will be hazardous to small craft.",
+        "instruction": "Inexperienced mariners, especially those operating smaller\nvessels, should avoid navigating in hazardous conditions.",
+        "response": "Avoid",
+        "parameters": {
+          "NWSheadline": [
+            "SMALL CRAFT ADVISORY IN EFFECT FROM 4 PM THIS AFTERNOON TO 10 AM CDT THURSDAY"
+          ],
+          "VTEC": [
+            "/O.NEW.KLOT.SC.Y.0089.261014T2100Z-261015T1500Z/"
+          ]
+        }
+      }
+    }
+  ],
+  "title": "Current watches, warnings, and advisories for LMZ741",
+  "updated": "2026-10-14T13:57:06+00:00"
+}

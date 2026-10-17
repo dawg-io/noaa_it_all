@@ -24,7 +24,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 from .const import (
     DEFAULT_SCAN_INTERVAL,
     REQUEST_TIMEOUT, USER_AGENT,
-    NWS_POINTS_URL, NWS_OBSERVATIONS_URL, NWS_ALERTS_URL,
+    NWS_POINTS_URL, NWS_OBSERVATIONS_URL, NWS_ALERTS_URL, NWS_ALERTS_ZONE_URL,
     NWS_SRF_URL, NWS_AFD_URL, NWS_RADAR_BASE_URL, NWS_NSH_URL, NSH_MAX_AGE_HOURS,
     COOPS_WATER_TEMP_URL, NDBC_REALTIME_URL,
     OFFICE_STATION_IDS, OBSERVATION_STATION_CANDIDATES,
@@ -40,7 +40,7 @@ from .eclipse import build_eclipse_forecast
 from .eclipse_catalog import SOLAR_ECLIPSES
 from .parsers import (
     parse_coops_water_temperature, parse_ndbc_wave_height,
-    parse_nearshore_forecast, product_is_stale,
+    parse_nearshore_forecast, product_is_stale, classify_marine_alerts,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -681,6 +681,49 @@ class MarineForecastCoordinator(DataUpdateCoordinator):
             "issuance_time": product.get("issuanceTime"),
             "source_url": url,
         }
+
+
+class MarineAlertsCoordinator(DataUpdateCoordinator):
+    """Fetch the NWS alerts in effect for one marine zone (Small Craft Advisory, Gale Warning...).
+
+    Kept apart from the forecast so either can fail without the other: a
+    failed fetch makes the Hazard sensor unavailable rather than reading as
+    no hazard.
+    """
+
+    def __init__(self, hass: HomeAssistant, marine_zone: str) -> None:
+        super().__init__(
+            hass,
+            _LOGGER,
+            name="NOAA Marine Alerts",
+            update_interval=DEFAULT_UPDATE_INTERVAL,
+        )
+        self.marine_zone = marine_zone
+
+    async def _async_update_data(self) -> dict:
+        session = async_get_clientsession(self.hass)
+        timeout = aiohttp.ClientTimeout(total=REQUEST_TIMEOUT)
+        url = NWS_ALERTS_ZONE_URL.format(zone=self.marine_zone)
+
+        try:
+            async with session.get(
+                url,
+                headers={"User-Agent": USER_AGENT, "Accept": "application/geo+json"},
+                timeout=timeout,
+            ) as resp:
+                resp.raise_for_status()
+                data = await resp.json(content_type=None)
+        except Exception as err:
+            raise UpdateFailed(
+                f"Error fetching NWS alerts for {self.marine_zone} ({_describe(err)})"
+            ) from err
+
+        features = (data or {}).get("features")
+        if not isinstance(features, list):
+            raise UpdateFailed(f"NWS alerts for {self.marine_zone} had no feature list")
+        result = classify_marine_alerts(features, datetime.now(timezone.utc))
+        result["source_url"] = url
+        return result
 
 
 # -------------------------------------------------------------------

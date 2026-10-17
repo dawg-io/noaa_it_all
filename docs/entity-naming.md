@@ -47,8 +47,8 @@ skip these — substituting into them produces an entity that does not exist:
 | `image.noaa_hurricane_goes_geocolor` | Global GOES imagery, on the shared `NOAA Hurricane` device |
 
 The marine entities use the marine zone where the others use the office:
-`sensor.noaa_{zone}_marine_period` and `sensor.noaa_{zone}_marine_forecast`, e.g.
-`sensor.noaa_lmz741_marine_forecast` for `LMZ741`.
+`sensor.noaa_{zone}_marine_period`, `sensor.noaa_{zone}_marine_forecast` and
+`sensor.noaa_{zone}_marine_hazard`, e.g. `sensor.noaa_lmz741_marine_forecast` for `LMZ741`.
 
 Two further IDs are easy to get wrong even though they do follow the rule:
 

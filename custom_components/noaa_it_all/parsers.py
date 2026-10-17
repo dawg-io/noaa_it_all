@@ -978,3 +978,116 @@ def _parse_nsh_block(zone: str, zones: List[str], body: List[str]) -> Dict[str, 
             for p in periods
         ],
     }
+
+
+# ---------------------------------------------------------------------------
+# Marine hazards (NWS active alerts for one marine zone)
+# ---------------------------------------------------------------------------
+
+# Most severe first. Events not listed rank after the listed warnings (an
+# unknown warning) or after the listed advisories (an unknown advisory).
+MARINE_HAZARD_ORDER = (
+    "Hurricane Warning",
+    "Hurricane Force Wind Warning",
+    "Storm Warning",
+    "Tropical Storm Warning",
+    "Special Marine Warning",
+    "Gale Warning",
+    "Hazardous Seas Warning",
+    "Heavy Freezing Spray Warning",
+    "Small Craft Advisory",
+    "Brisk Wind Advisory",
+    "Freezing Spray Advisory",
+    "Dense Fog Advisory",
+    "Dense Smoke Advisory",
+    "Low Water Advisory",
+)
+_NWS_SEVERITY_ORDER = ("Extreme", "Severe", "Moderate", "Minor")
+
+
+def _alert_time(value: Any) -> Optional[datetime]:
+    """Return an alert timestamp as an aware datetime, or None."""
+    if not isinstance(value, str):
+        return None
+    try:
+        when = datetime.fromisoformat(value)
+    except ValueError:
+        return None
+    return when if when.tzinfo is not None else None
+
+
+def _alert_headline(props: Dict[str, Any], event: str) -> Optional[str]:
+    """Return NWS's headline for this alert's own event.
+
+    An NWS message covering several hazards gives every alert in it the same
+    combined headline, such as "SMALL CRAFT ADVISORY NOW IN EFFECT UNTIL 10 AM
+    CDT THURSDAY... ...GALE WATCH IN EFFECT FROM FRIDAY AFTERNOON", so the part
+    naming this event is picked out. Without one, the alert's own headline
+    ("Gale Watch issued October 14 at ...") is used.
+    """
+    for text in (props.get("parameters") or {}).get("NWSheadline") or []:
+        if not isinstance(text, str):
+            continue
+        for part in re.split(r"\.\.\.\s*\.\.\.", text):
+            part = re.sub(r"\s+", " ", part).strip(" .")
+            if part.upper().startswith(event.upper()):
+                return part
+    return props.get("headline")
+
+
+def _marine_hazard_rank(item: Dict[str, Any]) -> Tuple[float, int, str]:
+    event = item["event"]
+    if event in MARINE_HAZARD_ORDER:
+        rank = MARINE_HAZARD_ORDER.index(event)
+    elif event.endswith("Warning"):
+        rank = MARINE_HAZARD_ORDER.index("Small Craft Advisory") - 0.5
+    else:
+        rank = len(MARINE_HAZARD_ORDER)
+    severity = item.get("severity")
+    sev = _NWS_SEVERITY_ORDER.index(severity) if severity in _NWS_SEVERITY_ORDER else len(_NWS_SEVERITY_ORDER)
+    return (rank, sev, item.get("onset") or "")
+
+
+def classify_marine_alerts(features: List[Dict[str, Any]], now: datetime) -> Dict[str, Any]:
+    """Sort a marine zone's active NWS alerts into hazards, upcoming and watches.
+
+    ``hazards`` are the warnings and advisories in effect at ``now`` and
+    ``upcoming`` the ones issued that start later, both most severe first;
+    ``watches`` are watches. ``hazard`` is the most severe hazard's event, or
+    None when nothing is in effect. Statements, cancellations, tests and
+    alerts that have ended are left out.
+    """
+    hazards: List[Dict[str, Any]] = []
+    upcoming: List[Dict[str, Any]] = []
+    watches: List[Dict[str, Any]] = []
+    for feature in features or []:
+        props = feature.get("properties") or {}
+        event = props.get("event")
+        if not isinstance(event, str) or (props.get("status") or "").lower() != "actual":
+            continue
+        if (props.get("messageType") or "").lower() == "cancel":
+            continue
+        start = _alert_time(props.get("onset")) or _alert_time(props.get("effective"))
+        end = _alert_time(props.get("ends")) or _alert_time(props.get("expires"))
+        if end is not None and end <= now:
+            continue
+        item = {
+            "event": event,
+            "headline": _alert_headline(props, event),
+            "onset": start.isoformat() if start else None,
+            "ends": end.isoformat() if end else None,
+            "severity": props.get("severity"),
+        }
+        if event.endswith("Watch"):
+            watches.append(item)
+        elif event.endswith(("Warning", "Advisory")):
+            (upcoming if start is not None and start > now else hazards).append(item)
+    hazards.sort(key=_marine_hazard_rank)
+    upcoming.sort(key=_marine_hazard_rank)
+    watches.sort(key=lambda item: item.get("onset") or "")
+    return {
+        "hazard": hazards[0]["event"] if hazards else None,
+        "hazards": hazards,
+        "upcoming": upcoming,
+        "watches": watches,
+    }

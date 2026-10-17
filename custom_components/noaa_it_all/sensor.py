@@ -34,6 +34,7 @@ from .sensors import (  # noqa: F401
     WaterTemperatureSensor,
     MarineForecastSensor,
     MarinePeriodSensor,
+    MarineHazardSensor,
     AuroraNextTimeSensor,
     AuroraDurationSensor,
     AuroraVisibilityProbabilitySensor,
@@ -96,10 +97,14 @@ async def async_setup_entry(
     if is_marine_entry(conf):
         marine_coord = data["marine_forecast_coordinator"]
         office_code, zone = conf[CONF_OFFICE_CODE], conf[CONF_MARINE_ZONE]
-        async_add_entities([
+        entities = [
             MarinePeriodSensor(marine_coord, office_code, zone),
             MarineForecastSensor(marine_coord, office_code, zone),
-        ])
+        ]
+        alerts_coord = data.get("marine_alerts_coordinator")
+        if alerts_coord is not None:
+            entities.append(MarineHazardSensor(alerts_coord, office_code, zone))
+        async_add_entities(entities)
         return
 
     office_code = conf[CONF_OFFICE_CODE]
