@@ -62,7 +62,7 @@ Each kind of entry has one device, listed under **Settings → Devices & service
 |---|---|---|
 | Weather for a location | `NOAA ILM Weather` | Observations, extended and hourly forecasts, a weather entity, NWS alerts, cloud cover, the forecast discussion, and a radar image, timestamp and animated loop (22) |
 | Surf forecast for a coast | `NOAA ILM Surf` | Rip current risk and Unsafe to Swim, plus water temperature and surf height where the office has a tide station or buoy (2 to 4) |
-| Nearshore marine forecast for a Great Lakes zone | `NOAA LMZ741 Marine` | The current forecast period and its forecast (2) |
+| Nearshore marine forecast for a Great Lakes zone | `NOAA LMZ741 Marine` | The current forecast period and its forecast, and the most severe NWS advisory or warning in effect (3) |
 | Space weather, aurora, meteor showers and eclipses | `NOAA ILM Space` | Kp index, geomagnetic and solar radiation storms, aurora, meteor shower and eclipse forecasts for the location, and SWPC images (20) |
 | Hurricanes and satellite images | `NOAA Hurricane` | NHC activity and watches and warnings, Atlantic and East Pacific outlooks, and GOES satellite images (6) |
 

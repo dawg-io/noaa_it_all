@@ -43,6 +43,20 @@
       },
       "marine": {
         "title": "Nearshore Marine Forecast",
+        "description": "Nearshore marine forecasts cover the Great Lakes waters near the shore. Choose the lake, then the zone in the next step. When Home Assistant's home location is set, lakes are listed nearest first and the nearest is pre-selected. Choose Other zone to enter a zone ID instead.",
+        "data": {
+          "marine_lake": "Lake"
+        }
+      },
+      "marine_zone": {
+        "title": "Nearshore Marine Forecast",
+        "description": "When Home Assistant's home location is set, zones are listed nearest first with their distance, and the nearest one not yet added is pre-selected. The zone's forecast and hazards are their own NOAA Marine entry. Choose Other zone to enter a zone ID instead.",
+        "data": {
+          "marine_zone": "Marine zone"
+        }
+      },
+      "marine_manual": {
+        "title": "Nearshore Marine Forecast",
         "description": "Enter an NWS marine zone ID, for example LMZ741 (Lake Michigan, Wilmette Harbor to Northerly Island). Nearshore marine forecasts come from the Great Lakes offices, for the zones near the shore. The zone's office and name come from NWS, and the forecast is its own NOAA Marine entry.",
         "data": {
           "marine_zone": "Marine zone ID"

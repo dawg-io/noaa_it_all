@@ -5,6 +5,30 @@ All notable changes to NOAA It All for Home Assistant will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0]
+
+### Added
+- **Pick the marine zone from a list.** **Add entry → Nearshore marine forecast** now asks for the
+  lake, then lists that lake's zones, so the zone ID no longer has to be looked up. With a Home zone
+  set, lakes and zones are listed nearest first with their distance, such as
+  `LMZ741 - Wilmette Harbor to Northerly Island IL (5.9 mi)`, and the nearest zone not yet added is
+  pre-selected; zones that already have an entry are marked **already added**. **Other zone: enter
+  its ID** keeps the old text box for a zone the list doesn't have. The list holds the 84 zones in
+  the 11 Great Lakes offices' Nearshore Marine Forecasts, generated from NWS by
+  `scripts/build_marine_zones.py`. Setup still checks the zone with NWS before adding it.
+- **A Hazard sensor for each marine zone.** `sensor.noaa_{zone}_marine_hazard` is the most severe
+  NWS advisory or warning in effect for the zone, such as `Small Craft Advisory` or `Gale Warning`,
+  or `None`. It reads the zone's active NWS alerts, so it changes within minutes of NWS issuing,
+  extending or cancelling one, rather than when the forecast is next issued. Its `hazards` attribute
+  lists everything in effect with NWS's headline, start and end; `upcoming` lists advisories and
+  warnings issued but not yet started, and `watches` lists watches, which never set the state.
+  Alerts NWS has cancelled or replaced are left out, even while NWS still lists them as active. It
+  is unavailable when the alerts can't be fetched, never `None`. Existing marine entries get it
+  after updating; their Period and Forecast sensors are unchanged.
+
+Going back to 0.10.x leaves the Hazard sensor unavailable; delete it under **Settings → Entities**.
+Marine entries keep working.
+
 ## [0.10.3]
 
 ### Fixed

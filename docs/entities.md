@@ -67,12 +67,13 @@ Every entity, as created for the Wilmington (ILM) office and the `LMZ741` marine
 | `sensor.noaa_ilm_surf_water_temperature` | °F, if the office has a tide station |
 | `sensor.noaa_ilm_surf_surf_height` | ft, if the office has a buoy |
 
-**NOAA {ZONE} Marine** (2)
+**NOAA {ZONE} Marine** (3)
 
 | Entity ID | State |
 |---|---|
 | `sensor.noaa_lmz741_marine_period` | Current forecast period, e.g. `Rest Of Today` |
 | `sensor.noaa_lmz741_marine_forecast` | That period's forecast text |
+| `sensor.noaa_lmz741_marine_hazard` | Most severe advisory or warning in effect, e.g. `Small Craft Advisory`, or `None` |
 
 **NOAA Hurricane** (6)
 
@@ -105,7 +106,17 @@ For the marine zone of a `NOAA Marine` entry, for example `LMZ741` on Lake Michi
 - **Period**: The current forecast period, such as `Rest Of Today` *(sensor.noaa_{zone}_marine_period)*
 - **Forecast**: That period's forecast, such as `West winds 10 to 20 kt becoming northeast. Partly cloudy. Waves 1 to 2 ft.` *(sensor.noaa_{zone}_marine_forecast)*. The `periods` attribute lists every period as `name` and `detailed_forecast`, with any advisories in `headlines`
 
-If the office hasn't issued a forecast in 24 hours, both are unavailable rather than showing an old one. The forecasts come from the Great Lakes offices' Nearshore Marine Forecast (NSH).
+- **Hazard**: The most severe NWS advisory or warning in effect for the zone, such as `Small Craft Advisory` or `Gale Warning`, or `None` *(sensor.noaa_{zone}_marine_hazard)*. It comes from the zone's active NWS alerts, so it changes within minutes of NWS issuing, extending or cancelling one. Its attributes:
+  - `hazards`: every advisory and warning in effect, most severe first, each with `event`, `headline` (NWS's own summary, such as `SMALL CRAFT ADVISORY IN EFFECT FROM 4 PM THIS AFTERNOON TO 10 AM CDT THURSDAY`), `onset`, `ends` and `severity`
+  - `upcoming`: advisories and warnings already issued that haven't started yet, in the same form
+  - `watches`: watches, such as a `Gale Watch`, which never set the state
+  - `hazard_count`: how many are in effect
+
+  Storm Warning outranks Gale Warning, which outranks Small Craft Advisory; NWS replaces one with the next as the wind strengthens. Statements, and alerts NWS has cancelled or replaced, are left out.
+
+  <img width="420" alt="Hazard sensor attributes: a Small Craft Advisory in effect under hazards and a Gale Watch under watches, each with its headline, onset, end and severity" src="images/hazard-attributes.png" />
+
+If the office hasn't issued a forecast in 24 hours, Period and Forecast are unavailable rather than showing an old one. The forecasts come from the Great Lakes offices' Nearshore Marine Forecast (NSH). Hazard is unavailable when NWS alerts can't be fetched, never `None`.
 
 ## NWS Active Weather Alerts
 Real-time monitoring of National Weather Service alerts for your location *(NOAA {OFFICE} Weather)*:

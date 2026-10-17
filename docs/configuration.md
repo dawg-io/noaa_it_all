@@ -59,9 +59,17 @@ Use **Add entry** on the NOAA It All page and pick from the same menu. **Hurrica
 
   <img width="420" alt="Surf forecast office list: MHX, CHS, AKQ and more, each with its distance and what it provides, some marked no forecast this week" src="images/add-surf-offices.png" />
 
-- **Nearshore marine forecast for a Great Lakes zone** takes an NWS marine zone ID such as `LMZ741`. NWS supplies the zone's office and name, and setup checks the zone is in that office's Nearshore Marine Forecast. To find a zone ID, open the zone's [marine forecast](https://forecast.weather.gov/shmrn.php?mz=lmz741) on weather.gov; the ID is in the page address (`mz=lmz741`). Open-lake and ocean zones aren't covered.
+- **Nearshore marine forecast for a Great Lakes zone** asks for the lake, then the zone. With a Home zone set, the lakes are listed nearest first, with the distance to each lake's nearest zone, and the nearest lake is pre-selected.
 
-  <img width="420" alt="Nearshore Marine Forecast step with LMZ741 entered as the marine zone ID" src="images/setup-marine.png" />
+  <img width="420" alt="Nearshore Marine Forecast lake step with Lake Michigan (nearest zone 5.9 mi) selected" src="images/setup-marine.png" />
+
+  The next step lists that lake's zones nearest first, each with its zone ID and distance, and pre-selects the nearest one you haven't added. Zones you already have are marked **already added**. Without a Home zone, the lakes are listed west to east and the zones by zone ID, with no distances.
+
+  <img width="520" alt="Lake Michigan zone list: LMZ741 Wilmette Harbor to Northerly Island marked already added, LMZ742 pre-selected, then the next nearest zones with their distances" src="images/add-marine-zones.png" />
+
+  Both steps end with **Other zone: enter its ID**, for a zone that isn't listed. To find a zone ID, open the zone's [marine forecast](https://forecast.weather.gov/shmrn.php?mz=lmz741) on weather.gov; the ID is in the page address (`mz=lmz741`). Either way, NWS supplies the zone's office and name, and setup checks the zone is in that office's Nearshore Marine Forecast. Open-lake and ocean zones aren't covered.
+
+  <img width="420" alt="Nearshore Marine Forecast step with LMZ741 entered as the marine zone ID" src="images/setup-marine-manual.png" />
 
 - **Space weather, aurora, meteor showers and eclipses** asks for a location, pre-filled from your Home zone, then its forecast office. Use it for aurora, meteor showers and eclipses somewhere other than your weather locations, such as a cabin near Marquette (`NOAA Space - Marquette, MI`, device `NOAA MQT Space`). Each office has one Space entry, so an office that has one is refused. So is a location NWS doesn't name an office for, as when NWS is down: try again later.
 
