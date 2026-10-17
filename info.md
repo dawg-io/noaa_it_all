@@ -33,6 +33,7 @@ Comprehensive NOAA data integration providing weather observations, forecasts, a
 
 ### ⛵ Nearshore Marine Forecasts
 - **Great Lakes Zones** - The current period and forecast for any nearshore marine zone, such as `LMZ741` on Lake Michigan, with every period and advisory in its attributes
+- **Hazard** - The most severe NWS advisory or warning in effect for the zone, such as a Small Craft Advisory or Gale Warning, or None
 
 ### 🌤️ Weather Monitoring
 - **Any NWS Office** - Setup picks the office NWS names for your location, inland or coastal
@@ -83,7 +84,7 @@ Entities are automatically grouped into logical devices:
 - **NOAA {OFFICE} Weather** - Observations, forecasts, radar and severe weather alerts
 - **NOAA {OFFICE} Space** - Space weather, aurora, meteor shower and eclipse data, one Space entry per office
 - **NOAA {OFFICE} Surf** - Surf and ocean conditions for one coastal office
-- **NOAA {ZONE} Marine** - The nearshore marine forecast for one Great Lakes zone
+- **NOAA {ZONE} Marine** - The nearshore marine forecast and hazards for one Great Lakes zone
 - **NOAA Hurricane** - Global tropical data and satellite imagery, created once across all offices
 
 `{OFFICE}` is your NWS forecast office code, e.g. `NOAA ILM Weather`, and `{ZONE}` the marine zone, e.g. `NOAA LMZ741 Marine`.
