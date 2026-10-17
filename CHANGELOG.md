@@ -21,7 +21,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   or `None`. It reads the zone's active NWS alerts, so it changes within minutes of NWS issuing,
   extending or cancelling one, rather than when the forecast is next issued. Its `hazards` attribute
   lists everything in effect with NWS's headline, start and end; `upcoming` lists advisories and
-  warnings issued but not yet started, and `watches` lists watches, which never set the state. It
+  warnings issued but not yet started, and `watches` lists watches, which never set the state.
+  Alerts NWS has cancelled or replaced are left out, even while NWS still lists them as active. It
   is unavailable when the alerts can't be fetched, never `None`. Existing marine entries get it
   after updating; their Period and Forecast sensors are unchanged.
 

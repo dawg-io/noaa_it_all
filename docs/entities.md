@@ -112,7 +112,7 @@ For the marine zone of a `NOAA Marine` entry, for example `LMZ741` on Lake Michi
   - `watches`: watches, such as a `Gale Watch`, which never set the state
   - `hazard_count`: how many are in effect
 
-  Storm Warning outranks Gale Warning, which outranks Small Craft Advisory; NWS replaces one with the next as the wind strengthens. Statements are left out.
+  Storm Warning outranks Gale Warning, which outranks Small Craft Advisory; NWS replaces one with the next as the wind strengthens. Statements, and alerts NWS has cancelled or replaced, are left out.
 
   <img width="420" alt="Hazard sensor attributes: a Small Craft Advisory in effect under hazards and a Gale Watch under watches, each with its headline, onset, end and severity" src="images/hazard-attributes.png" />
 

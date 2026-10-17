@@ -1,0 +1,101 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "urn:oid:2.49.0.1.840.0.3f1cbd5c7a8197e3841ce75dd8ef9517bc2ce4d7.001.1",
+        "areaDesc": "New Buffalo MI to St Joseph MI; Michigan City IN to New Buffalo MI",
+        "sent": "2026-10-15T21:43:00-04:00",
+        "effective": "2026-10-15T21:43:00-04:00",
+        "onset": "2026-10-15T23:00:00-04:00",
+        "expires": "2026-10-16T05:45:00-04:00",
+        "ends": "2026-10-16T11:00:00-04:00",
+        "status": "Actual",
+        "messageType": "Update",
+        "category": "Met",
+        "severity": "Minor",
+        "certainty": "Likely",
+        "urgency": "Expected",
+        "event": "Small Craft Advisory",
+        "senderName": "NWS Northern Indiana",
+        "headline": "Small Craft Advisory issued October 15 at 9:43PM EDT until October 16 at 11:00AM EDT by NWS Northern Indiana",
+        "description": "* WHAT...For the Small Craft Advisory, west winds 20 to 30 knots\nwith gusts up to 33 knots and waves 5 to 9 feet expected. For\nthe Gale Warning, north winds 25 to 35 knots with gusts up to 45\nknots and waves 12 to 18 feet expected.\n\n* WHERE...Michigan City IN to St Joseph MI.\n\n* WHEN...For the Small Craft Advisory, until 11 AM EDT Friday.\nFor the Gale Warning, from 11 AM Friday to 2 AM EDT Saturday.\n\n* IMPACTS...Strong winds will cause hazardous waves which could\ncapsize or damage vessels and reduce visibility.",
+        "instruction": "Mariners should alter plans to avoid these hazardous conditions.\nRemain in port, seek safe harbor, alter course, and/or secure the\nvessel for hazardous conditions.",
+        "response": "Avoid",
+        "parameters": {
+          "NWSheadline": [
+            "SMALL CRAFT ADVISORY REMAINS IN EFFECT UNTIL 11 AM EDT FRIDAY... ...GALE WARNING REMAINS IN EFFECT FROM 11 AM FRIDAY TO 2 AM EDT SATURDAY"
+          ],
+          "VTEC": [
+            "/O.CON.KIWX.SC.Y.0061.261016T0300Z-261016T1500Z/"
+          ]
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "urn:oid:2.49.0.1.840.0.3f1cbd5c7a8197e3841ce75dd8ef9517bc2ce4d7.001.2",
+        "areaDesc": "New Buffalo MI to St Joseph MI; Michigan City IN to New Buffalo MI",
+        "sent": "2026-10-15T21:43:00-04:00",
+        "effective": "2026-10-15T21:43:00-04:00",
+        "onset": "2026-10-16T11:00:00-04:00",
+        "expires": "2026-10-16T05:45:00-04:00",
+        "ends": "2026-10-17T02:00:00-04:00",
+        "status": "Actual",
+        "messageType": "Update",
+        "category": "Met",
+        "severity": "Moderate",
+        "certainty": "Likely",
+        "urgency": "Expected",
+        "event": "Gale Warning",
+        "senderName": "NWS Northern Indiana",
+        "headline": "Gale Warning issued October 15 at 9:43PM EDT until October 17 at 2:00AM EDT by NWS Northern Indiana",
+        "description": "* WHAT...For the Small Craft Advisory, west winds 20 to 30 knots\nwith gusts up to 33 knots and waves 5 to 9 feet expected. For\nthe Gale Warning, north winds 25 to 35 knots with gusts up to 45\nknots and waves 12 to 18 feet expected.\n\n* WHERE...Michigan City IN to St Joseph MI.\n\n* WHEN...For the Small Craft Advisory, until 11 AM EDT Friday.\nFor the Gale Warning, from 11 AM Friday to 2 AM EDT Saturday.\n\n* IMPACTS...Strong winds will cause hazardous waves which could\ncapsize or damage vessels and reduce visibility.",
+        "instruction": "Mariners should alter plans to avoid these hazardous conditions.\nRemain in port, seek safe harbor, alter course, and/or secure the\nvessel for hazardous conditions.",
+        "response": "Avoid",
+        "parameters": {
+          "NWSheadline": [
+            "SMALL CRAFT ADVISORY REMAINS IN EFFECT UNTIL 11 AM EDT FRIDAY... ...GALE WARNING REMAINS IN EFFECT FROM 11 AM FRIDAY TO 2 AM EDT SATURDAY"
+          ],
+          "VTEC": [
+            "/O.CON.KIWX.GL.W.0013.261016T1500Z-261017T0600Z/"
+          ]
+        }
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "urn:oid:2.49.0.1.840.0.9890dca56603c2356b7fc070d468a996539c5a5e.001.1",
+        "areaDesc": "New Buffalo MI to St Joseph MI; Michigan City IN to New Buffalo MI",
+        "sent": "2026-10-15T04:03:00-04:00",
+        "effective": "2026-10-15T04:03:00-04:00",
+        "onset": "2026-10-16T11:00:00-04:00",
+        "expires": "2026-10-15T04:18:37-04:00",
+        "ends": "2026-10-17T02:00:00-04:00",
+        "status": "Actual",
+        "messageType": "Alert",
+        "category": "Met",
+        "severity": "Moderate",
+        "certainty": "Observed",
+        "urgency": "Past",
+        "event": "Gale Watch",
+        "senderName": "NWS Northern Indiana",
+        "headline": "The Gale Watch has been replaced. Please see the latest information from NWS Northern Indiana on this developing situation.",
+        "description": "The Gale Watch has been replaced. Please see the latest information from NWS Northern Indiana on this developing situation.",
+        "instruction": "Mariners should alter plans to avoid these hazardous conditions.\nRemain in port, seek safe harbor, alter course, and/or secure the\nvessel for hazardous conditions.",
+        "response": "Monitor",
+        "parameters": {
+          "NWSheadline": [
+            "GALE WARNING IN EFFECT FROM 11 AM FRIDAY TO 2 AM EDT SATURDAY"
+          ],
+          "VTEC": [
+            "/O.UPG.KIWX.GL.A.0005.261016T1500Z-261017T0600Z/"
+          ]
+        }
+      }
+    }
+  ]
+}

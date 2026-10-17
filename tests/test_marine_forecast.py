@@ -623,6 +623,28 @@ class TestClassifyMarineAlerts(unittest.TestCase):
         result = classify_marine_alerts([_alert("Gale Warning")], now)
         self.assertEqual(result["hazards"][0]["headline"], "Gale Warning issued")
 
+    def test_a_replaced_watch_is_left_out(self):
+        """NWS left the upgraded Gale Watch active as an Alert, VTEC UPG (LMZ046, 2026-10-16 early)."""
+        result = classify_marine_alerts(_alerts("lmz046_replaced_watch"), _cdt("2026-10-15T23:30:00"))
+        self.assertEqual(result["watches"], [])
+        self.assertEqual(result["hazard"], "Small Craft Advisory")
+        self.assertEqual([u["event"] for u in result["upcoming"]], ["Gale Warning"])
+
+    def test_cancelled_and_upgraded_alerts_are_left_out_whatever_their_message_type(self):
+        now = _cdt("2026-10-15T00:00:00")
+        for action in ("CAN", "UPG"):
+            with self.subTest(action=action):
+                vtec = f"/O.{action}.KLOT.SC.Y.0061.261014T0500Z-261016T0500Z/"
+                feature = _alert("Small Craft Advisory", messageType="Update", parameters={"VTEC": [vtec]})
+                self.assertIsNone(classify_marine_alerts([feature], now)["hazard"])
+
+    def test_an_expiring_alert_stays_until_its_end(self):
+        """VTEC EXP says it will expire; until its end it is still in effect."""
+        now = _cdt("2026-10-15T00:00:00")
+        vtec = "/O.EXP.KLOT.SC.Y.0061.000000T0000Z-261015T0600Z/"
+        feature = _alert("Small Craft Advisory", messageType="Update", parameters={"VTEC": [vtec]})
+        self.assertEqual(classify_marine_alerts([feature], now)["hazard"], "Small Craft Advisory")
+
 
 class TestMarineAlertsCoordinator(unittest.TestCase):
 

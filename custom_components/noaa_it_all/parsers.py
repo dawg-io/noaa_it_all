@@ -1035,6 +1035,19 @@ def _alert_headline(props: Dict[str, Any], event: str) -> Optional[str]:
     return props.get("headline")
 
 
+def _alert_replaced(props: Dict[str, Any]) -> bool:
+    """Return True when the alert's VTEC says it was cancelled (CAN) or upgraded (UPG).
+
+    NWS does not always send these as Cancel messages: an upgraded Gale Watch
+    can stay in the active alerts as an Alert, headlined "The Gale Watch has
+    been replaced", until the warning that replaced it ends.
+    """
+    for vtec in (props.get("parameters") or {}).get("VTEC") or []:
+        if isinstance(vtec, str) and re.match(r"/[OTEX]\.(CAN|UPG)\.", vtec):
+            return True
+    return False
+
+
 def _marine_hazard_rank(item: Dict[str, Any]) -> Tuple[float, int, str]:
     event = item["event"]
     if event in MARINE_HAZARD_ORDER:
@@ -1065,7 +1078,7 @@ def classify_marine_alerts(features: List[Dict[str, Any]], now: datetime) -> Dic
         event = props.get("event")
         if not isinstance(event, str) or (props.get("status") or "").lower() != "actual":
             continue
-        if (props.get("messageType") or "").lower() == "cancel":
+        if (props.get("messageType") or "").lower() == "cancel" or _alert_replaced(props):
             continue
         start = _alert_time(props.get("onset")) or _alert_time(props.get("effective"))
         end = _alert_time(props.get("ends")) or _alert_time(props.get("expires"))
