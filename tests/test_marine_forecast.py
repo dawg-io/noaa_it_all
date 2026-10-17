@@ -22,6 +22,7 @@ if _CC not in sys.path:
 from parsers import (  # noqa: E402
     expand_ugc,
     normalize_marine_zone,
+    classify_marine_alerts,
     parse_nearshore_forecast,
     product_is_stale,
 )
@@ -508,6 +509,214 @@ class TestMarinePeriodSensor(unittest.TestCase):
     def test_no_data(self):
         self.assertIsNone(self._make(data=None).state)
         self.assertIsNone(self._make(data={"forecast": {"periods": []}}).state)
+
+
+# ---------------------------------------------------------------------------
+# Marine hazards: the zone's NWS alerts
+# ---------------------------------------------------------------------------
+def _alerts(zone):
+    import json
+    with open(os.path.join(_FIXTURES, f"alerts_{zone}.json")) as f:
+        return json.load(f)["features"]
+
+
+def _cdt(stamp):
+    return datetime.fromisoformat(stamp + "-05:00")
+
+
+def _alert(event, onset="2026-10-14T00:00:00-05:00", ends="2026-10-16T00:00:00-05:00", **props):
+    return {"properties": {
+        "event": event, "status": "Actual", "messageType": "Alert", "severity": "Moderate",
+        "onset": onset, "ends": ends, "headline": f"{event} issued", **props,
+    }}
+
+
+class TestClassifyMarineAlerts(unittest.TestCase):
+    """Recorded LMZ741 alerts: a Small Craft Advisory from 4 PM to 10 AM the next day."""
+
+    def test_issued_but_not_started_is_upcoming(self):
+        result = classify_marine_alerts(_alerts("lmz741"), _cdt("2026-10-14T12:00:00"))
+        self.assertIsNone(result["hazard"])
+        self.assertEqual(result["hazards"], [])
+        self.assertEqual(result["upcoming"][0]["event"], "Small Craft Advisory")
+        self.assertEqual(
+            result["upcoming"][0]["headline"],
+            "SMALL CRAFT ADVISORY IN EFFECT FROM 4 PM THIS AFTERNOON TO 10 AM CDT THURSDAY",
+        )
+
+    def test_in_effect_after_its_onset(self):
+        result = classify_marine_alerts(_alerts("lmz741"), _cdt("2026-10-14T17:00:00"))
+        self.assertEqual(result["hazard"], "Small Craft Advisory")
+        self.assertEqual(len(result["hazards"]), 1)
+        self.assertEqual(result["hazards"][0]["onset"], "2026-10-14T16:00:00-05:00")
+        self.assertEqual(result["hazards"][0]["ends"], "2026-10-15T10:00:00-05:00")
+        self.assertEqual(result["upcoming"], [])
+
+    def test_gone_once_it_ends(self):
+        result = classify_marine_alerts(_alerts("lmz741"), _cdt("2026-10-15T10:00:00"))
+        self.assertEqual(result, {"hazard": None, "hazards": [], "upcoming": [], "watches": []})
+
+    def test_a_watch_is_never_the_hazard(self):
+        result = classify_marine_alerts(_alerts("lmz849"), _cdt("2026-10-16T12:00:00"))
+        self.assertIsNone(result["hazard"])
+        self.assertEqual([w["event"] for w in result["watches"]], ["Gale Watch"])
+
+    def test_most_severe_first(self):
+        now = _cdt("2026-10-15T00:00:00")
+        result = classify_marine_alerts([
+            _alert("Small Craft Advisory"),
+            _alert("Lakeshore Flood Warning"),
+            _alert("Gale Warning"),
+            _alert("Dense Fog Advisory"),
+        ], now)
+        self.assertEqual(result["hazard"], "Gale Warning")
+        self.assertEqual(
+            [h["event"] for h in result["hazards"]],
+            ["Gale Warning", "Lakeshore Flood Warning", "Small Craft Advisory", "Dense Fog Advisory"],
+        )
+
+    def test_storm_outranks_gale_outranks_small_craft(self):
+        now = _cdt("2026-10-15T00:00:00")
+        for events, expected in (
+            (["Small Craft Advisory", "Gale Warning"], "Gale Warning"),
+            (["Gale Warning", "Storm Warning"], "Storm Warning"),
+            (["Storm Warning", "Hurricane Force Wind Warning"], "Hurricane Force Wind Warning"),
+        ):
+            with self.subTest(events=events):
+                result = classify_marine_alerts([_alert(e) for e in events], now)
+                self.assertEqual(result["hazard"], expected)
+
+    def test_cancellations_tests_and_statements_are_left_out(self):
+        now = _cdt("2026-10-15T00:00:00")
+        result = classify_marine_alerts([
+            _alert("Gale Warning", messageType="Cancel"),
+            _alert("Storm Warning", status="Test"),
+            _alert("Marine Weather Statement"),
+        ], now)
+        self.assertEqual(result, {"hazard": None, "hazards": [], "upcoming": [], "watches": []})
+
+    def test_falls_back_to_effective_and_expires(self):
+        now = _cdt("2026-10-15T00:00:00")
+        feature = _alert("Gale Warning", onset=None, ends=None,
+                         effective="2026-10-14T00:00:00-05:00", expires="2026-10-14T12:00:00-05:00")
+        self.assertIsNone(classify_marine_alerts([feature], now)["hazard"])
+
+    def test_a_combined_headline_is_split_per_alert(self):
+        """NWS gave both alerts one headline naming both hazards (LMZ741, 2026-10-14 evening)."""
+        result = classify_marine_alerts(_alerts("lmz741_gale_watch"), _cdt("2026-10-14T20:00:00"))
+        self.assertEqual(result["hazard"], "Small Craft Advisory")
+        self.assertEqual(
+            result["hazards"][0]["headline"], "SMALL CRAFT ADVISORY NOW IN EFFECT UNTIL 10 AM CDT THURSDAY"
+        )
+        self.assertEqual(
+            result["watches"][0]["headline"],
+            "GALE WATCH IN EFFECT FROM FRIDAY AFTERNOON THROUGH LATE FRIDAY NIGHT",
+        )
+
+    def test_a_combined_headline_without_this_event_uses_the_alert_headline(self):
+        now = _cdt("2026-10-15T00:00:00")
+        feature = _alert("Gale Warning", parameters={"NWSheadline": ["SMALL CRAFT ADVISORY... ...STORM WATCH"]})
+        self.assertEqual(classify_marine_alerts([feature], now)["hazards"][0]["headline"], "Gale Warning issued")
+
+    def test_without_a_headline_parameter_uses_the_headline(self):
+        now = _cdt("2026-10-15T00:00:00")
+        result = classify_marine_alerts([_alert("Gale Warning")], now)
+        self.assertEqual(result["hazards"][0]["headline"], "Gale Warning issued")
+
+    def test_a_replaced_watch_is_left_out(self):
+        """NWS left the upgraded Gale Watch active as an Alert, VTEC UPG (LMZ046, 2026-10-16 early)."""
+        result = classify_marine_alerts(_alerts("lmz046_replaced_watch"), _cdt("2026-10-15T23:30:00"))
+        self.assertEqual(result["watches"], [])
+        self.assertEqual(result["hazard"], "Small Craft Advisory")
+        self.assertEqual([u["event"] for u in result["upcoming"]], ["Gale Warning"])
+
+    def test_cancelled_and_upgraded_alerts_are_left_out_whatever_their_message_type(self):
+        now = _cdt("2026-10-15T00:00:00")
+        for action in ("CAN", "UPG"):
+            with self.subTest(action=action):
+                vtec = f"/O.{action}.KLOT.SC.Y.0061.261014T0500Z-261016T0500Z/"
+                feature = _alert("Small Craft Advisory", messageType="Update", parameters={"VTEC": [vtec]})
+                self.assertIsNone(classify_marine_alerts([feature], now)["hazard"])
+
+    def test_an_expiring_alert_stays_until_its_end(self):
+        """VTEC EXP says it will expire; until its end it is still in effect."""
+        now = _cdt("2026-10-15T00:00:00")
+        vtec = "/O.EXP.KLOT.SC.Y.0061.000000T0000Z-261015T0600Z/"
+        feature = _alert("Small Craft Advisory", messageType="Update", parameters={"VTEC": [vtec]})
+        self.assertEqual(classify_marine_alerts([feature], now)["hazard"], "Small Craft Advisory")
+
+
+class TestMarineAlertsCoordinator(unittest.TestCase):
+
+    def _make(self):
+        from noaa_it_all.coordinator import MarineAlertsCoordinator
+        return MarineAlertsCoordinator(MagicMock(), "LMZ741")
+
+    def test_fetches_the_zone_alerts_and_classifies_them(self):
+        features = _alerts("lmz741")
+        session = _FakeSession(_FakeResponse({"features": features}))
+        classified = {"hazard": None, "hazards": [], "upcoming": [], "watches": []}
+        with _with_session(session), patch(
+            "noaa_it_all.coordinator.classify_marine_alerts", return_value=dict(classified)
+        ) as classify:
+            data = _run(self._make()._async_update_data())
+        url, kwargs = session.calls[0]
+        self.assertEqual(url, "https://api.weather.gov/alerts/active?zone=LMZ741")
+        self.assertIn("User-Agent", kwargs["headers"])
+        self.assertIs(classify.call_args.args[0], features)
+        self.assertEqual(data, {**classified, "source_url": url})
+
+    def test_a_failed_fetch_raises_update_failed(self):
+        with _with_session(_FakeSession(OSError("Network unreachable"))):
+            with self.assertRaises(_UpdateFailed) as ctx:
+                _run(self._make()._async_update_data())
+        self.assertIn("LMZ741", str(ctx.exception))
+
+    def test_an_answer_without_features_raises_update_failed(self):
+        """No feature list is not the same as no alerts, so it must not read as None."""
+        with _with_session(_FakeSession(_FakeResponse({"title": "error"}))):
+            with self.assertRaises(_UpdateFailed):
+                _run(self._make()._async_update_data())
+
+
+class TestMarineHazardSensor(unittest.TestCase):
+
+    def _make(self, data):
+        from noaa_it_all.sensors.surf import MarineHazardSensor
+        coord = MagicMock()
+        coord.data = data
+        return MarineHazardSensor(coord, "LOT", "LMZ741")
+
+    def _data(self, now):
+        return {**classify_marine_alerts(_alerts("lmz741"), now), "source_url": "https://example.test/a"}
+
+    def test_state_is_the_hazard_in_effect(self):
+        sensor = self._make(self._data(_cdt("2026-10-14T17:00:00")))
+        self.assertEqual(sensor.state, "Small Craft Advisory")
+        self.assertEqual(sensor.icon, "mdi:alert")
+        attrs = sensor.extra_state_attributes
+        self.assertEqual(attrs["hazard_count"], 1)
+        self.assertEqual(attrs["hazards"][0]["event"], "Small Craft Advisory")
+        self.assertEqual(attrs["zone"], "LMZ741")
+        self.assertEqual(attrs["alerts_source"], "https://example.test/a")
+
+    def test_state_is_none_text_with_nothing_in_effect(self):
+        sensor = self._make(self._data(_cdt("2026-10-14T12:00:00")))
+        self.assertEqual(sensor.state, "None")
+        self.assertEqual(sensor.icon, "mdi:check-circle-outline")
+        self.assertEqual(sensor.extra_state_attributes["upcoming"][0]["event"], "Small Craft Advisory")
+
+    def test_no_data_is_unknown_not_none(self):
+        """A failure never reads as safe: without data the state is unknown, not "None"."""
+        sensor = self._make(None)
+        self.assertIsNone(sensor.state)
+        self.assertEqual(sensor.extra_state_attributes, {})
+
+    def test_identity(self):
+        sensor = self._make(None)
+        self.assertEqual(sensor.name, "Hazard")
+        self.assertEqual(sensor._attr_unique_id, "noaa_LMZ741_marine_hazard")
+        self.assertEqual(sensor.device_info["name"], "NOAA LMZ741 Marine")
 
 
 if __name__ == "__main__":

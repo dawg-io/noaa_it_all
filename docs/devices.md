@@ -37,14 +37,14 @@ Rip current risk, surf height and water temperature for one coastal office, in i
 </p>
 
 ## ⛵ NOAA {ZONE} Marine
-The nearshore marine forecast for one Great Lakes marine zone, in its `NOAA Marine - <zone name>` entry
+The nearshore marine forecast and NWS marine hazards for one Great Lakes marine zone, in its `NOAA Marine - <zone name>` entry
 - **Device ID**: `noaa_{ZONE}_marine` (e.g., `noaa_LMZ741_marine`)
 - **Location**: The marine zone
 - **Update Frequency**: 10 minutes
-- **Entities**: `sensor.noaa_{zone}_marine_period` and `sensor.noaa_{zone}_marine_forecast`
+- **Entities**: `sensor.noaa_{zone}_marine_period`, `sensor.noaa_{zone}_marine_forecast` and `sensor.noaa_{zone}_marine_hazard`
 
 <p align="left">
-  <img width="320" alt="NOAA LMZ741 Marine device: Forecast and Period sensors" src="images/device-marine.png" />
+  <img width="320" alt="NOAA LMZ741 Marine device: Forecast, Hazard and Period sensors" src="images/device-marine.png" />
 </p>
 
 ## 🌀 NOAA Hurricane

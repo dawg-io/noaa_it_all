@@ -1500,24 +1500,97 @@ class TestLookupMarineZone(unittest.TestCase):
         )
 
 
+_CHICAGO = (41.912, -87.672)
+
+
+class TestMarineOptions(unittest.TestCase):
+    """The lake and zone dropdowns of Add entry > Nearshore marine forecast."""
+
+    def _lakes(self, lat=None, lon=None):
+        from noaa_it_all.config_flow import _build_marine_lake_options
+        return _build_marine_lake_options(lat, lon)
+
+    def _zones(self, lake, lat=None, lon=None, configured=()):
+        from noaa_it_all.config_flow import _build_marine_zone_options
+        return _build_marine_zone_options(lake, lat, lon, configured)
+
+    def test_lakes_nearest_first_from_home(self):
+        options, default = self._lakes(*_CHICAGO)
+        self.assertEqual(default, "LM")
+        self.assertEqual(list(options)[0], "LM")
+        self.assertRegex(options["LM"], r"^Lake Michigan \(nearest zone \d+\.\d mi\)$")
+        self.assertEqual(list(options)[-1], "other")
+
+    def test_lakes_west_to_east_without_home(self):
+        options, default = self._lakes()
+        self.assertEqual(list(options), ["LS", "LM", "LH", "LE", "LO", "other"])
+        self.assertEqual(default, "LS")
+        self.assertEqual(options["LM"], "Lake Michigan")
+
+    def test_zones_nearest_first_with_the_nearest_pre_selected(self):
+        options, default = self._zones("LM", *_CHICAGO)
+        zones = [zone for zone in options if zone != "other"]
+        self.assertEqual(zones[:3], ["LMZ741", "LMZ742", "LMZ743"])
+        self.assertTrue(all(zone.startswith("LMZ") for zone in zones))
+        self.assertEqual(default, "LMZ741")
+        self.assertRegex(options["LMZ741"], r"^LMZ741 - Wilmette Harbor to Northerly Island IL \(\d+\.\d mi\)$")
+        self.assertEqual(list(options)[-1], "other")
+
+    def test_an_added_zone_is_marked_and_not_pre_selected(self):
+        options, default = self._zones("LM", *_CHICAGO, configured={"LMZ741"})
+        self.assertTrue(options["LMZ741"].endswith(" - already added"))
+        self.assertIn(default, ("LMZ740", "LMZ742"))
+
+    def test_zones_without_home_are_in_id_order_with_no_distance(self):
+        options, default = self._zones("LM")
+        zones = [zone for zone in options if zone != "other"]
+        self.assertEqual(zones, sorted(zones))
+        self.assertEqual(default, zones[0])
+        self.assertNotIn(" mi", options["LMZ741"])
+
+
 class TestMarineFlow(unittest.TestCase):
-    """Add entry > Nearshore marine forecast."""
+    """Add entry > Nearshore marine forecast: lake, then zone, or a typed ID."""
 
-    def _submit(self, zone, found=({"office": "LOT", "name": "Wilmette Harbor IL"}, None)):
-        flow = _flow()
-        with patch(
+    _FOUND = ({"office": "LOT", "name": "Wilmette Harbor IL"}, None)
+
+    def _lookup(self, found=_FOUND):
+        return patch(
             "noaa_it_all.config_flow.async_lookup_marine_zone", AsyncMock(return_value=found)
-        ) as lookup:
-            result = _run(flow.async_step_marine(user_input={"marine_zone": zone}))
-        return flow, result, lookup
+        )
 
-    def test_shows_the_form(self):
+    def _at_zone_step(self, lake="LM"):
+        flow = _flow()
+        _run(flow.async_step_marine(user_input={"marine_lake": lake}))
+        return flow
+
+    def test_shows_the_lake_form(self):
+        _reset_recorded_defaults()
         result = _run(_flow().async_step_marine())
         self.assertEqual(result["step_id"], "marine")
-        self.assertEqual(result["errors"], {})
+        self.assertEqual(_recorded_defaults().get("marine_lake"), "LS")
 
-    def test_creates_the_marine_entry(self):
-        flow, result, lookup = self._submit(" lmz741 ")
+    def test_the_lake_leads_to_its_zones(self):
+        flow = _flow()
+        result = _run(flow.async_step_marine(user_input={"marine_lake": "LM"}))
+        self.assertEqual(result["step_id"], "marine_zone")
+        self.assertEqual(flow._marine_lake, "LM")
+
+    def test_other_zone_on_the_lake_step_asks_for_an_id(self):
+        result = _run(_flow().async_step_marine(user_input={"marine_lake": "other"}))
+        self.assertEqual(result["step_id"], "marine_manual")
+
+    def test_the_nearest_zone_is_pre_selected_from_home(self):
+        flow = _flow()
+        flow.hass.config.latitude, flow.hass.config.longitude = _CHICAGO
+        _reset_recorded_defaults()
+        _run(flow.async_step_marine(user_input={"marine_lake": "LM"}))
+        self.assertEqual(_recorded_defaults().get("marine_zone"), "LMZ741")
+
+    def test_choosing_a_zone_creates_the_marine_entry(self):
+        flow = self._at_zone_step()
+        with self._lookup() as lookup:
+            result = _run(flow.async_step_marine_zone(user_input={"marine_zone": "LMZ741"}))
         self.assertEqual(result["type"], "create_entry")
         self.assertEqual(result["title"], "NOAA Marine - Wilmette Harbor IL")
         self.assertEqual(result["data"], {
@@ -1529,15 +1602,52 @@ class TestMarineFlow(unittest.TestCase):
             error="marine_already_configured"
         )
 
-    def test_a_malformed_zone_is_refused_without_asking_nws(self):
-        _, result, lookup = self._submit("Lake Michigan")
+    def test_other_zone_on_the_zone_step_asks_for_an_id(self):
+        flow = self._at_zone_step()
+        result = _run(flow.async_step_marine_zone(user_input={"marine_zone": "other"}))
+        self.assertEqual(result["step_id"], "marine_manual")
+
+    def test_nws_errors_are_shown_on_the_zone_form(self):
+        for error in ("marine_zone_not_covered", "marine_forecast_stale", "cannot_connect"):
+            with self.subTest(error=error):
+                flow = self._at_zone_step()
+                with self._lookup(found=(None, error)):
+                    result = _run(flow.async_step_marine_zone(user_input={"marine_zone": "LMZ741"}))
+                self.assertEqual(result["step_id"], "marine_zone")
+                self.assertEqual(result["errors"], {"marine_zone": error})
+                self.assertEqual(result["description_placeholders"], {"zone": "LMZ741"})
+
+    def test_a_zone_from_another_lake_is_not_accepted(self):
+        flow = self._at_zone_step("LM")
+        with self._lookup() as lookup:
+            result = _run(flow.async_step_marine_zone(user_input={"marine_zone": "LSZ121"}))
+        self.assertEqual(result["step_id"], "marine_zone")
+        lookup.assert_not_called()
+
+    def test_the_zone_step_without_a_lake_goes_back_to_the_lakes(self):
+        result = _run(_flow().async_step_marine_zone())
+        self.assertEqual(result["step_id"], "marine")
+
+    def test_a_typed_zone_creates_the_marine_entry(self):
+        flow = _flow()
+        with self._lookup() as lookup:
+            result = _run(flow.async_step_marine_manual(user_input={"marine_zone": " lmz741 "}))
+        self.assertEqual(result["type"], "create_entry")
+        self.assertEqual(result["data"]["marine_zone"], "LMZ741")
+        lookup.assert_awaited_once_with(flow.hass, "LMZ741")
+
+    def test_a_malformed_typed_zone_is_refused_without_asking_nws(self):
+        with self._lookup() as lookup:
+            result = _run(_flow().async_step_marine_manual(user_input={"marine_zone": "Lake Michigan"}))
+        self.assertEqual(result["step_id"], "marine_manual")
         self.assertEqual(result["errors"], {"marine_zone": "invalid_marine_zone"})
         lookup.assert_not_called()
 
-    def test_nws_errors_are_shown_on_the_form(self):
+    def test_nws_errors_are_shown_on_the_typed_zone_form(self):
         for error in ("unknown_marine_zone", "marine_zone_not_covered", "cannot_connect"):
             with self.subTest(error=error):
-                _, result, _ = self._submit("LMZ741", found=(None, error))
+                with self._lookup(found=(None, error)):
+                    result = _run(_flow().async_step_marine_manual(user_input={"marine_zone": "LMZ741"}))
                 self.assertEqual(result["type"], "form")
                 self.assertEqual(result["errors"], {"marine_zone": error})
                 self.assertEqual(result["description_placeholders"], {"zone": "LMZ741"})

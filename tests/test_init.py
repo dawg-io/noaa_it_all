@@ -77,6 +77,7 @@ _COORDINATOR_NAMES = (
     "ObservationsCoordinator",
     "SurfCoordinator",
     "MarineForecastCoordinator",
+    "MarineAlertsCoordinator",
     "ForecastCoordinator",
     "CloudCoverCoordinator",
     "RadarTimestampCoordinator",
@@ -416,6 +417,7 @@ class TestEntryTypesSetUp(unittest.TestCase):
         self.assertEqual(
             coordinators["MarineForecastCoordinator"].call_args.args[1:], ("LOT", "LMZ741")
         )
+        self.assertEqual(coordinators["MarineAlertsCoordinator"].call_args.args[1:], ("LMZ741",))
         coordinators["SpaceWeatherCoordinator"].assert_not_called()
         coordinators["SurfCoordinator"].assert_not_called()
         self.assertEqual(

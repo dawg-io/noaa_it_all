@@ -45,6 +45,7 @@ CONF_LATITUDE = "latitude"
 CONF_LONGITUDE = "longitude"
 CONF_RADAR_LOOP_HOURS = "radar_loop_hours"
 CONF_MARINE_ZONE = "marine_zone"
+CONF_MARINE_LAKE = "marine_lake"
 # What a config entry is: weather for a location (forecast, alerts and radar),
 # or the surf forecast of one coastal office. Entries from before 0.8.0 have no
 # type; migrating them adds it.

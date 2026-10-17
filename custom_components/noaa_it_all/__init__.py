@@ -42,6 +42,7 @@ from .coordinator import (
     ObservationsCoordinator,
     SurfCoordinator,
     MarineForecastCoordinator,
+    MarineAlertsCoordinator,
     ForecastCoordinator,
     CloudCoverCoordinator,
     RadarTimestampCoordinator,
@@ -347,10 +348,12 @@ async def _async_setup_marine_entry(hass: HomeAssistant, entry: ConfigEntry, con
     marine_coord = MarineForecastCoordinator(
         hass, conf[CONF_OFFICE_CODE], conf[CONF_MARINE_ZONE]
     )
-    await marine_coord.async_refresh()
+    alerts_coord = MarineAlertsCoordinator(hass, conf[CONF_MARINE_ZONE])
+    await asyncio.gather(marine_coord.async_refresh(), alerts_coord.async_refresh())
     hass.data[DOMAIN][entry.entry_id] = {
         "config": conf,
         "marine_forecast_coordinator": marine_coord,
+        "marine_alerts_coordinator": alerts_coord,
     }
     await hass.config_entries.async_forward_entry_setups(entry, MARINE_PLATFORMS)
     return True

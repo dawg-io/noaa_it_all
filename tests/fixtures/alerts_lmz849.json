@@ -1,0 +1,39 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "id": "urn:oid:2.49.0.1.840.0.89190d3d7fb1b3c0cfba32f4edfae917ab113291.001.1",
+        "areaDesc": "St Joseph to South Haven MI; South Haven to Holland MI; Holland to Grand Haven MI; Grand Haven to Whitehall MI; Whitehall to Pentwater MI; Pentwater to Manistee MI",
+        "sent": "2026-10-14T03:03:00-04:00",
+        "effective": "2026-10-14T03:03:00-04:00",
+        "onset": "2026-10-16T05:00:00-04:00",
+        "expires": "2026-10-14T11:15:00-04:00",
+        "ends": "2026-10-17T02:00:00-04:00",
+        "status": "Actual",
+        "messageType": "Alert",
+        "category": "Met",
+        "severity": "Moderate",
+        "certainty": "Possible",
+        "urgency": "Future",
+        "event": "Gale Watch",
+        "senderName": "NWS Grand Rapids MI",
+        "headline": "Gale Watch issued October 14 at 3:03AM EDT until October 17 at 2:00AM EDT by NWS Grand Rapids MI",
+        "description": "* WHAT...North winds 35 to 45 knots and waves 12 to 17 feet\npossible.\n\n* WHERE...St Joseph to Manistee.\n\n* WHEN...From late Thursday night through late Friday night.\n\n* IMPACTS...Strong winds can cause hazardous waves which could\ncapsize or damage vessels and reduce visibility.",
+        "instruction": "Mariners should consider altering plans to avoid possible\nhazardous conditions.  Remain in port, seek safe harbor, alter\ncourse, and/or secure the vessel for severe wind and waves.",
+        "response": "Prepare",
+        "parameters": {
+          "NWSheadline": [
+            "GALE WATCH IN EFFECT FROM LATE THURSDAY NIGHT THROUGH LATE FRIDAY NIGHT"
+          ],
+          "VTEC": [
+            "/O.NEW.KGRR.GL.A.0005.261016T0900Z-261017T0600Z/"
+          ]
+        }
+      }
+    }
+  ],
+  "title": "Current watches, warnings, and advisories for LMZ849",
+  "updated": "2026-10-14T13:57:06+00:00"
+}
