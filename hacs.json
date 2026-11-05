@@ -4,5 +4,7 @@
     "country": "US",
     "render_readme": true,
     "homeassistant": "2026.3.0",
-    "zip_release": false
+    "zip_release": true,
+    "filename": "noaa_it_all.zip",
+    "hide_default_branch": true
 }

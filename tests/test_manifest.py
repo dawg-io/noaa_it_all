@@ -197,6 +197,34 @@ class TestHacsJson(unittest.TestCase):
     def test_country(self):
         self.assertEqual(self.hacs.get("country"), "US")
 
+    def test_installs_from_a_release_zip(self):
+        """HACS counts downloads only of a release asset, so it installs from one.
+
+        Installing from the source archive left the HACS Downloads column at "-".
+        """
+        self.assertIs(self.hacs.get("zip_release"), True)
+        self.assertEqual(self.hacs.get("filename"), "noaa_it_all.zip")
+
+    def test_default_branch_is_not_offered(self):
+        """With zip_release, HACS fetches the zip for whatever ref is picked, and a branch has none.
+
+        Picking main in HACS's version list would look for releases/download/main/noaa_it_all.zip
+        and fail, so hacs.json hides the default branch.
+        """
+        self.assertIs(self.hacs.get("hide_default_branch"), True)
+
+    def test_releases_get_the_zip_hacs_installs(self):
+        """Every published release needs the zip, or HACS can't install that version."""
+        path = os.path.join(_REPO, ".github", "workflows", "release-zip.yml")
+        self.assertTrue(os.path.isfile(path), "no workflow attaches the zip to releases")
+        with open(path, encoding="utf-8") as f:
+            workflow = f.read()
+        self.assertRegex(workflow, r"release:\s*\n\s*types: \[published\]")
+        self.assertIn("gh release upload", workflow)
+        self.assertIn(f'$GITHUB_WORKSPACE/{self.hacs["filename"]}', workflow)
+        # The files go at the top of the zip: HACS unpacks it into custom_components/noaa_it_all.
+        self.assertIn("cd custom_components/noaa_it_all\n", workflow)
+
 
 # ---------------------------------------------------------------------------
 # Helpers for PNG introspection (no third-party dependencies required)
@@ -368,18 +396,26 @@ class TestReadmeImages(unittest.TestCase):
                     "Use https://raw.githubusercontent.com/<owner>/<repo>/<branch>/<path> instead."
                 )
 
-    def test_no_install_count_badges(self):
-        """Install-count badges were removed because they never showed a real number.
-
-        The GitHub downloads badge counts release assets, and hacs.json sets
-        zip_release false, so releases carry none and it always read 0. The
-        analytics "Tracked Installs" badge did not render a working count either.
-        """
+    def test_no_analytics_install_badge(self):
+        """The analytics "Tracked Installs" badge was removed: it never rendered a working count."""
         for url in self.urls:
-            self.assertNotIn("img.shields.io/github/downloads", url,
-                             f"The docs have a release-download badge: {url}")
             self.assertNotIn("analytics.home-assistant.io", url,
                              f"The docs have an analytics install badge: {url}")
+
+    def test_download_badge_counts_the_release_zip(self):
+        """The downloads badge counts release assets, so it needs the zip HACS installs from.
+
+        Before 0.11.2 releases had no assets and the badge always read 0, so it was removed.
+        """
+        badges = [url for url in self.urls if "img.shields.io/github/downloads" in url]
+        self.assertEqual(
+            [url.split("?")[0] for url in badges],
+            ["https://img.shields.io/github/downloads/dawg-io/noaa_it_all/total"],
+            "README.md should have one total-downloads badge for dawg-io/noaa_it_all",
+        )
+        with open(os.path.join(_REPO, "hacs.json")) as f:
+            self.assertIs(json.load(f).get("zip_release"), True,
+                          "Without a release zip the downloads badge reads 0")
 
 
 if __name__ == "__main__":
