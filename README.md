@@ -6,6 +6,7 @@
 
 [![HACS Default](https://img.shields.io/badge/HACS-Default-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/integration)
 [![GitHub Release](https://img.shields.io/github/v/release/dawg-io/noaa_it_all?style=for-the-badge&color=green)](https://github.com/dawg-io/noaa_it_all/releases)
+[![Downloads](https://img.shields.io/github/downloads/dawg-io/noaa_it_all/total?style=for-the-badge&color=green&label=Downloads)](https://github.com/dawg-io/noaa_it_all/releases)
 [![License](https://img.shields.io/github/license/dawg-io/noaa_it_all?style=for-the-badge&color=green)](https://github.com/dawg-io/noaa_it_all/blob/main/LICENSE)
 
 <p align="center">
@@ -39,9 +40,10 @@ Requires Home Assistant **2026.3.0** or newer.
 4. Restart Home Assistant
 
 ### Manual Installation
-1. Download the latest release from [GitHub Releases](https://github.com/dawg-io/noaa_it_all/releases)
-2. Copy the `custom_components/noaa_it_all` folder to your Home Assistant `custom_components` directory
-3. Restart Home Assistant
+1. Download `noaa_it_all.zip` from the latest release on [GitHub Releases](https://github.com/dawg-io/noaa_it_all/releases)
+2. Delete any existing `custom_components/noaa_it_all` folder, so no files from an older version are left behind
+3. Unzip the zip into a new `custom_components/noaa_it_all` folder in your Home Assistant configuration directory
+4. Restart Home Assistant
 
 ## Getting Started
 
