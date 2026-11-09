@@ -5,6 +5,19 @@ All notable changes to NOAA It All for Home Assistant will be documented in this
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0]
+
+### Added
+- **Forecast precipitation amounts.** The weather entity's daily and hourly forecasts have NWS's
+  forecast precipitation, `precipitation`, so the Weather Forecast card and `weather.get_forecasts`
+  show how much rain to expect, not only its chance. It's the liquid equivalent, melted snow
+  included, from the gridpoint data Cloud Cover already fetches, so there's no extra request.
+  Today's entry has the amount from now to midnight, and the other days the whole day. NWS
+  forecasts amounts about three days out; a day or hour beyond that, or only partly covered, has
+  no amount rather than 0, and so does every entry while the gridpoint data can't be fetched. It
+  shows in inches unless you pick millimeters in the entity's settings. Going back to 0.11.2 needs
+  nothing; its forecasts just have no amounts.
+
 ## [0.11.2]
 
 ### Changed

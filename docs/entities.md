@@ -263,6 +263,12 @@ These sensors provide additional weather data where available from NOAA/NWS *(NO
   Its daily forecast has one entry per date, with the day's high and the following night's low.
   In the evening, when NWS no longer forecasts today's high, today's entry has only tonight's low
   and its `temperature` is empty.
+  The daily and hourly forecasts have NWS's forecast precipitation amount, `precipitation`: the
+  liquid equivalent, melted snow included, from the same gridpoint data as Cloud Cover. Today's
+  entry has the amount from now to midnight, and the other days the whole day. NWS forecasts
+  amounts about three days out; a day or hour beyond that, or only partly covered, has no
+  `precipitation`, rather than 0, and so does every entry while the gridpoint data can't be
+  fetched. It shows in inches unless you pick millimeters in the entity's settings.
 
 ## Derived Space Weather Sensors
 

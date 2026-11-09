@@ -864,6 +864,68 @@ _ISSUED_LINE_RE = re.compile(rf"^({_ISSUED_TIME})(?:\s+/[^/]*/)?[ \t]*$", re.MUL
 _NSH_PERIOD_RE = re.compile(r"^\.([^.]+)\.\.\.(.*)$")
 
 
+_ISO_DURATION_RE = re.compile(r"P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?)?")
+
+
+def hourly_precipitation(gridpoint_properties: Any) -> Optional[Dict[datetime, float]]:
+    """Return NWS's forecast precipitation as {hour start in UTC: mm}, or None.
+
+    The gridpoint's ``quantitativePrecipitation`` is the liquid-equivalent
+    amount (melted snow included) for blocks of 1 to 6 hours, each
+    ``"<start>/<ISO 8601 duration>"``. Each block is spread evenly over its
+    hours. Hours NWS gives no value for, usually beyond about 3 days, are left
+    out, so they read as unknown rather than as no rain. None when there is no
+    series, or it isn't in millimeters.
+    """
+    if not isinstance(gridpoint_properties, dict):
+        return None
+    series = gridpoint_properties.get("quantitativePrecipitation")
+    if not isinstance(series, dict) or series.get("uom") != "wmoUnit:mm":
+        return None
+    hours: Dict[datetime, float] = {}
+    for item in series.get("values") or []:
+        try:
+            value = item["value"]
+            start_text, duration_text = item["validTime"].split("/")
+            start = datetime.fromisoformat(start_text.replace("Z", "+00:00"))
+            match = _ISO_DURATION_RE.fullmatch(duration_text)
+        except (KeyError, TypeError, AttributeError, ValueError):
+            continue
+        if (match is None or start.tzinfo is None or isinstance(value, bool)
+                or not isinstance(value, (int, float)) or value < 0):
+            continue
+        days, hrs, minutes = (int(x or 0) for x in match.groups())
+        count = (days * 24 * 60 + hrs * 60 + minutes) // 60
+        if count < 1:
+            continue
+        start = start.astimezone(timezone.utc)
+        for i in range(count):
+            hours[start + timedelta(hours=i)] = value / count
+    return hours
+
+
+def precipitation_between(
+    hours: Optional[Dict[datetime, float]], start: datetime, end: datetime
+) -> Optional[float]:
+    """Return the forecast precipitation in mm from ``start`` to ``end``, or None.
+
+    ``start`` is taken back to the start of its hour. None unless NWS has a
+    value for every hour in between, so a day the forecast only reaches part
+    of isn't shown with less rain than it may get.
+    """
+    if not hours or end <= start:
+        return None
+    hour = start.astimezone(timezone.utc).replace(minute=0, second=0, microsecond=0)
+    end = end.astimezone(timezone.utc)
+    total = 0.0
+    while hour < end:
+        if hour not in hours:
+            return None
+        total += hours[hour]
+        hour += timedelta(hours=1)
+    return round(total, 3)
+
+
 def find_issue_time(text: str) -> Optional[str]:
     """Return when an NWS text product was issued, from its header, or None."""
     match = _ISSUED_LINE_RE.search(text or "")
