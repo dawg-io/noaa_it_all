@@ -874,11 +874,13 @@ def hourly_precipitation(
 
     ``key`` names the series: ``quantitativePrecipitation``, the
     liquid-equivalent amount (melted snow included), ``snowfallAmount``, the
-    depth of new snow, or ``iceAccumulation``. Each has blocks of 1 to 6
-    hours, each ``"<start>/<ISO 8601 duration>"``, and each block is spread
-    evenly over its hours. Hours NWS gives no value for, usually beyond about
-    3 days, are left out, so they read as unknown rather than as none. None
-    when there is no series, or it isn't in millimeters.
+    depth of new snow, or ``iceAccumulation``. Each comes in blocks of 1 to 6
+    hours (6 in practice), each ``"<start>/<ISO 8601 duration>"``. NWS
+    publishes no hourly amounts, so each block is spread evenly over its
+    hours, which keeps the amounts consistent with Home Assistant's hourly
+    forecast format of one value per hour. Hours NWS gives no value for,
+    usually beyond about 3 days, are left out, so they read as unknown rather
+    than as none. None when there is no series, or it isn't in millimeters.
     """
     if not isinstance(gridpoint_properties, dict):
         return None
