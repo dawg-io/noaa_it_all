@@ -335,6 +335,13 @@ class TestWeatherExtraNaming(unittest.TestCase):
         self.assertIn(OFFICE.lower(), uid.lower())
         self.assertTrue(uid.startswith("noaa_"))
 
+    def test_snowfall_forecast_name_and_unique_id(self):
+        from noaa_it_all.sensors.weather_extra import SnowfallForecastSensor
+        s = SnowfallForecastSensor(COORD, OFFICE, LAT, LON)
+        self.assertEqual(s.name, "Snowfall Forecast")
+        self.assertEqual(s.unique_id, f"noaa_{OFFICE}_32_7157_n117_1611_snowfall_forecast")
+        self.assertEqual(_entity_id_slug(s), f"noaa_{OFFICE.lower()}_weather_snowfall_forecast")
+
     def test_radar_timestamp_name(self):
         from noaa_it_all.sensors.weather_extra import RadarTimestampSensor
         s = RadarTimestampSensor(COORD, OFFICE)
@@ -385,7 +392,7 @@ class TestNamingConventionFormat(unittest.TestCase):
         from noaa_it_all.sensors.forecasts import ExtendedForecastSensor, HourlyForecastSensor
         from noaa_it_all.sensors.alerts import NWSAlertsSensor
         from noaa_it_all.sensors.weather_extra import (
-            CloudCoverSensor, RadarTimestampSensor, ForecastDiscussionSensor,
+            CloudCoverSensor, SnowfallForecastSensor, RadarTimestampSensor, ForecastDiscussionSensor,
         )
 
         obs = [cls(COORD, OFFICE, latitude=LAT, longitude=LON)
@@ -405,7 +412,8 @@ class TestNamingConventionFormat(unittest.TestCase):
         forecasts = [cls(COORD, OFFICE, LAT, LON)
                      for cls in (ExtendedForecastSensor, HourlyForecastSensor)]
         alerts = [NWSAlertsSensor(COORD, OFFICE, LAT, LON)]
-        extras_with_location = [CloudCoverSensor(COORD, OFFICE, LAT, LON)]
+        extras_with_location = [cls(COORD, OFFICE, LAT, LON)
+                                for cls in (CloudCoverSensor, SnowfallForecastSensor)]
         extras_office_only = [cls(COORD, OFFICE)
                               for cls in (RadarTimestampSensor, ForecastDiscussionSensor)]
 
@@ -497,6 +505,11 @@ class TestDeviceInfoGrouping(unittest.TestCase):
     def test_cloud_cover_device_info(self):
         from noaa_it_all.sensors.weather_extra import CloudCoverSensor
         s = CloudCoverSensor(COORD, OFFICE, LAT, LON)
+        self.assertEqual(s.device_info, self._expected_weather())
+
+    def test_snowfall_forecast_device_info(self):
+        from noaa_it_all.sensors.weather_extra import SnowfallForecastSensor
+        s = SnowfallForecastSensor(COORD, OFFICE, LAT, LON)
         self.assertEqual(s.device_info, self._expected_weather())
 
     def test_radar_timestamp_device_info(self):

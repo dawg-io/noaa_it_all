@@ -867,19 +867,22 @@ _NSH_PERIOD_RE = re.compile(r"^\.([^.]+)\.\.\.(.*)$")
 _ISO_DURATION_RE = re.compile(r"P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?)?")
 
 
-def hourly_precipitation(gridpoint_properties: Any) -> Optional[Dict[datetime, float]]:
-    """Return NWS's forecast precipitation as {hour start in UTC: mm}, or None.
+def hourly_precipitation(
+    gridpoint_properties: Any, key: str = "quantitativePrecipitation"
+) -> Optional[Dict[datetime, float]]:
+    """Return an NWS gridpoint amount series as {hour start in UTC: mm}, or None.
 
-    The gridpoint's ``quantitativePrecipitation`` is the liquid-equivalent
-    amount (melted snow included) for blocks of 1 to 6 hours, each
-    ``"<start>/<ISO 8601 duration>"``. Each block is spread evenly over its
-    hours. Hours NWS gives no value for, usually beyond about 3 days, are left
-    out, so they read as unknown rather than as no rain. None when there is no
-    series, or it isn't in millimeters.
+    ``key`` names the series: ``quantitativePrecipitation``, the
+    liquid-equivalent amount (melted snow included), ``snowfallAmount``, the
+    depth of new snow, or ``iceAccumulation``. Each has blocks of 1 to 6
+    hours, each ``"<start>/<ISO 8601 duration>"``, and each block is spread
+    evenly over its hours. Hours NWS gives no value for, usually beyond about
+    3 days, are left out, so they read as unknown rather than as none. None
+    when there is no series, or it isn't in millimeters.
     """
     if not isinstance(gridpoint_properties, dict):
         return None
-    series = gridpoint_properties.get("quantitativePrecipitation")
+    series = gridpoint_properties.get(key)
     if not isinstance(series, dict) or series.get("uom") != "wmoUnit:mm":
         return None
     hours: Dict[datetime, float] = {}

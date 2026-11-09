@@ -7,7 +7,7 @@ Location-specific weather observations, forecasts, alerts and radar, in the `NOA
 - **Device ID**: `noaa_{office}_weather` (e.g., `noaa_ILM_weather`)
 - **Location**: Your configured NWS office and coordinates
 - **Update Frequency**: 10 minutes
-- **Entities**: 22: nine observations, two forecasts, the weather entity, Active NWS Alerts and four alert binary sensors, cloud cover, the forecast discussion, and the radar timestamp, image and loop
+- **Entities**: 23: nine observations, two forecasts, the weather entity, Active NWS Alerts and four alert binary sensors, cloud cover, the snowfall forecast, the forecast discussion, and the radar timestamp, image and loop
 
 <p align="left">
   <img width="270" alt="NOAA ILM Weather device: weather entity, alert binary sensors, observations, forecasts and radar images" src="images/device-weather.png" />

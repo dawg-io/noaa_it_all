@@ -586,6 +586,13 @@ class TestHourlyPrecipitation(unittest.TestCase):
             ("2026-11-11T04:00:00Z/PT1H", 2)))
         self.assertEqual(hours, {_nov(11, 4): 2})
 
+    def test_the_key_picks_the_series(self):
+        props = _qpf(("2026-11-11T00:00:00Z/PT2H", 4.0))
+        props["snowfallAmount"] = _qpf(("2026-11-11T00:00:00Z/PT1H", 30.0))["quantitativePrecipitation"]
+        self.assertEqual(hourly_precipitation(props), {_nov(11, 0): 2.0, _nov(11, 1): 2.0})
+        self.assertEqual(hourly_precipitation(props, "snowfallAmount"), {_nov(11, 0): 30.0})
+        self.assertIsNone(hourly_precipitation(props, "iceAccumulation"))
+
     def test_no_series_or_another_unit_is_none(self):
         self.assertIsNone(hourly_precipitation(None))
         self.assertIsNone(hourly_precipitation({}))
