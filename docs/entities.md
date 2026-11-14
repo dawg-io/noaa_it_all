@@ -4,7 +4,7 @@
 
 Every entity, as created for the Wilmington (ILM) office and the `LMZ741` marine zone. Replace `ilm` with your office code and `lmz741` with your zone, in lower case. The sections after the tables describe each group in detail.
 
-**NOAA {OFFICE} Weather** (22)
+**NOAA {OFFICE} Weather** (23)
 
 | Entity ID | State |
 |---|---|
@@ -19,6 +19,7 @@ Every entity, as created for the Wilmington (ILM) office and the `LMZ741` marine
 | `sensor.noaa_ilm_weather_visibility` | mi (km)* |
 | `sensor.noaa_ilm_weather_sky_conditions` | Text, e.g. `Mostly Clear` |
 | `sensor.noaa_ilm_weather_cloud_cover` | % |
+| `sensor.noaa_ilm_weather_snowfall_forecast` | in (mm, cm)*, snow forecast for the next 24 hours |
 | `sensor.noaa_ilm_weather_extended_forecast` | Number of periods, e.g. `14 periods` |
 | `sensor.noaa_ilm_weather_hourly_forecast` | This hour's forecast temperature |
 | `sensor.noaa_ilm_weather_forecast_discussion` | `Available`; text in attributes |
@@ -229,6 +230,13 @@ These sensors provide additional weather data where available from NOAA/NWS *(NO
   - Requires latitude/longitude configuration
   - May not be available for all locations
 
+- **Snowfall Forecast**: NWS's forecast snowfall over the next 24 hours, from the same gridpoint data as Cloud Cover *(sensor.noaa_{office}_weather_snowfall_forecast)*
+  - The depth of new snow, not its water equivalent, which is in the weather entity's forecast `precipitation`
+  - Shown in inches unless you pick millimeters or centimeters in the entity's settings; the attributes are in the same unit
+  - `days`: one entry per date in Home Assistant's time zone, today first, with `date`, `snowfall` and `ice` (ice accumulation). Today's entry is from now to midnight, the others the whole day
+  - `ice_next_24h`: forecast ice accumulation over the same 24 hours as the state
+  - NWS forecasts snow about three days out. A day or a 24 hours the forecast doesn't fully cover has no amount (`unknown`, or empty in `days`) rather than 0, and the sensor is unavailable while the gridpoint data can't be fetched
+
 - **Radar Timestamp**: Timestamp of the latest radar image for your NWS office *(sensor.noaa_{office}_weather_radar_timestamp)*
   - Shows when the most recent radar image was captured
   - Useful for automations or displaying radar freshness
@@ -263,6 +271,12 @@ These sensors provide additional weather data where available from NOAA/NWS *(NO
   Its daily forecast has one entry per date, with the day's high and the following night's low.
   In the evening, when NWS no longer forecasts today's high, today's entry has only tonight's low
   and its `temperature` is empty.
+  The daily and hourly forecasts have NWS's forecast precipitation amount, `precipitation`: the
+  liquid equivalent, melted snow included, from the same gridpoint data as Cloud Cover. Today's
+  entry has the amount from now to midnight, and the other days the whole day. NWS forecasts
+  amounts about three days out; a day or hour beyond that, or only partly covered, has no
+  `precipitation`, rather than 0, and so does every entry while the gridpoint data can't be
+  fetched. It shows in inches unless you pick millimeters in the entity's settings.
 
 ## Derived Space Weather Sensors
 

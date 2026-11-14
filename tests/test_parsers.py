@@ -1,7 +1,7 @@
 """Unit tests for parsers.py — pure functions, no Home Assistant dependency."""
 
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from parsers import (
     degrees_to_cardinal,
@@ -31,6 +31,8 @@ from parsers import (
     format_forecast_text,
     format_forecast_periods,
     format_hourly_periods,
+    hourly_precipitation,
+    precipitation_between,
 )
 
 # Sample AURORA_KP_THRESHOLDS for testing (mirrors const.py)
@@ -545,6 +547,77 @@ class TestForecastFormatting(unittest.TestCase):
                     'probabilityOfPrecipitation': 25}]
         result = format_hourly_periods(periods)
         self.assertEqual(result[0]['precipitation_probability'], 25)
+
+
+def _qpf(*blocks, uom="wmoUnit:mm"):
+    """Gridpoint properties with a quantitativePrecipitation series of (validTime, mm) blocks."""
+    return {"quantitativePrecipitation": {
+        "uom": uom, "values": [{"validTime": t, "value": v} for t, v in blocks]}}
+
+
+def _nov(day, hour):
+    return datetime(2026, 11, day, hour, tzinfo=timezone.utc)
+
+
+class TestHourlyPrecipitation(unittest.TestCase):
+    """NWS gives forecast precipitation in blocks of hours; it's spread evenly over them."""
+
+    def test_a_block_is_spread_evenly_over_its_hours(self):
+        hours = hourly_precipitation(_qpf(("2026-11-11T18:00:00+00:00/PT6H", 3.0)))
+        self.assertEqual(sorted(hours), [_nov(11, h) for h in range(18, 24)])
+        self.assertEqual(set(hours.values()), {0.5})
+
+    def test_durations_with_days_and_offsets(self):
+        hours = hourly_precipitation(_qpf(
+            ("2026-11-11T00:00:00-06:00/P1DT2H", 26.0), ("2026-11-12T08:00:00Z/PT1H", 1.0)))
+        self.assertEqual(len(hours), 27)
+        self.assertEqual(min(hours), _nov(11, 6))
+        self.assertEqual(hours[_nov(12, 8)], 1.0)
+
+    def test_hours_without_a_value_are_left_out_not_zero(self):
+        hours = hourly_precipitation(_qpf(
+            ("2026-11-11T00:00:00+00:00/PT6H", 0), ("2026-11-11T06:00:00+00:00/PT6H", None)))
+        self.assertEqual(sorted(hours), [_nov(11, h) for h in range(6)])
+
+    def test_odd_entries_are_skipped(self):
+        hours = hourly_precipitation(_qpf(
+            ("2026-11-11T00:00:00+00:00/PT1H", True), ("2026-11-11T01:00:00+00:00/PT1H", -1),
+            ("2026-11-11T02:00:00/PT1H", 1), ("nonsense", 1), ("2026-11-11T03:00:00Z/PT30M", 1),
+            ("2026-11-11T04:00:00Z/PT1H", 2)))
+        self.assertEqual(hours, {_nov(11, 4): 2})
+
+    def test_the_key_picks_the_series(self):
+        props = _qpf(("2026-11-11T00:00:00Z/PT2H", 4.0))
+        props["snowfallAmount"] = _qpf(("2026-11-11T00:00:00Z/PT1H", 30.0))["quantitativePrecipitation"]
+        self.assertEqual(hourly_precipitation(props), {_nov(11, 0): 2.0, _nov(11, 1): 2.0})
+        self.assertEqual(hourly_precipitation(props, "snowfallAmount"), {_nov(11, 0): 30.0})
+        self.assertIsNone(hourly_precipitation(props, "iceAccumulation"))
+
+    def test_no_series_or_another_unit_is_none(self):
+        self.assertIsNone(hourly_precipitation(None))
+        self.assertIsNone(hourly_precipitation({}))
+        self.assertIsNone(hourly_precipitation(_qpf(("2026-11-11T00:00:00Z/PT1H", 1), uom="wmoUnit:in")))
+
+
+class TestPrecipitationBetween(unittest.TestCase):
+
+    HOURS = {_nov(11, h): 0.5 for h in range(6, 24)}
+
+    def test_sums_the_hours_in_between(self):
+        self.assertEqual(precipitation_between(self.HOURS, _nov(11, 6), _nov(12, 0)), 9.0)
+
+    def test_starts_from_the_start_of_the_hour(self):
+        self.assertEqual(precipitation_between(self.HOURS, _nov(11, 22) + timedelta(minutes=40), _nov(12, 0)), 1.0)
+
+    def test_a_window_the_forecast_only_partly_covers_is_none(self):
+        """A day NWS only reaches part of isn't shown with less rain than it may get."""
+        self.assertIsNone(precipitation_between(self.HOURS, _nov(11, 0), _nov(12, 0)))
+        self.assertIsNone(precipitation_between(self.HOURS, _nov(11, 12), _nov(12, 6)))
+
+    def test_no_forecast_or_empty_window_is_none(self):
+        self.assertIsNone(precipitation_between(None, _nov(11, 6), _nov(11, 7)))
+        self.assertIsNone(precipitation_between({}, _nov(11, 6), _nov(11, 7)))
+        self.assertIsNone(precipitation_between(self.HOURS, _nov(11, 7), _nov(11, 7)))
 
 
 if __name__ == '__main__':

@@ -46,6 +46,7 @@ from .forecasts import (  # noqa: F401
 from .alerts import NWSAlertsSensor  # noqa: F401
 from .weather_extra import (  # noqa: F401
     CloudCoverSensor,
+    SnowfallForecastSensor,
     RadarTimestampSensor,
     ForecastDiscussionSensor,
 )

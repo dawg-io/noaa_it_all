@@ -35,7 +35,12 @@ from .const import (
     DOMAIN,
 )
 from .entry_config import resolve_entry_config
-from .parsers import meters_to_kilometers, pascals_to_hectopascals
+from .parsers import (
+    hourly_precipitation,
+    meters_to_kilometers,
+    pascals_to_hectopascals,
+    precipitation_between,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -61,13 +66,15 @@ async def async_setup_entry(
     data = hass.data[DOMAIN][config_entry.entry_id]
     observations_coord = data["observations_coordinator"]
     forecast_coord = data["forecast_coordinator"]
+    gridpoint_coord = data.get("cloud_cover_coordinator")
 
     if not observations_coord:
         _LOGGER.error("No observations coordinator available")
         return
 
     weather_entity = NOAAWeather(
-        observations_coord, forecast_coord, office_code, latitude, longitude
+        observations_coord, forecast_coord, office_code, latitude, longitude,
+        gridpoint_coordinator=gridpoint_coord,
     )
     async_add_entities([weather_entity])
 
@@ -78,22 +85,28 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
     The native units are the metric ones NWS reports observations in, so Home
     Assistant converts each observation once, to the units in the entity's
     settings: US customary ones unless others are chosen there. NWS gives the
-    forecast in °F and mph, which is converted to the native units.
+    forecast in °F and mph, which is converted to the native units. The
+    forecast precipitation amounts come from the gridpoint data, in mm.
     """
 
     _attr_native_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_native_pressure_unit = UnitOfPressure.HPA
     _attr_native_wind_speed_unit = UnitOfSpeed.KILOMETERS_PER_HOUR
     _attr_native_visibility_unit = UnitOfLength.KILOMETERS
+    _attr_native_precipitation_unit = UnitOfPrecipitationDepth.MILLIMETERS
     _attr_supported_features = (
         WeatherEntityFeature.FORECAST_DAILY | WeatherEntityFeature.FORECAST_HOURLY
     )
 
     def __init__(self, observations_coordinator, forecast_coordinator,
-                 office_code: str, latitude: float, longitude: float):
+                 office_code: str, latitude: float, longitude: float,
+                 gridpoint_coordinator=None):
         """Initialize the NOAA weather entity."""
         super().__init__(observations_coordinator)
         self._forecast_coordinator = forecast_coordinator
+        # The Cloud Cover sensor's coordinator: it fetches the gridpoint data,
+        # which has the forecast precipitation amounts.
+        self._gridpoint_coordinator = gridpoint_coordinator
         self._office_code = office_code
         self._latitude = latitude
         self._longitude = longitude
@@ -128,12 +141,11 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
         # read directly from the coordinator in async_forecast_*(), so
         # we only need to tell HA to re-read state — no need to
         # re-parse observation data via _handle_coordinator_update().
-        if self._forecast_coordinator:
-            self.async_on_remove(
-                self._forecast_coordinator.async_add_listener(
-                    self._handle_forecast_update
+        for coordinator in (self._forecast_coordinator, self._gridpoint_coordinator):
+            if coordinator:
+                self.async_on_remove(
+                    coordinator.async_add_listener(self._handle_forecast_update)
                 )
-            )
         # Immediately process any data that the coordinators already
         # fetched during integration setup so the entity does not sit
         # empty until the first scheduled poll.
@@ -257,6 +269,8 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
             if not periods:
                 return None
 
+            precipitation = self._forecast_precipitation()
+
             # Convert NWS periods to Home Assistant forecast format
             # NWS returns alternating day and night periods
             # We pair them to get both high (day) and low (night) temperatures
@@ -322,6 +336,9 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
                                 precipitation_probability=(
                                     self._extract_precipitation_probability(night_period)
                                 ),
+                                native_precipitation=self._day_precipitation(
+                                    precipitation, night_dt
+                                ),
                                 native_wind_speed=self._parse_wind_speed(
                                     night_period.get("windSpeed")
                                 ),
@@ -361,6 +378,9 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
                         precipitation_probability=(
                             self._extract_precipitation_probability(day_period)
                         ),
+                        native_precipitation=self._day_precipitation(
+                            precipitation, self._period_start(day_period)
+                        ),
                         native_wind_speed=self._parse_wind_speed(
                             day_period.get("windSpeed")
                         ),
@@ -393,8 +413,10 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
             if not periods:
                 return None
 
+            precipitation = self._forecast_precipitation()
             forecasts = []
             for period in periods[:48]:
+                start = self._period_start(period)
                 forecast = Forecast(
                     datetime=period.get("startTime"),
                     native_temperature=self._forecast_temperature(period),
@@ -404,6 +426,10 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
                     ),
                     precipitation_probability=(
                         self._extract_precipitation_probability(period)
+                    ),
+                    native_precipitation=(
+                        precipitation_between(precipitation, start, start + timedelta(hours=1))
+                        if start is not None else None
                     ),
                     native_wind_speed=self._parse_wind_speed(period.get("windSpeed")),
                     wind_bearing=self._parse_wind_direction(
@@ -418,6 +444,30 @@ class NOAAWeather(CoordinatorEntity, WeatherEntity):
         except Exception as e:
             _LOGGER.error("Error parsing hourly forecast data: %s", e)
             return None
+
+    def _forecast_precipitation(self) -> Optional[dict]:
+        """Return the gridpoint's forecast precipitation by hour, or None.
+
+        None when the last gridpoint fetch failed, so the forecast shows the
+        amount as unknown instead of an amount from an older forecast.
+        """
+        coordinator = self._gridpoint_coordinator
+        if not coordinator or not coordinator.data or not coordinator.last_update_success:
+            return None
+        return hourly_precipitation(coordinator.data.get("properties"))
+
+    @staticmethod
+    def _day_precipitation(precipitation: Optional[dict], day_start: Optional[datetime]) -> Optional[float]:
+        """Return the forecast precipitation in mm for the rest of a day entry's date, or None.
+
+        From now, for today, to midnight, in the UTC offset NWS gives the
+        period in.
+        """
+        if not precipitation or day_start is None:
+            return None
+        midnight = day_start.replace(hour=0, minute=0, second=0, microsecond=0)
+        start = max(midnight, datetime.now(day_start.tzinfo))
+        return precipitation_between(precipitation, start, midnight + timedelta(days=1))
 
     @staticmethod
     def _get_value(properties: dict, *keys) -> Optional[float]:

@@ -4,7 +4,7 @@ import asyncio
 import os
 import sys
 import unittest
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 _REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -509,6 +509,88 @@ class TestNativeUnits(unittest.TestCase):
             with self.subTest(wind=wind):
                 self.assertIsNone(NOAAWeather._parse_wind_speed(wind))
         self.assertAlmostEqual(NOAAWeather._parse_wind_speed("5 to 10 mph"), 12.07008)
+
+
+class TestForecastPrecipitation(unittest.TestCase):
+    """The forecasts have NWS's precipitation amounts, from the gridpoint data, in mm.
+
+    The gridpoint here covers 2026-10-14 00:00 to 2026-10-16 06:00 EDT (04:00 UTC),
+    1.2 mm in each 6-hour block, so 0.2 mm an hour, except 6 mm from 18:00 to 00:00
+    on the 15th.
+    """
+
+    EXTENDED = {"properties": {"periods": [
+        _period("2026-10-14T10:00:00-04:00", True, 75, "Today"),
+        _period("2026-10-14T18:00:00-04:00", False, 52, "Tonight"),
+        _period("2026-10-15T06:00:00-04:00", True, 77, "Thursday"),
+        _period("2026-10-15T18:00:00-04:00", False, 50, "Thursday Night"),
+        _period("2026-10-16T06:00:00-04:00", True, 80, "Friday"),
+        _period("2026-10-16T18:00:00-04:00", False, 55, "Friday Night"),
+    ]}}
+
+    @staticmethod
+    def _gridpoint():
+        values = []
+        for block in range(9):
+            start = datetime(2026, 10, 14, 4) + timedelta(hours=6 * block)
+            mm = 6.0 if start == datetime(2026, 10, 15, 22) else 1.2
+            values.append({"validTime": start.strftime("%Y-%m-%dT%H:%M:%S+00:00") + "/PT6H", "value": mm})
+        values.append({"validTime": "2026-10-16T10:00:00+00:00/PT6H", "value": None})
+        return {"properties": {"quantitativePrecipitation": {"uom": "wmoUnit:mm", "values": values}}}
+
+    def _entity(self, gridpoint=True, extended=None, hourly=None, last_update_success=True):
+        from noaa_it_all.weather import NOAAWeather
+        grid_coord = None
+        if gridpoint:
+            grid_coord = _make_coordinator(self._gridpoint())
+            grid_coord.last_update_success = last_update_success
+        return NOAAWeather(_make_coordinator(None), _make_coordinator(
+            {"extended": extended or self.EXTENDED, "hourly": hourly}), OFFICE, LAT, LON,
+            gridpoint_coordinator=grid_coord)
+
+    def _daily(self, entity, hour=10, minute=0):
+        with patch("noaa_it_all.weather.Forecast", dict), \
+                patch("noaa_it_all.weather.datetime", _frozen_now(hour, minute)):
+            return [(f["datetime"][:10], f["native_precipitation"]) for f in asyncio.run(entity.async_forecast_daily())]
+
+    def _rounded(self, entries):
+        return [(day, None if mm is None else round(mm, 3)) for day, mm in entries]
+
+    def test_the_native_precipitation_unit_is_mm(self):
+        from noaa_it_all.weather import NOAAWeather
+        self.assertIs(NOAAWeather._attr_native_precipitation_unit, _ha_const.UnitOfPrecipitationDepth.MILLIMETERS)
+
+    def test_daily_amounts_are_for_the_rest_of_today_and_whole_days(self):
+        """Today from 10:00 is 14 hours; Thursday has 18 hours at 0.2 mm and 6 mm; Friday isn't all covered."""
+        self.assertEqual(self._rounded(self._daily(self._entity())), [
+            ("2026-10-14", 2.8), ("2026-10-15", 9.6), ("2026-10-16", None)])
+
+    def test_this_evenings_entry_has_the_rest_of_today(self):
+        extended = {"properties": {"periods": self.EXTENDED["properties"]["periods"][1:]}}
+        self.assertEqual(self._rounded(self._daily(self._entity(extended=extended), 20, 30)), [
+            ("2026-10-14", 0.8), ("2026-10-15", 9.6), ("2026-10-16", None)])
+
+    def test_hourly_amounts_and_unknown_beyond_the_forecast(self):
+        periods = [_period(f"2026-10-16T0{h}:00:00-04:00", False, 50, "") for h in (4, 5, 6)]
+        periods.insert(0, _period("2026-10-15T18:00:00-04:00", False, 50, ""))
+        entity = self._entity(hourly={"properties": {"periods": periods}})
+        with patch("noaa_it_all.weather.Forecast", dict):
+            amounts = [f["native_precipitation"] for f in asyncio.run(entity.async_forecast_hourly())]
+        self.assertEqual([None if a is None else round(a, 3) for a in amounts], [1.0, 0.2, 0.2, None])
+
+    def test_without_gridpoint_data_the_amounts_are_unknown_not_zero(self):
+        """A failure never reads as safe: no rain is never shown for a forecast that didn't arrive."""
+        for entity in (self._entity(gridpoint=False), self._entity(last_update_success=False)):
+            with self.subTest(entity=entity):
+                self.assertEqual(self._daily(entity), [
+                    ("2026-10-14", None), ("2026-10-15", None), ("2026-10-16", None)])
+
+    def test_gridpoint_updates_reach_forecast_subscribers(self):
+        entity = self._entity()
+        asyncio.run(entity.async_added_to_hass())
+        listener = entity._gridpoint_coordinator.async_add_listener.call_args[0][0]
+        self.assertEqual(listener.__name__, "_handle_forecast_update")
+        self.assertEqual(len(entity._remove_callbacks), 2)
 
 
 if __name__ == "__main__":

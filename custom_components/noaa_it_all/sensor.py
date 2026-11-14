@@ -54,6 +54,7 @@ from .sensors import (  # noqa: F401
     HourlyForecastSensor,
     NWSAlertsSensor,
     CloudCoverSensor,
+    SnowfallForecastSensor,
     RadarTimestampSensor,
     ForecastDiscussionSensor,
     MeteorShowerActivitySensor,
@@ -159,9 +160,12 @@ async def async_setup_entry(
     if alerts_coord:
         entities.append(NWSAlertsSensor(alerts_coord, office_code, latitude, longitude))
 
-    # Cloud cover sensor (location-specific)
+    # Cloud cover and snowfall forecast sensors (location-specific, gridpoint data)
     if cloud_cover_coord:
-        entities.append(CloudCoverSensor(cloud_cover_coord, office_code, latitude, longitude))
+        entities.extend([
+            CloudCoverSensor(cloud_cover_coord, office_code, latitude, longitude),
+            SnowfallForecastSensor(cloud_cover_coord, office_code, latitude, longitude),
+        ])
 
     # Radar timestamp sensor (office-specific, may be None if no radar site)
     if radar_coord:
